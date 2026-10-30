@@ -34,6 +34,13 @@ LLM_GPU_LAYERS = int(os.environ.get("IDEAX_LLM_GPU_LAYERS", "-1"))
 
 app = FastAPI(title="ideax worker")
 gen_lock = threading.Lock()
+
+# Avanzamento del lavoro in corso, letto da ideax per mostrare "19 di 30 passi"
+PROGRESS: dict[str, Any] = {"step": 0, "total": 0, "phase": None, "cancel": False}
+
+
+class Cancelled(Exception):
+    pass
 llm_lock = threading.Lock()
 
 # Impostazioni di partenza per famiglia di modello (sovrascrivibili con "params")
@@ -151,8 +158,15 @@ def load_base(spec: ModelSpec):
     import diffusers as d
 
     dtype = dtype_for(spec.arch)
+    PROGRESS["phase"] = "Carico il modello in memoria"
     print(f"[ideax] carico {spec.path} ({spec.arch})", flush=True)
-    if spec.format == "diffusers":
+    if spec.format == "gguf" and spec.arch == "flux":
+        # Flux compresso (GGUF, molto diffuso su Civitai): serve il pacchetto "gguf"
+        transformer = d.FluxTransformer2DModel.from_single_file(
+            spec.path, quantization_config=d.GGUFQuantizationConfig(compute_dtype=dtype), torch_dtype=dtype
+        )
+        pipe = d.FluxPipeline.from_pretrained(FLUX_BASE, transformer=transformer, torch_dtype=dtype)
+    elif spec.format == "diffusers":
         pipe = d.DiffusionPipeline.from_pretrained(spec.path, torch_dtype=dtype)
     elif spec.arch in ("sd15", "sd2"):
         pipe = d.StableDiffusionPipeline.from_single_file(spec.path, torch_dtype=dtype)
@@ -301,6 +315,13 @@ def run_real(req: RunRequest) -> list[dict]:
     params.update(req.params)
     fps = int(params.pop("fps", 8))
     seed = params.pop("seed", None)
+    aspect = params.pop("aspect", None)
+    if aspect and "width" in params and "height" in params:
+        # Stessa quantità di pixel del formato nativo, con le proporzioni richieste (multipli di 64)
+        a, b = (float(x) for x in str(aspect).split(":"))
+        area = params["width"] * params["height"]
+        params["width"] = max(64, round((area * a / b) ** 0.5 / 64) * 64)
+        params["height"] = max(64, round((area * b / a) ** 0.5 / 64) * 64)
 
     kwargs: dict[str, Any] = {"prompt": req.prompt, **params}
     if req.negative_prompt:
@@ -318,8 +339,18 @@ def run_real(req: RunRequest) -> list[dict]:
     if req.video:
         kwargs["video"] = load_video_frames(req.video)
 
-    # Passa solo i parametri che la pipeline accetta (ogni modello ne ha di diversi)
     sig = inspect.signature(pipe.__call__).parameters
+    PROGRESS.update(step=0, total=int(kwargs.get("num_inference_steps") or 0), phase="Genero")
+    if "callback_on_step_end" in sig:
+        def on_step(_pipe, i, _t, cb_kwargs):
+            PROGRESS["step"] = i + 1
+            if PROGRESS["cancel"]:
+                raise Cancelled()
+            return cb_kwargs
+
+        kwargs["callback_on_step_end"] = on_step
+
+    # Passa solo i parametri che la pipeline accetta (ogni modello ne ha di diversi)
     if not any(p.kind == p.VAR_KEYWORD for p in sig.values()):
         dropped = [k for k in kwargs if k not in sig]
         kwargs = {k: v for k, v in kwargs.items() if k in sig}
@@ -355,7 +386,13 @@ def run_demo(req: RunRequest) -> list[dict]:
         d.text((16, 16), f"DEMO {req.task}\n{os.path.basename(req.model.path)}\n{req.prompt[:200]}", fill=(255, 255, 255))
         return img
 
-    time.sleep(0.3)
+    steps = int(req.params.get("num_inference_steps", 12))
+    PROGRESS.update(step=0, total=steps, phase="Genero")
+    for i in range(steps):
+        time.sleep(float(os.environ.get("IDEAX_DEMO_STEP", "0.05")))
+        PROGRESS["step"] = i + 1
+        if PROGRESS["cancel"]:
+            raise Cancelled()
     if req.task in ("animation", "image_to_video", "video_generate", "video_edit"):
         frames = [frame(i, 12) for i in range(12)]
         out = [encode_mp4(frames, 8)]
@@ -369,15 +406,20 @@ def run_demo(req: RunRequest) -> list[dict]:
 def run(req: RunRequest):
     start = time.time()
     with gen_lock:
+        PROGRESS.update(step=0, total=0, phase="Preparo", cancel=False)
         try:
             outputs = run_demo(req) if DEMO else run_real(req)
         except HTTPException:
             raise
+        except Cancelled:
+            raise HTTPException(409, "Annullato")
         except Exception as err:  # errori di caricamento/VRAM → messaggio leggibile
             if not DEMO and "out of memory" in str(err).lower():
                 free_memory()
-                raise HTTPException(500, "Memoria della GPU esaurita: prova IDEAX_OFFLOAD=on, una risoluzione più bassa o meno frame.")
+                raise HTTPException(500, "Memoria della GPU esaurita: prova una risoluzione più bassa o meno frame.")
             raise HTTPException(500, f"{type(err).__name__}: {err}")
+        finally:
+            PROGRESS.update(step=0, total=0, phase=None, cancel=False)
     return {"outputs": outputs, "seconds": time.time() - start, "device": device_info()["device"]}
 
 
@@ -404,9 +446,24 @@ def llm(req: LlmRequest):
     return {"content": out["choices"][0]["message"]["content"]}
 
 
+@app.get("/progress")
+def progress():
+    return {k: PROGRESS[k] for k in ("step", "total", "phase")}
+
+
+@app.post("/cancel")
+def cancel():
+    if PROGRESS["phase"]:
+        PROGRESS["cancel"] = True
+    return {"ok": True}
+
+
 @app.get("/health")
 def health():
     info = device_info()
+    if info["device"] == "cuda":
+        free, _ = torch().cuda.mem_get_info()
+        info["vram_free_gb"] = round(free / 1024**3, 1)
     try:
         import llama_cpp  # noqa: F401
         llm_ok = True

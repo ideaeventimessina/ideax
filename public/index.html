@@ -1,183 +1,301 @@
 <!doctype html>
-<html lang="it">
+<html lang="it" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ideax</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%237055dd'/%3E%3Cpath d='M10 10l12 12M22 10L10 22' stroke='white' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
+  <script>try { const t = localStorage.getItem('ideax-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}</script>
 </head>
 <body>
-  <header>
-    <div class="brand">idea<span>x</span></div>
-    <div id="status" class="status"></div>
-    <nav>
-      <button data-tab="studio" class="active">Studio</button>
-      <button data-tab="models">Modelli</button>
-      <button data-tab="settings">Impostazioni</button>
-      <button data-tab="api">Collega app</button>
+  <aside class="sidebar">
+    <a class="logo" href="#studio">idea<span>x</span></a>
+    <nav class="nav">
+      <a href="#studio" data-page="studio"><svg viewBox="0 0 24 24"><path d="M12 3l8 9-8 9-8-9z"/></svg>Studio</a>
+      <a href="#modelli" data-page="modelli"><svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>Modelli</a>
+      <a href="#impostazioni" data-page="impostazioni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Impostazioni</a>
+      <a href="#collega" data-page="collega"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>Collega app</a>
     </nav>
-  </header>
+    <div class="side-foot">
+      <span class="pill"><i class="dot on"></i>Il tuo spazio, privato.</span>
+      <a href="#primi-passi" class="side-link">Primi passi ↗</a>
+      <button class="side-link" data-theme-toggle>Tema chiaro / scuro</button>
+    </div>
+  </aside>
 
-  <div id="dropmask" class="dropmask"><div>Rilascia per collegare il modello<br><small>.safetensors · .gguf · .ckpt</small></div></div>
-
-  <main>
-    <!-- STUDIO -->
-    <section id="tab-studio" class="tab active">
-      <div class="composer card">
-        <textarea id="prompt" rows="4" placeholder="Descrivi cosa vuoi. Es: &quot;ritratto di una guerriera elfica, stile anime&quot;, &quot;cambia lo sfondo in una spiaggia&quot;, &quot;anima questa foto&quot;"></textarea>
-        <div id="drop" class="drop">
-          <span>Trascina qui foto o video da modificare/animare, oppure <label class="link">sfoglia<input id="file" type="file" accept="image/*,video/*" multiple hidden></label></span>
-          <div id="attachments" class="attachments"></div>
-        </div>
-        <div class="row between">
-          <div class="row">
-            <label class="muted">Modello <select id="model-override"><option value="">Automatico</option></select></label>
-            <label class="muted">Compito <select id="task-override"><option value="">Automatico</option></select></label>
-          </div>
-          <button id="go" class="primary">Genera</button>
-        </div>
+  <main id="app">
+    <!-- ================= STUDIO ================= -->
+    <section class="page" id="page-studio">
+      <div class="topline">
+        <span>Il tuo studio creativo</span>
+        <span class="pill"><i class="dot on"></i>Tutto sul tuo PC</span>
       </div>
-      <div id="jobs"></div>
-      <h2>Cronologia</h2>
-      <div id="history" class="grid"></div>
-    </section>
+      <div class="studio">
+        <div class="composer">
+          <p class="eyebrow">Dall'immaginazione alla realtà</p>
+          <h1 class="hero">Hai un'idea.<br><span>Falla esistere.</span></h1>
+          <p class="lead">Descrivi quello che immagini.<br>ideax trova il modo di crearlo.</p>
 
-    <!-- MODELLI -->
-    <section id="tab-models" class="tab">
-      <label id="model-drop" class="bigdrop">
-        <input id="model-file" type="file" accept=".safetensors,.gguf,.ckpt,.pt,.pth" multiple hidden>
-        <strong>Trascina qui i modelli scaricati da Civitai</strong>
-        <span class="muted">Checkpoint, LoRA, moduli AnimateDiff (.safetensors) e il cervello (.gguf). Vengono riconosciuti e collegati da soli.</span>
-        <span class="link">oppure scegli i file</span>
-      </label>
-      <div id="uploads"></div>
-      <p class="muted small">Puoi anche copiarli direttamente nella cartella <code id="models-dir"></code> o aggiungere le cartelle che già usi (es. Automatic1111, ComfyUI) in Impostazioni.</p>
-
-      <div id="model-groups"></div>
-
-      <div class="row between"><h2>Server locali esterni</h2><button id="new-server">+ Collega server</button></div>
-      <p class="muted">Se usi già ComfyUI, Automatic1111/Forge o un tuo server, collegalo qui: ideax lo userà come qualsiasi altro modello.</p>
-      <div id="server-list"></div>
-
-      <dialog id="model-dialog">
-        <form id="model-form" method="dialog">
-          <h3>Modifica modello</h3>
-          <p class="muted mono small" id="mf-path"></p>
-          <label>Nome <input name="name"></label>
-          <div class="row two">
-            <label>Tipo <select name="kind"></select></label>
-            <label>Architettura <select name="arch"></select></label>
+          <div class="formats" role="tablist" aria-label="Cosa vuoi creare">
+            <button role="tab" data-format="auto" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>Automatico</button>
+            <button role="tab" data-format="image"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>Immagine</button>
+            <button role="tab" data-format="video"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>Video</button>
+            <button role="tab" data-format="animation"><svg viewBox="0 0 24 24"><path d="M12 4v4M12 16v4M4 12h4M16 12h4M6.3 6.3l2.8 2.8M14.9 14.9l2.8 2.8M6.3 17.7l2.8-2.8M14.9 9.1l2.8-2.8"/></svg>Animazione</button>
           </div>
-          <fieldset data-for="checkpoint">
-            <legend>Cosa sa fare</legend>
-            <div class="caps" id="mf-caps"></div>
-          </fieldset>
-          <label>Descrizione <span class="muted">(stile, punti di forza: aiuta a scegliere il modello giusto)</span>
-            <textarea name="description" rows="2"></textarea></label>
-          <div data-for="lora">
-            <label>Parole chiave (trigger), separate da virgola <input name="triggerWords" placeholder="es. pixel art, ghibli style"></label>
-            <div class="row two">
-              <label>Peso <input name="loraWeight" type="number" step="0.05" min="0" max="2"></label>
-              <label class="inline"><input type="checkbox" name="loraAlways"> Sempre attiva</label>
+
+          <div class="idea" id="idea">
+            <label for="prompt" class="label-caps">La tua idea</label>
+            <textarea id="prompt" rows="5" placeholder="Un viaggiatore davanti a un lago alpino all'alba. Luce morbida, colori delicati, come in un film."></textarea>
+            <div id="attachments" class="attachments"></div>
+            <div class="idea-foot">
+              <label class="btn ghost small"><input id="file" type="file" accept="image/*,video/*" multiple hidden>+ Aggiungi foto o video</label>
+              <span class="muted small">oppure trascina qui</span>
             </div>
           </div>
-          <div class="row two" data-for="checkpoint">
-            <label>Priorità <input name="priority" type="number"></label>
-            <label class="inline"><input type="checkbox" name="enabled"> Attivo</label>
-          </div>
-          <label data-for="checkpoint">Parametri predefiniti (JSON)
-            <textarea name="params" rows="3" class="mono" placeholder='{"num_inference_steps": 30, "guidance_scale": 6, "width": 832, "height": 1216}'></textarea></label>
-          <p id="mf-error" class="error"></p>
-          <div class="row end">
-            <button type="button" data-close>Annulla</button>
-            <button class="primary">Salva</button>
-          </div>
-        </form>
-      </dialog>
 
-      <dialog id="server-dialog">
-        <form id="server-form" method="dialog">
-          <h3>Server locale</h3>
-          <input type="hidden" name="id">
-          <label>Nome <input name="name" required placeholder="Es. ComfyUI video Wan"></label>
-          <label>Tipo
-            <select name="type">
-              <option value="comfyui">ComfyUI (workflow in formato API)</option>
-              <option value="a1111">Automatic1111 / Forge / SD.Next (avviato con --api)</option>
-              <option value="custom">Endpoint personalizzato</option>
-            </select>
-          </label>
-          <label>Indirizzo <input name="endpoint" required placeholder="http://127.0.0.1:8188"></label>
-          <fieldset><legend>Cosa sa fare</legend><div class="caps" id="sf-caps"></div></fieldset>
-          <label>Descrizione <textarea name="description" rows="2"></textarea></label>
-          <label>Priorità <input name="priority" type="number" value="0"></label>
-          <label><span id="sf-template-label">Workflow / template (JSON)</span>
-            <textarea name="template" rows="6" class="mono"></textarea>
-            <span class="muted small" id="sf-template-help"></span></label>
-          <label>Header HTTP (JSON, facoltativo) <input name="headers"></label>
-          <label class="inline"><input type="checkbox" name="enabled" checked> Attivo</label>
-          <p id="sf-error" class="error"></p>
-          <div class="row end">
-            <button type="button" data-close>Annulla</button>
-            <button class="primary">Salva</button>
-          </div>
-        </form>
-      </dialog>
-    </section>
+          <details class="choices">
+            <summary>✧ <span id="choices-summary">Scelte per te, in automatico</span></summary>
+            <div class="choices-grid">
+              <label>Modello <select id="model-override"><option value="">Lo sceglie ideax</option></select></label>
+              <label>Proporzioni
+                <select id="aspect">
+                  <option value="">Automatiche</option>
+                  <option value="1:1">Quadrata · 1:1</option>
+                  <option value="2:3">Verticale · 2:3</option>
+                  <option value="3:2">Orizzontale · 3:2</option>
+                  <option value="9:16">Storia · 9:16</option>
+                  <option value="16:9">Panoramica · 16:9</option>
+                </select>
+              </label>
+              <label>Seme <span class="muted">(stesso numero = stesso risultato)</span><input id="seed" type="number" min="0" placeholder="Casuale"></label>
+            </div>
+          </details>
 
-    <!-- IMPOSTAZIONI -->
-    <section id="tab-settings" class="tab">
-      <form id="settings-form" class="card narrow">
-        <h2>Cervello</h2>
-        <p class="muted">È il modello che legge i tuoi prompt e decide cosa fare. Gira sul tuo PC.</p>
-        <label>Modalità
-          <select name="mode">
-            <option value="auto">Automatica: usa un file .gguf se c'è, altrimenti le regole</option>
-            <option value="gguf">File .gguf caricato in ideax</option>
-            <option value="server">Server locale (Ollama, LM Studio, llama.cpp)</option>
-            <option value="rules">Solo regole integrate (nessun LLM)</option>
-          </select>
-        </label>
-        <label data-mode="gguf auto">File .gguf <select name="gguf"></select></label>
-        <div data-mode="server">
-          <label>Indirizzo compatibile OpenAI <input name="serverUrl" placeholder="http://127.0.0.1:11434/v1"></label>
-          <label>Nome del modello <input name="serverModel" placeholder="es. qwen2.5:7b"></label>
+          <button id="create" class="btn primary create"><span id="create-label">Crea</span><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></button>
+          <p class="caption">Nessun cloud. Nessun credito. Solo la tua creatività.</p>
         </div>
 
-        <h2>Worker</h2>
-        <label>Indirizzo del worker Python <input name="workerUrl" placeholder="http://127.0.0.1:7861"></label>
+        <div class="stage-col">
+          <div class="stage" id="stage"></div>
+          <div class="stage-meta" id="stage-meta"></div>
+          <details class="how" id="how" hidden>
+            <summary>Come l'ha creata ideax <span>+</span></summary>
+            <div id="how-body"></div>
+          </details>
+        </div>
+      </div>
 
-        <h2>Altre cartelle di modelli</h2>
-        <label>Una per riga. I file vengono usati dove sono, senza copiarli.
-          <textarea name="extraModelDirs" rows="3" class="mono" placeholder="C:\stable-diffusion-webui\models\Stable-diffusion&#10;C:\ComfyUI\models\loras"></textarea></label>
-        <div class="row end"><span id="settings-ok" class="muted"></span><button class="primary">Salva</button></div>
+      <section class="creations">
+        <div class="section-head">
+          <div><h2>Le tue creazioni</h2><p class="muted">Le idee passano. Qui le ritrovi.</p></div>
+          <div class="filters" role="tablist" aria-label="Filtra le creazioni">
+            <button data-filter="all" aria-selected="true">Tutte</button>
+            <button data-filter="image">Immagini</button>
+            <button data-filter="video">Video</button>
+            <button data-filter="animation">Animazioni</button>
+          </div>
+        </div>
+        <div id="gallery" class="gallery"></div>
+      </section>
+    </section>
+
+    <!-- ================= MODELLI ================= -->
+    <section class="page" id="page-modelli">
+      <header class="page-head"><div><h1>Modelli</h1><p>La tua libreria, la tua potenza creativa.</p></div></header>
+      <div id="models-empty" hidden>
+        <div class="card empty-lib">
+          <svg viewBox="0 0 24 24" class="big-icon"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>
+          <h2>Qui troverai i tuoi modelli</h2>
+          <p class="muted">Scarica un modello per immagini da Civitai o Hugging Face.<br>Per iniziare, scegli un checkpoint SDXL in formato .safetensors.</p>
+          <label class="dropzone" data-dropzone>
+            <input type="file" accept=".safetensors,.gguf,.ckpt,.pt,.pth" multiple hidden data-model-input>
+            <strong>Trascina qui il primo modello</strong>
+            <span class="muted">ideax riconoscerà il tipo e lo aggiungerà alla libreria.</span>
+            <span class="btn primary">Scegli un file</span>
+          </label>
+          <div class="uploads"></div>
+          <p class="muted">Le LoRA aggiungono uno stile: serve anche un modello compatibile.<br>Un cervello .gguf è facoltativo: puoi iniziare con le regole automatiche.</p>
+          <a class="btn" href="#primi-passi">Apri la guida in 3 passi</a>
+        </div>
+      </div>
+      <div id="models-full">
+        <div class="card">
+          <label class="dropzone" data-dropzone>
+            <input type="file" accept=".safetensors,.gguf,.ckpt,.pt,.pth" multiple hidden data-model-input>
+            <span class="eyebrow center">Aggiungi alla libreria</span>
+            <strong>Trascina qui i modelli scaricati da Civitai</strong>
+            <span class="muted">Anche da Hugging Face · riconosciamo il tipo per te.</span>
+            <span class="row center"><span class="btn">Scegli i file</span><span class="muted small">.safetensors, .gguf · le cartelle diffusers si aggiungono da Impostazioni</span></span>
+          </label>
+          <div class="uploads"></div>
+        </div>
+        <div id="model-warnings"></div>
+        <div id="model-groups"></div>
+        <div class="card servers">
+          <div class="section-head">
+            <div><h2>Server locali esterni</h2><p class="muted">ComfyUI, Automatic1111/Forge o un tuo server, usati come qualsiasi altro modello.</p></div>
+            <button class="btn" id="add-server">+ Aggiungi server</button>
+          </div>
+          <div id="server-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= IMPOSTAZIONI ================= -->
+    <section class="page" id="page-impostazioni">
+      <header class="page-head"><div><h1>Impostazioni</h1><p>Un ambiente locale, configurato come vuoi tu.</p></div></header>
+      <div class="card" id="engine-card"></div>
+      <form id="settings-form" class="stack">
+        <div class="card">
+          <h2>Il cervello di ideax</h2>
+          <p class="muted">Interpreta le richieste in italiano e sceglie il modello più adatto. Gira sul tuo PC.</p>
+          <label>Modalità
+            <select name="mode">
+              <option value="auto">Automatica · consigliata</option>
+              <option value="gguf">File .gguf collegato in ideax</option>
+              <option value="server">Server locale · Ollama, LM Studio, llama.cpp</option>
+              <option value="rules">Solo regole integrate, nessun LLM</option>
+            </select>
+          </label>
+          <div data-mode="auto gguf">
+            <label>File .gguf collegato <select name="gguf"></select></label>
+            <p class="muted small">In modalità automatica viene usato il cervello disponibile, altrimenti le regole.</p>
+            <div id="llm-support"></div>
+          </div>
+          <div data-mode="server">
+            <label>Indirizzo del server del cervello <input name="serverUrl" placeholder="http://127.0.0.1:11434/v1"></label>
+            <label>Nome modello sul server <input name="serverModel" placeholder="qwen2.5:7b"></label>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Worker e libreria</h2>
+          <label>Indirizzo del worker <input name="workerUrl" placeholder="http://127.0.0.1:7861"></label>
+          <label class="check"><input type="checkbox" name="manageWorker"> ideax avvia e ferma il worker da solo</label>
+          <label>Altre cartelle di modelli · una per riga
+            <textarea name="extraModelDirs" rows="3" class="mono" placeholder="D:\AI\models&#10;C:\ComfyUI\models"></textarea></label>
+          <p class="muted small">I file rimangono nelle cartelle originali. Valgono anche le cartelle diffusers (con model_index.json).</p>
+        </div>
+        <div class="card">
+          <h2>Accesso dalla rete locale</h2>
+          <label class="check"><input type="checkbox" name="lan"> Consenti alle app degli altri dispositivi della rete di collegarsi</label>
+          <label>Token di accesso
+            <span class="row"><input name="token" class="mono grow" autocomplete="off"><button type="button" class="btn" id="gen-token">Genera</button></span></label>
+          <p class="muted small">Le app degli altri dispositivi lo inviano come <code>Authorization: Bearer …</code>. Trattalo come una password. Vale dal prossimo avvio di ideax.</p>
+          <p class="muted small" id="net-info"></p>
+        </div>
+        <div class="row"><button class="btn primary">Salva impostazioni</button><span id="settings-ok" class="ok-text"></span></div>
       </form>
     </section>
 
-    <!-- API -->
-    <section id="tab-api" class="tab">
+    <!-- ================= COLLEGA APP ================= -->
+    <section class="page" id="page-collega">
+      <header class="page-head"><div><h1>Collega app</h1><p>Una sola porta d'ingresso per tutti i tuoi modelli.</p></div></header>
+      <div class="card base-card">
+        <div><p class="eyebrow">Indirizzo base</p><p class="base-url" id="base-url"></p>
+          <p class="muted" id="base-help">Usalo nelle app sullo stesso PC. Per altri dispositivi, abilita l'accesso dalla rete nelle impostazioni.</p></div>
+        <button class="btn" data-copy-text="">Copia indirizzo</button>
+      </div>
+      <h2>La tua prima richiesta</h2>
+      <p class="muted">ideax sceglie il modello, lo esegue sul tuo PC e risponde con i file pronti.</p>
+      <div id="code-samples" class="stack"></div>
       <div class="card">
-        <h2>Collega le tue applicazioni</h2>
-        <p>Tutte le app parlano con un solo indirizzo: <code class="base"></code>. ideax sceglie il modello, lo esegue sul tuo PC e restituisce i file.</p>
-        <h3>Genera (aspetta il risultato)</h3>
-        <pre class="code" id="ex-curl"></pre>
-        <h3>JavaScript</h3>
-        <pre class="code" id="ex-js"></pre>
-        <h3>Python</h3>
-        <pre class="code" id="ex-py"></pre>
-        <h3>App che usano già la libreria OpenAI</h3>
-        <p>Imposta <code>base_url</code> su <code class="base-v1"></code> e una chiave qualsiasi: <code>images.generate()</code> funziona senza modifiche.</p>
-        <h3>Riferimento</h3>
+        <h2>Endpoint disponibili</h2>
         <table class="ref">
-          <tr><td><code>POST /v1/generate</code></td><td><code>prompt</code> (obbligatorio), <code>task</code>, <code>model</code>, <code>params</code> (steps, size, seed…), <code>attachments</code> (<code>[{url}]</code>, <code>[{dataUrl}]</code> o <code>[{base64, type}]</code>), <code>wait</code> (default true)</td></tr>
-          <tr><td><code>GET /v1/jobs/:id</code></td><td>stato e risultati di un lavoro avviato con <code>wait: false</code></td></tr>
-          <tr><td><code>GET /v1/models</code></td><td>modelli disponibili e compiti</td></tr>
-          <tr><td><code>POST /v1/images/generations</code></td><td>formato OpenAI</td></tr>
+          <thead><tr><th>Metodo</th><th>Percorso</th><th>A cosa serve</th></tr></thead>
+          <tbody>
+            <tr><td>POST</td><td><code>/v1/generate</code></td><td>Crea un lavoro e aspetta il risultato. Campi: <code>prompt</code>, e facoltativi <code>task</code>, <code>model</code>, <code>params</code>, <code>attachments</code>, <code>wait</code></td></tr>
+            <tr><td>GET</td><td><code>/v1/jobs/:id</code></td><td>Stato, avanzamento e risultati di un lavoro avviato con <code>"wait": false</code></td></tr>
+            <tr><td>POST</td><td><code>/v1/jobs/:id/cancel</code></td><td>Annulla un lavoro</td></tr>
+            <tr><td>GET</td><td><code>/v1/models</code></td><td>Elenca i modelli e i compiti</td></tr>
+            <tr><td>POST</td><td><code>/v1/images/generations</code></td><td>Genera immagini in formato compatibile OpenAI</td></tr>
+          </tbody>
         </table>
-        <p class="muted small">Pronti all'uso: <code>clients/ideax.js</code> e <code>clients/ideax.py</code> nel repository.</p>
+      </div>
+      <div class="note">
+        <h3>Hai un'app compatibile OpenAI?</h3>
+        <p>Imposta l'indirizzo del provider su <code id="base-v1"></code> e una chiave qualsiasi. Le immagini vengono generate dai modelli sul tuo PC: non serve un'API a pagamento.</p>
+        <p class="muted">Client pronti nella cartella <code>clients</code>: <code>ideax.js</code> e <code>ideax.py</code>.</p>
       </div>
     </section>
+
+    <!-- ================= PRIMI PASSI ================= -->
+    <section class="page" id="page-primi-passi">
+      <header class="page-head"><div><h1>Benvenuto in ideax</h1><p>Il tuo laboratorio creativo. Pronto in tre passi.</p></div></header>
+      <ol class="steps" id="steps">
+        <li data-step="1">01 · Prepara il PC</li>
+        <li data-step="2">02 · Collega un modello</li>
+        <li data-step="3">03 · Crea qualcosa</li>
+      </ol>
+      <div id="onboarding"></div>
+    </section>
   </main>
+
+  <footer class="statusbar" id="statusbar" aria-live="polite"></footer>
+
+  <div class="dropmask" id="dropmask"><div><strong>Rilascia per collegare il modello</strong><span>.safetensors · .gguf · .ckpt</span></div></div>
+
+  <!-- Modifica modello -->
+  <dialog id="model-dialog" class="sheet">
+    <form id="model-form" method="dialog">
+      <div class="sheet-head"><h2 id="mf-title">Modifica modello</h2><span class="chip" id="mf-chip"></span></div>
+      <p class="muted small">I dettagli aiutano il cervello a scegliere meglio.</p>
+      <label>Nome <input name="name"></label>
+      <div class="grid2">
+        <label>Tipo <select name="kind"></select></label>
+        <label>Architettura <select name="arch"></select></label>
+      </div>
+      <fieldset data-for="checkpoint"><legend>Capacità</legend><div class="caps" id="mf-caps"></div></fieldset>
+      <label>Descrizione <textarea name="description" rows="3" placeholder="Es. fotorealistico, ottimo per ritratti e paesaggi"></textarea></label>
+      <div data-for="checkpoint">
+        <label>Priorità · un numero più alto viene preferito <input name="priority" type="number"></label>
+        <label>Parametri predefiniti · JSON
+          <textarea name="params" rows="3" class="mono" placeholder='{"num_inference_steps": 30, "guidance_scale": 6}'></textarea></label>
+      </div>
+      <div data-for="lora">
+        <h3>Opzioni LoRA</h3>
+        <label>Parole chiave, separate da virgola <input name="triggerWords" placeholder="cinematic light, soft lighting"></label>
+        <label>Peso · da 0 a 2 <input name="loraWeight" type="number" step="0.05" min="0" max="2"></label>
+        <label class="check"><input type="checkbox" name="loraAlways"> Sempre attiva per i modelli compatibili</label>
+      </div>
+      <label class="check"><input type="checkbox" name="enabled"> Attivo</label>
+      <p class="muted mono small" id="mf-path"></p>
+      <p class="error-text" id="mf-error"></p>
+      <div class="row"><button class="btn primary">Salva modifiche</button><button type="button" class="btn" data-close>Annulla</button></div>
+    </form>
+  </dialog>
+
+  <!-- Server esterno -->
+  <dialog id="server-dialog" class="sheet">
+    <form id="server-form" method="dialog">
+      <div class="sheet-head"><h2>Server locale</h2></div>
+      <p class="muted small">Collega ComfyUI, Forge o un endpoint personalizzato che gira sul tuo PC.</p>
+      <input type="hidden" name="id">
+      <label>Nome <input name="name" required placeholder="Es. ComfyUI video Wan"></label>
+      <div class="grid2">
+        <label>Tipo
+          <select name="type">
+            <option value="comfyui">ComfyUI</option>
+            <option value="a1111">Automatic1111 / Forge</option>
+            <option value="custom">Endpoint personalizzato</option>
+          </select>
+        </label>
+        <label>Indirizzo <input name="endpoint" required></label>
+      </div>
+      <fieldset><legend>Cosa sa fare</legend><div class="caps" id="sf-caps"></div></fieldset>
+      <label>Descrizione <textarea name="description" rows="2"></textarea></label>
+      <label>Priorità <input name="priority" type="number" value="0"></label>
+      <label><span id="sf-template-label">Workflow</span><textarea name="template" rows="6" class="mono"></textarea></label>
+      <p class="muted small" id="sf-help"></p>
+      <label>Header HTTP · JSON, facoltativo <input name="headers" class="mono"></label>
+      <label class="check"><input type="checkbox" name="enabled" checked> Attivo</label>
+      <p class="error-text" id="sf-error"></p>
+      <div class="row"><button class="btn primary">Salva collegamento</button><button type="button" class="btn" data-close>Annulla</button></div>
+    </form>
+  </dialog>
+
+  <!-- Anteprima a schermo intero -->
+  <dialog id="lightbox" class="lightbox"><button class="btn icon" data-close aria-label="Chiudi">✕</button><div id="lightbox-body"></div></dialog>
 
   <script src="app.js"></script>
 </body>

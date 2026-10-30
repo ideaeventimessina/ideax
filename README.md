@@ -20,16 +20,29 @@ Niente API a pagamento: niente costi a chiamata, niente attese di servizi estern
 
 ## Requisiti
 
-- Una GPU NVIDIA (consigliati 8 GB di VRAM o più; SDXL sta bene con 8–12 GB, Flux e i modelli video ne vogliono di più)
-  oppure un Mac con Apple Silicon. Senza GPU funziona, ma è molto lento.
-- [Node.js](https://nodejs.org) 18 o più recente
-- [Python](https://python.org) 3.10–3.12
+- Windows 10/11 a 64 bit (oppure Linux/macOS, vedi sotto)
+- Una GPU NVIDIA con driver aggiornato (consigliati 8 GB di VRAM o più; SDXL sta bene con 8–12 GB,
+  Flux e i modelli video ne vogliono di più). Senza GPU funziona, ma è molto lento.
+- Circa 6 GB liberi per il motore, più lo spazio per i modelli
 
-## Installazione
+## Installazione su Windows
 
-**Windows**: doppio clic su `install.bat`, poi su `start.bat`.
+1. Scarica `ideax-windows.zip` ed estrailo dove vuoi (es. `D:\ideax`).
+2. Doppio clic su **`ideax.exe`**. Si apre il browser su http://localhost:7800.
+3. Nella guida **Primi passi** premi **Installa il motore**: ideax scarica da solo un Python portatile e
+   PyTorch nella versione adatta alla tua scheda video (CUDA 12.8 per i driver recenti e le RTX 50, 12.4 o 12.1
+   per i driver più vecchi). Una volta sola, dentro la cartella `runtime`, senza toccare il resto del PC.
+4. Trascina un modello di Civitai nella pagina e crea.
 
-**Linux / macOS**:
+Non serve installare Node.js né Python: `ideax.exe` li contiene o li scarica.
+Per disinstallare basta cancellare la cartella.
+
+> Windows SmartScreen può avvisare che il programma non è firmato: "Ulteriori informazioni" → "Esegui comunque".
+> La finestra nera che si apre con `ideax.exe` va lasciata aperta: chiudendola ideax si ferma.
+
+## Installazione su Linux / macOS (dal codice)
+
+Serve [Node.js](https://nodejs.org) 18+ e [Python](https://python.org) 3.10–3.12.
 
 ```bash
 ./install.sh
@@ -39,7 +52,18 @@ Niente API a pagamento: niente costi a chiamata, niente attese di servizi estern
 ./start.sh
 ```
 
-Apri http://localhost:7800
+## Creare `ideax.exe` dal codice
+
+```bash
+npm install
+```
+
+```bash
+npm run build:exe
+```
+
+Il risultato è in `dist/ideax-windows.zip`. L'eseguibile è una "single executable application" di Node.js
+con dentro il server, l'icona di ideax e i dati di versione.
 
 > La prima volta che usi un checkpoint singolo, diffusers scarica una sola volta i file di configurazione
 > (pochi MB, gratuiti) da Hugging Face. Per i checkpoint Flux che contengono solo il "transformer" scarica una volta
@@ -120,14 +144,9 @@ ai.download(job, "risultati/")
 
 ### Usarlo da altri computer della rete
 
-Di default ideax ascolta solo sul tuo PC. Per renderlo raggiungibile dagli altri dispositivi della rete:
-
-```bash
-HOST=0.0.0.0 IDEAX_TOKEN=una-parola-segreta node server.js
-```
-
-Su Windows: `set HOST=0.0.0.0` e `set IDEAX_TOKEN=...` prima di `node server.js`.
-Le app degli altri dispositivi inviano `Authorization: Bearer una-parola-segreta`; dal tuo PC il token non serve.
+Di default ideax ascolta solo sul tuo PC. In **Impostazioni → Accesso dalla rete locale** attiva l'accesso,
+genera un token e riavvia ideax: gli indirizzi da usare compaiono nelle impostazioni e nella finestra di ideax.
+Le app degli altri dispositivi inviano `Authorization: Bearer <token>`; dal tuo PC il token non serve.
 
 ## Compiti
 

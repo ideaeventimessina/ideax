@@ -1,5 +1,5 @@
-# Installa prima PyTorch adatto alla tua GPU: https://pytorch.org/get-started/locally/
-# (es. NVIDIA: pip install torch --index-url https://download.pytorch.org/whl/cu124)
+# Librerie del worker. PyTorch si installa a parte, nella versione adatta alla scheda video:
+# ideax.exe lo fa da solo; a mano: https://pytorch.org/get-started/locally/
 diffusers>=0.32
 transformers>=4.44
 accelerate>=0.33
@@ -7,10 +7,11 @@ safetensors
 sentencepiece
 protobuf
 peft>=0.12
+gguf
 fastapi
 uvicorn
 pillow
 numpy
 imageio
 imageio-ffmpeg
-# Facoltativo, per il cervello .gguf (vedi README): llama-cpp-python
+# Facoltativo, per il cervello .gguf: llama-cpp-python (si installa da Impostazioni)

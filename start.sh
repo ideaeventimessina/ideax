@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
+# Avvia ideax (Linux/macOS). ideax avvia da solo il worker Python se trova .venv (creato da install.sh).
 cd "$(dirname "$0")"
-.venv/bin/python worker/server.py &
-WORKER=$!
-trap 'kill $WORKER 2>/dev/null' EXIT
-node server.js
+IDEAX_OPEN=1 exec node server.js

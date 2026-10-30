@@ -1,0 +1,36 @@
+ideax - il tuo studio creativo AI, tutto sul tuo PC
+====================================================
+
+COME SI INSTALLA
+1. Estrai questa cartella dove vuoi (es. C:\ideax o D:\ideax).
+   Scegli un disco con spazio: il motore occupa circa 6 GB, i modelli molti di piu'.
+2. Fai doppio clic su ideax.exe.
+3. Si apre il browser su http://localhost:7800 con la guida "Primi passi":
+   premi "Installa il motore". ideax scarica da solo Python e PyTorch adatti alla
+   tua scheda video (una volta sola, 5-20 minuti).
+4. Trascina nella pagina un modello scaricato da Civitai (.safetensors) e crea.
+
+Non serve installare Node.js, Python o altro: e' tutto dentro la cartella.
+Per disinstallare basta cancellare la cartella.
+
+AL PRIMO AVVIO WINDOWS POTREBBE AVVISARTI
+ideax.exe non ha una firma digitale a pagamento, quindi Windows SmartScreen puo'
+mostrare "Windows ha protetto il PC". Clicca "Ulteriori informazioni" e poi
+"Esegui comunque". Anche l'antivirus potrebbe chiedere conferma.
+
+LA FINESTRA NERA
+Quando avvii ideax.exe si apre una finestra con l'indirizzo di ideax.
+Lasciala aperta mentre lavori: chiudendola, ideax si ferma.
+Se richiudi il browser, riapri http://localhost:7800 oppure fai di nuovo doppio
+clic su ideax.exe.
+
+REQUISITI
+- Windows 10 o 11, 64 bit
+- Consigliata una scheda video NVIDIA con almeno 8 GB (driver aggiornato)
+- Connessione a internet solo per installare il motore e scaricare i modelli
+
+CARTELLE
+- models   i tuoi modelli (puoi anche copiarli qui a mano)
+- outputs  le immagini e i video creati
+- data     impostazioni e cronologia
+- runtime  il motore (Python e PyTorch), creato dall'installazione

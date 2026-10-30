@@ -2,17 +2,22 @@
 // Interfaccia web + API unica per tutte le applicazioni. Nessuna API a pagamento: tutto gira sul tuo PC.
 import http from 'node:http';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { exec } from 'node:child_process';
 import * as store from './lib/store.js';
-import { scanModels, readSafetensorsHeader, classifyKeys, ARCH_LABELS, KIND_LABELS } from './lib/scanner.js';
+import { scanModels, readSafetensorsHeader, readGgufArchitecture, classifyKeys, ARCH_LABELS, KIND_LABELS } from './lib/scanner.js';
 import { route, buildCatalog } from './lib/router.js';
 import { resolveBrain } from './lib/brain.js';
-import { runModel } from './lib/backends.js';
+import { runModel, cancelOnWorker } from './lib/backends.js';
+import * as runtime from './lib/runtime.js';
 
+process.title = 'ideax';
+const startup = store.getSettings();
 const PORT = Number(process.env.PORT) || 7800;
-const HOST = process.env.HOST || '127.0.0.1';
-const TOKEN = process.env.IDEAX_TOKEN || '';
+const HOST = process.env.HOST || (startup.network.lan ? '0.0.0.0' : '127.0.0.1');
+const TOKEN = process.env.IDEAX_TOKEN || (startup.network.lan ? startup.network.token : '');
 const MAX_JSON = 300 * 1024 * 1024;
 const jobs = new Map();
 
@@ -75,7 +80,7 @@ function uploadModel(req, res, name) {
   out.on('finish', () => {
     try {
       let kind = 'checkpoint';
-      if (/\.gguf$/i.test(file)) kind = 'llm';
+      if (/\.gguf$/i.test(file)) kind = ['flux', 'sd3', 'sdxl', 'sd1', 'wan', 'hyvid', 'ltxv'].includes(readGgufArchitecture(tmp)) ? 'checkpoint' : 'llm';
       else if (/\.safetensors$/i.test(file)) kind = classifyKeys(...Object.values(readSafetensorsHeader(tmp))).kind;
       const dir = path.join(store.MODELS_DIR, SUBFOLDER[kind]);
       fs.mkdirSync(dir, { recursive: true });
@@ -131,9 +136,10 @@ async function processJob(job) {
     job.status = 'routing';
     log('Analizzo il prompt…');
     const d = await route(job.prompt, job.attachments, { forceModelId: job.forceModelId, forceTask: job.forceTask });
+    if (job.cancelled) throw new Error('Annullato');
     Object.assign(job, {
       task: d.task, modelId: d.model.id, modelName: d.model.name, routedPrompt: d.prompt,
-      negativePrompt: d.negativePrompt, loras: d.loras, reason: d.reason, brain: d.brain,
+      negativePrompt: d.negativePrompt, loras: d.loras, reason: d.reason, brain: d.brain, title: d.title,
     });
     log(`Compito: ${store.TASKS[d.task]} → ${d.model.name}`);
     if (d.reason) log(d.reason);
@@ -142,15 +148,19 @@ async function processJob(job) {
     job.status = 'done';
     log('Completato.');
   } catch (err) {
-    job.status = 'error';
-    job.error = err.message;
-    log(`Errore: ${err.message}`);
+    job.status = job.cancelled ? 'cancelled' : 'error';
+    job.error = job.cancelled ? 'Annullato' : err.message;
+    log(job.cancelled ? 'Lavoro annullato.' : `Errore: ${err.message}`);
   } finally {
     job.finishedAt = Date.now();
-    store.addHistory({
-      id: job.id, prompt: job.prompt, task: job.task, modelName: job.modelName, routedPrompt: job.routedPrompt,
-      reason: job.reason, status: job.status, error: job.error, results: job.results, createdAt: job.createdAt,
-    });
+    if (job.status !== 'cancelled') {
+      store.addHistory({
+        id: job.id, title: job.title, prompt: job.prompt, task: job.task, modelName: job.modelName,
+        routedPrompt: job.routedPrompt, negativePrompt: job.negativePrompt, loras: (job.loras || []).map((l) => l.name),
+        reason: job.reason, brain: job.brain, status: job.status, error: job.error, results: job.results,
+        createdAt: job.createdAt, seconds: job.startedAt ? Math.round((job.finishedAt - job.startedAt) / 1000) : null,
+      });
+    }
     job.attachments = job.attachments.map(({ name, type }) => ({ name, type }));
   }
 }
@@ -159,6 +169,9 @@ function publicJob(job, origin = '') {
   return {
     id: job.id,
     status: job.status,
+    waiting: !!job.waiting,
+    progress: job.progress || null,
+    title: job.title,
     prompt: job.prompt,
     task: job.task,
     model: job.modelName,
@@ -172,6 +185,7 @@ function publicJob(job, origin = '') {
     log: job.log,
     createdAt: job.createdAt,
     finishedAt: job.finishedAt,
+    seconds: job.startedAt && job.finishedAt ? Math.round((job.finishedAt - job.startedAt) / 1000) : null,
   };
 }
 
@@ -213,6 +227,15 @@ const server = http.createServer(async (req, res) => {
       if (body.wait === false) return send(res, 202, { id: job.id, status: job.status });
       await job.done;
       return send(res, job.status === 'done' ? 200 : 500, publicJob(job, origin));
+    }
+    if (/^\/(v1|api)\/jobs\/[\w-]+\/cancel$/.test(p) && req.method === 'POST') {
+      const job = jobs.get(p.split('/')[3]);
+      if (!job) return send(res, 404, { error: 'Lavoro non trovato' });
+      if (!['done', 'error', 'cancelled'].includes(job.status)) {
+        job.cancelled = true;
+        if (job.status === 'running' && !job.waiting && job.backend === 'worker') await cancelOnWorker();
+      }
+      return send(res, 200, { ok: true });
     }
     if (p.startsWith('/v1/jobs/') && req.method === 'GET') {
       const job = jobs.get(p.split('/').pop());
@@ -262,12 +285,33 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/settings' && req.method === 'GET') return send(res, 200, store.getSettings());
     if (p === '/api/settings' && req.method === 'POST') return send(res, 200, store.saveSettings(await readJson(req)));
     if (p === '/api/worker' && req.method === 'GET') {
+      const proc = { process: runtime.worker.state, installed: runtime.isInstalled(), log: runtime.worker.tail.slice(-40) };
       try {
         const r = await fetch(`${store.getSettings().workerUrl}/health`, { signal: AbortSignal.timeout(2500) });
-        return send(res, 200, { online: r.ok, ...(await r.json()) });
+        const health = await r.json();
+        const loaded = health.loaded ? scanModels().find((m) => m.path === health.loaded) : null;
+        return send(res, 200, { online: r.ok, ...health, loadedName: loaded?.name || (health.loaded ? path.basename(health.loaded) : null), ...proc });
       } catch {
-        return send(res, 200, { online: false });
+        return send(res, 200, { online: false, ...proc });
       }
+    }
+    if (p === '/api/worker/restart' && req.method === 'POST') {
+      await runtime.restartWorker();
+      return send(res, 200, { ok: true });
+    }
+    if (p === '/api/setup' && req.method === 'GET') {
+      if (!runtime.setup.gpu) runtime.setup.gpu = await runtime.detectGpu();
+      return send(res, 200, {
+        ...runtime.setup, log: runtime.setup.log.slice(-60), installed: runtime.isInstalled(),
+        variant: runtime.setup.variant || runtime.torchVariant(runtime.setup.gpu),
+        platform: process.platform, llm: runtime.llmSetup,
+      });
+    }
+    if (p === '/api/setup' && req.method === 'POST') return send(res, 200, await runtime.startSetup());
+    if (p === '/api/setup/llm' && req.method === 'POST') return send(res, 200, await runtime.installLlmSupport());
+    if (p === '/api/network' && req.method === 'GET') {
+      const addrs = Object.values(os.networkInterfaces()).flat().filter((a) => a && a.family === 'IPv4' && !a.internal).map((a) => a.address);
+      return send(res, 200, { host: HOST, port: PORT, lan: HOST === '0.0.0.0', addresses: addrs, tokenActive: !!TOKEN });
     }
     if (p === '/api/generate' && req.method === 'POST') {
       const job = await createJob(await readJson(req));
@@ -289,8 +333,45 @@ const server = http.createServer(async (req, res) => {
 
 server.requestTimeout = 0;
 server.headersTimeout = 0;
-server.listen(PORT, HOST, () => {
-  console.log(`ideax pronto su http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
-  console.log(`Cartella modelli: ${store.MODELS_DIR}`);
-  if (HOST === '0.0.0.0' && !TOKEN) console.log('Attenzione: ideax è raggiungibile in rete senza token (imposta IDEAX_TOKEN).');
+
+function openBrowser(url) {
+  const cmd = process.platform === 'win32' ? `start "" "${url}"` : process.platform === 'darwin' ? `open "${url}"` : `xdg-open "${url}"`;
+  exec(cmd, () => {});
+}
+
+const localUrl = `http://localhost:${PORT}`;
+const shouldOpen = store.IS_SEA || process.env.IDEAX_OPEN === '1';
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    // ideax è già aperto: mostriamo la finestra esistente
+    console.log(`ideax è già in esecuzione su ${localUrl}`);
+    if (shouldOpen) openBrowser(localUrl);
+    setTimeout(() => process.exit(0), 1500);
+  } else {
+    console.error(err);
+    process.exit(1);
+  }
 });
+
+server.listen(PORT, HOST, () => {
+  console.log('');
+  console.log('  ideax è attivo');
+  console.log(`  Apri: ${localUrl}`);
+  if (HOST === '0.0.0.0') {
+    for (const a of Object.values(os.networkInterfaces()).flat().filter((x) => x?.family === 'IPv4' && !x.internal)) {
+      console.log(`  Dalla rete: http://${a.address}:${PORT}${TOKEN ? '  (con token)' : ''}`);
+    }
+    if (!TOKEN) console.log('  Attenzione: accesso dalla rete senza token.');
+  }
+  console.log(`  Modelli: ${store.MODELS_DIR}`);
+  if (store.IS_SEA) console.log('\n  Lascia aperta questa finestra: chiudendola ideax si ferma.');
+  console.log('');
+  runtime.startWorker();
+  if (shouldOpen) openBrowser(localUrl);
+});
+
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) {
+  process.on(sig, () => { runtime.stopWorker(); process.exit(0); });
+}
+process.on('exit', () => runtime.stopWorker());

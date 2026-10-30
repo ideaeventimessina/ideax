@@ -6,9 +6,15 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "worker": "python worker/server.py"
+    "worker": "python worker/server.py",
+    "build:exe": "node build/build-exe.mjs"
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "postject": "^1.0.0-alpha.6",
+    "resedit": "^2.0.0"
   }
 }

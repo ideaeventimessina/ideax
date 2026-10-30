@@ -8,3 +8,6 @@ __pycache__/
 .venv/
 *.part
 !data/.gitkeep
+dist/
+build/.cache/
+runtime/
