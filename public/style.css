@@ -334,3 +334,4 @@ dialog.lightbox > .btn { position: absolute; top: 18px; right: 18px; z-index: 2;
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+dialog.sheet [data-for] { display: grid; gap: 16px; }

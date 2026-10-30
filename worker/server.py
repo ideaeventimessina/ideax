@@ -420,6 +420,9 @@ def run(req: RunRequest):
             raise HTTPException(500, f"{type(err).__name__}: {err}")
         finally:
             PROGRESS.update(step=0, total=0, phase=None, cancel=False)
+            # Restituisce al sistema la memoria della GPU non più usata (il modello resta caricato)
+            if not DEMO and torch().cuda.is_available():
+                torch().cuda.empty_cache()
     return {"outputs": outputs, "seconds": time.time() - start, "device": device_info()["device"]}
 
 
@@ -444,6 +447,40 @@ def llm(req: LlmRequest):
         fmt = {"type": "json_object", "schema": req.schema_} if req.schema_ else {"type": "json_object"}
         out = _llm["model"].create_chat_completion(messages=req.messages, response_format=fmt, temperature=0.2, max_tokens=1024)
     return {"content": out["choices"][0]["message"]["content"]}
+
+
+# ---------------------------------------------------------------- traduttore locale
+
+_tr: dict[str, Any] = {"model": None, "tok": None}
+tr_lock = threading.Lock()
+TRANSLATOR = os.environ.get("IDEAX_TRANSLATOR", "Helsinki-NLP/opus-mt-it-en")
+
+
+class TranslateRequest(BaseModel):
+    text: str
+
+
+@app.post("/translate")
+def translate(req: TranslateRequest):
+    """Traduce il prompt dall'italiano all'inglese con un modello piccolo (circa 300 MB) che gira sul processore:
+    i modelli SD/SDXL capiscono solo l'inglese. Si scarica da Hugging Face la prima volta, poi funziona offline."""
+    if DEMO:
+        return {"text": req.text}
+    with tr_lock:
+        if _tr["model"] is None:
+            from transformers import MarianMTModel, MarianTokenizer
+
+            print(f"[ideax] carico il traduttore {TRANSLATOR}", flush=True)
+            _tr["tok"] = MarianTokenizer.from_pretrained(TRANSLATOR)
+            _tr["model"] = MarianMTModel.from_pretrained(TRANSLATOR).eval()
+        tok, model = _tr["tok"], _tr["model"]
+        # Frase per frase: il modello rende meglio su testi brevi
+        parts = [p.strip() for p in req.text.replace("\n", ". ").split(".") if p.strip()]
+        with torch().inference_mode():
+            batch = tok(parts, return_tensors="pt", padding=True, truncation=True, max_length=256)
+            out = model.generate(**batch, max_new_tokens=256, num_beams=4)
+        text = ". ".join(tok.decode(o, skip_special_tokens=True).rstrip(".") for o in out)
+    return {"text": text}
 
 
 @app.get("/progress")

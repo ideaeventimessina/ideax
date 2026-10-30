@@ -248,6 +248,10 @@
       <fieldset data-for="checkpoint"><legend>Capacità</legend><div class="caps" id="mf-caps"></div></fieldset>
       <label>Descrizione <textarea name="description" rows="3" placeholder="Es. fotorealistico, ottimo per ritratti e paesaggi"></textarea></label>
       <div data-for="checkpoint">
+        <label>Stile del prompt · aggiunge i tag che questa famiglia di modelli si aspetta
+          <select name="promptStyle"></select></label>
+        <label>Prompt negativo predefinito · vuoto = quello dello stile
+          <textarea name="negativePrompt" rows="2" placeholder="Es. lowres, blurry, watermark"></textarea></label>
         <label>Priorità · un numero più alto viene preferito <input name="priority" type="number"></label>
         <label>Parametri predefiniti · JSON
           <textarea name="params" rows="3" class="mono" placeholder='{"num_inference_steps": 30, "guidance_scale": 6}'></textarea></label>

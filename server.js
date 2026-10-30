@@ -8,7 +8,7 @@ import crypto from 'node:crypto';
 import { exec } from 'node:child_process';
 import * as store from './lib/store.js';
 import { scanModels, readSafetensorsHeader, readGgufArchitecture, classifyKeys, ARCH_LABELS, KIND_LABELS } from './lib/scanner.js';
-import { route, buildCatalog } from './lib/router.js';
+import { route, buildCatalog, PROMPT_STYLES, styleFor } from './lib/router.js';
 import { resolveBrain } from './lib/brain.js';
 import { runModel, cancelOnWorker } from './lib/backends.js';
 import * as runtime from './lib/runtime.js';
@@ -137,6 +137,8 @@ async function processJob(job) {
     log('Analizzo il prompt…');
     const d = await route(job.prompt, job.attachments, { forceModelId: job.forceModelId, forceTask: job.forceTask });
     if (job.cancelled) throw new Error('Annullato');
+    // Parametri dello stile (es. clip_skip per Pony) < parametri del modello < parametri della richiesta
+    job.params = { ...(d.styleParams || {}), ...(d.model.params || {}), ...job.params };
     Object.assign(job, {
       task: d.task, modelId: d.model.id, modelName: d.model.name, routedPrompt: d.prompt,
       negativePrompt: d.negativePrompt, loras: d.loras, reason: d.reason, brain: d.brain, title: d.title,
@@ -192,7 +194,7 @@ function publicJob(job, origin = '') {
 function modelsPayload() {
   const catalog = buildCatalog();
   return {
-    local: catalog.all,
+    local: catalog.all.map((m) => (m.kind === 'checkpoint' ? { ...m, styleAuto: styleFor({ ...m, backend: 'worker', promptStyle: 'auto' }) } : m)),
     servers: store.listServers(),
     generators: catalog.generators.map(({ id, name, capabilities, arch, description, priority }) => ({ id, name, capabilities, arch, description, priority })),
     brain: resolveBrain(catalog.all).label,
@@ -262,7 +264,7 @@ const server = http.createServer(async (req, res) => {
     if (p.startsWith('/api/models/') && req.method === 'PATCH') {
       const id = p.split('/').pop();
       const patch = await readJson(req);
-      const allowed = ['name', 'description', 'priority', 'enabled', 'triggerWords', 'loraWeight', 'loraAlways', 'arch', 'kind', 'capabilities', 'params'];
+      const allowed = ['name', 'description', 'priority', 'enabled', 'triggerWords', 'loraWeight', 'loraAlways', 'arch', 'kind', 'capabilities', 'params', 'promptStyle', 'negativePrompt'];
       return send(res, 200, store.saveOverride(id, Object.fromEntries(Object.entries(patch).filter(([k]) => allowed.includes(k)))));
     }
     if (p.startsWith('/api/models/') && req.method === 'DELETE') {
@@ -275,7 +277,8 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/api/upload' && req.method === 'PUT') return uploadModel(req, res, url.searchParams.get('name'));
     if (p === '/api/meta' && req.method === 'GET') {
-      return send(res, 200, { tasks: store.TASKS, archs: ARCH_LABELS, kinds: KIND_LABELS, serverTypes: store.SERVER_TYPES });
+      const styles = Object.fromEntries(Object.entries(PROMPT_STYLES).map(([k, v]) => [k, v.label]));
+      return send(res, 200, { tasks: store.TASKS, archs: ARCH_LABELS, kinds: KIND_LABELS, serverTypes: store.SERVER_TYPES, styles });
     }
     if (p === '/api/servers' && req.method === 'POST') return send(res, 200, store.saveServer(await readJson(req)));
     if (p.startsWith('/api/servers/') && req.method === 'DELETE') {

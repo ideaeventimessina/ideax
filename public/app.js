@@ -502,7 +502,8 @@ function modelCard(m) {
   const tags = m.kind === 'checkpoint' ? m.capabilities.map((c) => state.meta.tasks[c])
     : m.kind === 'lora' ? (m.triggerWords ? m.triggerWords.split(',').map((x) => x.trim()).filter(Boolean) : ['Nessuna parola chiave'])
       : KIND_TAGS[m.kind] || [];
-  const meta = [fmtSize(m.size), m.kind === 'checkpoint' ? `Priorità ${m.priority}` : '', m.kind === 'lora' ? `peso ${m.loraWeight}${m.loraAlways ? ' · sempre attiva' : ''}` : ''].filter(Boolean).join(' · ');
+  const style = m.kind === 'checkpoint' && m.styleAuto !== undefined ? (m.promptStyle && m.promptStyle !== 'auto' ? m.promptStyle : m.styleAuto) : null;
+  const meta = [fmtSize(m.size), m.kind === 'checkpoint' ? `Priorità ${m.priority}` : '', style && style !== 'plain' ? `Stile ${state.meta.styles[style]}` : '', m.kind === 'lora' ? `peso ${m.loraWeight}${m.loraAlways ? ' · sempre attiva' : ''}` : ''].filter(Boolean).join(' · ');
   const warn = m.error || m.note || (m.kind === 'checkpoint' && m.arch === 'unknown' ? 'Indica l\'architettura per usarlo.' : '')
     || (m.flags?.transformerOnly ? 'Flux "solo transformer": VAE ed encoder vengono dal modello base, scaricato una volta.' : '');
   return `<article class="mcard ${m.enabled ? '' : 'off'}">
@@ -605,6 +606,10 @@ function openModel(m) {
   mForm.loraAlways.checked = !!m.loraAlways;
   mForm.priority.value = m.priority;
   mForm.enabled.checked = m.enabled;
+  mForm.promptStyle.innerHTML = `<option value="auto">Automatico${m.styleAuto ? ` · ${esc(state.meta.styles[m.styleAuto])}` : ''}</option>`
+    + Object.entries(state.meta.styles).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('');
+  mForm.promptStyle.value = m.promptStyle || 'auto';
+  mForm.negativePrompt.value = m.negativePrompt || '';
   mForm.params.value = Object.keys(m.params || {}).length ? JSON.stringify(m.params, null, 2) : '';
   $$('#mf-caps input').forEach((i) => { i.checked = m.capabilities.includes(i.value); });
   syncModelForm();
@@ -628,6 +633,8 @@ mForm.addEventListener('submit', async (e) => {
         enabled: mForm.enabled.checked,
         capabilities: $$('#mf-caps input:checked').map((i) => i.value),
         params: mForm.params.value.trim() ? JSON.parse(mForm.params.value) : {},
+        promptStyle: mForm.promptStyle.value,
+        negativePrompt: mForm.negativePrompt.value.trim(),
       },
     });
     $('#model-dialog').close();
