@@ -52,11 +52,16 @@ VIAddVersionKey "LegalCopyright" "ideax"
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "Italian"
 
-; Chiude ideax (e il worker Python, che è un suo processo figlio) prima di sostituire i file
+; Chiude ideax prima di sostituire i file.
+; NON usare "taskkill /T": durante un aggiornamento questo installatore è stato avviato da ideax,
+; quindi è un suo processo figlio e /T chiuderebbe anche l'installatore stesso.
+; 1) aspetta fino a 15 secondi che ideax si chiuda da solo (lo fa dopo aver avviato l'aggiornamento)
+; 2) se è ancora aperto lo chiude, solo lui
+; 3) chiude i motori Python di ideax rimasti accesi (worker immagini, voce…), riconoscibili dal percorso
 !macro CloseIdeax
-  nsExec::Exec 'taskkill /F /T /IM ideax.exe'
+  nsExec::Exec `powershell -NoProfile -ExecutionPolicy Bypass -Command "$$p = Get-Process -Name ideax -ErrorAction SilentlyContinue; if ($$p) { $$p | Wait-Process -Timeout 15 -ErrorAction SilentlyContinue }; Get-Process -Name ideax -ErrorAction SilentlyContinue | Stop-Process -Force; Get-CimInstance Win32_Process | Where-Object { $$_.ProcessId -ne $$PID -and $$_.CommandLine -match 'ideax.+\\worker\\' } | ForEach-Object { Stop-Process -Id $$_.ProcessId -Force -ErrorAction SilentlyContinue }"`
   Pop $0
-  Sleep 1500
+  Sleep 1000
 !macroend
 
 Section "ideax" SecMain

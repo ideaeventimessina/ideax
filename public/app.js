@@ -1188,7 +1188,15 @@ let updatePoll = null;
 
 async function loadUpdate() {
   const u = await api('/api/update').catch(() => null);
-  if (!u) return;
+  if (!u) {
+    // ideax non risponde mentre scaricava o installava: si sta aggiornando, aspettiamo che torni
+    if (['downloading', 'installing'].includes(state.update?.status)) {
+      state.update = { ...state.update, status: 'installing' };
+      renderUpdateBanner();
+      waitForRestart();
+    }
+    return;
+  }
   state.update = u;
   renderUpdateBanner();
   if ($('#page-impostazioni').classList.contains('active')) renderAbout();
@@ -1204,9 +1212,16 @@ function waitForRestart() {
   if (waiting) return;
   waiting = true;
   const old = about?.version;
+  const started = Date.now();
   const t = setInterval(async () => {
     const a = await api('/api/about').catch(() => null);
-    if (a && a.version !== old) { clearInterval(t); location.reload(); }
+    if (a && a.version !== old) { clearInterval(t); location.reload(); return; }
+    // Dopo 3 minuti senza risposta diamo istruzioni invece di lasciare la pagina ferma
+    if (Date.now() - started > 180000) {
+      clearInterval(t);
+      $('#update-banner').hidden = false;
+      $('#update-banner').innerHTML = `<span class="grow"><strong>ideax non si è riaperto da solo.</strong> Aprilo dal menu Start. Se la versione non è cambiata, scarica l'installatore dalla <a href="${esc(state.update?.pageUrl || 'https://github.com/ideaeventimessina/ideax/releases/latest')}" target="_blank" rel="noopener">pagina del rilascio</a> e aprilo: i tuoi dati restano dove sono.</span>`;
+    }
   }, 2000);
 }
 
