@@ -68,6 +68,10 @@ class Ideax:
         """Legge un testo con una voce clonata. options: language, format, exaggeration, cfg_weight, seed, callback_url, metadata, wait."""
         return self._request("/v1/speech", "POST", {"text": text, "voice": voice, **options})
 
+    def music(self, prompt, **options):
+        """Compone musica. options: duration, instrumental, lyrics, language, bpm, key, seed, quality, callback_url, metadata, wait."""
+        return self._request("/v1/music", "POST", {"prompt": prompt, **options})
+
     def voices(self):
         return self._request("/v1/voices")
 

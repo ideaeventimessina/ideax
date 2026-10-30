@@ -538,6 +538,14 @@ def translate(req: TranslateRequest):
     return {"text": text}
 
 
+@app.post("/unload")
+def unload():
+    """Libera la memoria della scheda video (ideax lo chiede prima di lavori pesanti come la musica)."""
+    with gen_lock:
+        free_memory()
+    return {"ok": True}
+
+
 @app.get("/progress")
 def progress():
     return {k: PROGRESS[k] for k in ("step", "total", "phase")}

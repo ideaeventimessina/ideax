@@ -13,6 +13,7 @@ import { resolveBrain } from './lib/brain.js';
 import { runModel, cancelOnWorker, inGpuQueue } from './lib/backends.js';
 import * as engines from './lib/engines.js';
 import * as voices from './lib/voices.js';
+import * as music from './lib/music.js';
 import { fallbackTitle } from './lib/router.js';
 import * as runtime from './lib/runtime.js';
 import * as updater from './lib/updater.js';
@@ -156,6 +157,7 @@ async function createJob(body, ctx = {}) {
     params: body.params && typeof body.params === 'object' ? body.params : {},
     kind: body.kind || 'media',
     speech: body.speech,
+    music: body.music,
     client: ctx.client || 'ideax',
     origin: ctx.origin || '',
     callbackUrl: callback,
@@ -201,11 +203,55 @@ async function runSpeech(job, log) {
   log(`Completato: ${out.seconds} secondi di audio in ${out.elapsed} s.`);
 }
 
+// Musica con il motore ACE-Step. Prima libera la scheda video: la musica ne usa tanta.
+async function runMusic(job, log) {
+  if (!engines.isInstalled('music')) throw new Error('Il motore musica non è installato: installalo dalla pagina Musica.');
+  const m = job.music || {};
+  Object.assign(job, {
+    task: 'music', modelName: 'Musica · ACE-Step 1.5', title: m.title || fallbackTitle(job.prompt), routedPrompt: job.prompt,
+    brain: 'motore musica',
+    reason: `${m.instrumental === false ? (m.lyrics ? 'Canzone con il tuo testo' : 'Canzone con testo scritto dal motore') : 'Brano strumentale'} di ${m.duration || 30} secondi.`,
+  });
+  job.status = 'running';
+  const out = await inGpuQueue(job, log, async () => {
+    job.backend = 'music';
+    await fetch(`${store.getSettings().workerUrl}/unload`, { method: 'POST', signal: AbortSignal.timeout(5000) }).catch(() => {});
+    engines.stop('voice');
+    log('Accendo il motore musica (la prima volta carica i modelli: può servire qualche minuto)…');
+    return music.generate({ ...m, prompt: job.prompt }, {
+      isCancelled: () => job.cancelled,
+      onProgress: (p) => { job.progress = { phase: p.phase, elapsed: p.elapsed }; },
+    });
+  });
+  const ext = out.type === 'audio/wav' ? 'wav' : 'mp3';
+  const name = `${job.id}-musica-${crypto.randomUUID().slice(0, 4)}.${ext}`;
+  fs.writeFileSync(path.join(store.OUTPUT_DIR, name), out.buffer);
+  job.results = [{ url: `/outputs/${name}`, type: out.type, seconds: out.seconds, metas: out.metas }];
+  job.status = 'done';
+  log(`Completato: ${out.seconds} secondi di musica in ${out.elapsed} s.`);
+}
+
+// Dallo Studio: "fammi una base lo-fi di 30 secondi" → musica, se il motore è installato
+const MUSIC_WORDS = /\b(musica|musicale|base|basi|sottofondo|canzone|brano|jingle|beat|colonna sonora|melodia|traccia audio|strumentale|song|soundtrack)\b/i;
+const NOT_MUSIC = /\b(foto|immagine|copertina|logo|disegno|illustrazione|ritratto|video|poster|locandina)\b/i;
+export function musicFromPrompt(prompt) {
+  if (!MUSIC_WORDS.test(prompt) || NOT_MUSIC.test(prompt)) return null;
+  const sec = prompt.match(/(\d+)\s*(s\b|sec|secondi|seconds)/i);
+  const min = prompt.match(/(\d+(?:[.,]\d+)?)\s*(min|minuti|minuto|minutes)/i);
+  const duration = sec ? Number(sec[1]) : min ? Math.round(parseFloat(min[1].replace(',', '.')) * 60) : 30;
+  const song = /\b(canzone|cantat\w*|con (il )?testo|con voce|song)\b/i.test(prompt) && !/\bstrumental\w*/i.test(prompt);
+  return { duration, instrumental: !song };
+}
+
 async function processJob(job) {
   const log = (msg) => job.log.push({ t: Date.now(), msg });
   try {
     if (job.kind === 'speech') {
       await runSpeech(job, log);
+      return;
+    }
+    if (job.kind === 'music') {
+      await runMusic(job, log);
       return;
     }
     job.status = 'routing';
@@ -262,7 +308,7 @@ function withData(results) {
 
 function publicCreation(h, origin) {
   return {
-    id: h.id, title: h.title, prompt: h.prompt, task: h.task, type: h.task === 'speech' ? 'audio' : h.task === 'animation' ? 'animation' : /video/.test(h.task || '') ? 'video' : 'image',
+    id: h.id, title: h.title, prompt: h.prompt, task: h.task, type: ['speech', 'music'].includes(h.task) ? 'audio' : h.task === 'animation' ? 'animation' : /video/.test(h.task || '') ? 'video' : 'image',
     model: h.modelName, routedPrompt: h.routedPrompt, negativePrompt: h.negativePrompt, loras: h.loras || [], status: h.status,
     error: h.error, client: h.client, metadata: h.metadata, createdAt: h.createdAt, seconds: h.seconds,
     results: (h.results || []).map((r) => ({ ...r, url: origin + r.url })),
@@ -341,6 +387,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/v1/generate' && req.method === 'POST') {
       const body = await readBody(req);
+      if (!body.task && !body.attachments?.length && engines.isInstalled('music')) {
+        const m = musicFromPrompt(body.prompt || '');
+        if (m) Object.assign(body, { kind: 'music', music: { ...m, ...(body.params || {}) } });
+      }
       const job = await createJob(body, ctx);
       // Con un webhook la risposta è immediata (a meno che si chieda esplicitamente di aspettare)
       if (body.wait === false || (job.callbackUrl && body.wait !== true)) {
@@ -387,6 +437,21 @@ const server = http.createServer(async (req, res) => {
       const job = await createJob({
         ...body, prompt: text || body.prompt, kind: 'speech',
         speech: { voice, language, format, exaggeration, cfg_weight, temperature, seed, pause_ms },
+      }, ctx);
+      if (body.wait === false || (job.callbackUrl && body.wait !== true)) {
+        return send(res, 202, { id: job.id, status: job.status, status_url: `${origin}/v1/jobs/${job.id}` });
+      }
+      await job.done;
+      const out = publicJob(job, origin);
+      if (body.inline) out.results = withData(out.results);
+      return send(res, job.status === 'done' ? 200 : 500, out);
+    }
+    if (p === '/v1/music' && req.method === 'POST') {
+      const body = await readBody(req);
+      const { prompt, lyrics, duration, instrumental, language, bpm, key, seed, format, quality, title } = body;
+      const job = await createJob({
+        ...body, prompt: prompt || body.description, kind: 'music',
+        music: { lyrics, duration, instrumental, language, bpm, key, seed, format, quality, title },
       }, ctx);
       if (body.wait === false || (job.callbackUrl && body.wait !== true)) {
         return send(res, 202, { id: job.id, status: job.status, status_url: `${origin}/v1/jobs/${job.id}` });
@@ -453,6 +518,7 @@ const server = http.createServer(async (req, res) => {
         job.cancelled = true;
         if (job.status === 'running' && !job.waiting && job.backend === 'worker') await cancelOnWorker();
         if (job.status === 'running' && !job.waiting && job.backend === 'voice') await engines.cancel('voice');
+        // Musica: il lavoro si interrompe al prossimo controllo dello stato (job.cancelled)
       }
       return send(res, 200, { ok: true });
     }
@@ -566,7 +632,12 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, r);
     }
     if (p === '/api/generate' && req.method === 'POST') {
-      const job = await createJob(await readJson(req), ctx);
+      const body = await readJson(req);
+      if ((!body.task || body.task === 'music') && !body.attachments?.length && engines.isInstalled('music')) {
+        const m = body.task === 'music' ? (musicFromPrompt(body.prompt || '') || { duration: 30, instrumental: true }) : musicFromPrompt(body.prompt || '');
+        if (m) Object.assign(body, { kind: 'music', music: m, task: undefined });
+      }
+      const job = await createJob(body, ctx);
       return send(res, 202, { id: job.id });
     }
     if (p.startsWith('/api/jobs/') && req.method === 'GET') {

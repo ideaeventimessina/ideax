@@ -246,6 +246,25 @@ curl http://192.168.1.10:7800/v1/speech \
 | `POST /v1/speech` | legge un testo: `text`, `voice`, `language`, `format`, `exaggeration`, `cfg_weight`, `seed`, più `wait`, `callback_url`, `metadata` |
 | `POST /v1/audio/speech` | compatibile OpenAI TTS: risponde direttamente con l'MP3 |
 
+### Musica
+
+Pagina **Musica**: descrivi il brano (genere, strumenti, atmosfera, BPM), scegli la durata e se lo vuoi strumentale o
+cantato (con il tuo testo, oppure scritto dal motore). Motore: ACE-Step 1.5 (licenza MIT), installato con un clic
+nella versione ufficiale. Dallo Studio basta scrivere, per esempio, "fammi una base lo-fi di 30 secondi".
+
+```bash
+curl http://192.168.1.10:7800/v1/music \
+  -H "Authorization: Bearer ideax_sk_..." \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Corporate motivazionale, chitarra acustica e archi, 110 BPM", "duration": 30}'
+```
+
+Campi di `POST /v1/music`: `prompt`, `duration` (10–600 s), `instrumental`, `lyrics`, `language`, `bpm`, `key`, `seed`,
+`quality` (`high` o `fast`), più `wait`, `callback_url`, `metadata`. Prima di comporre ideax libera la scheda video
+(la musica ne usa molta); gli altri motori si riaccendono da soli quando servono.
+
+Richiede il driver NVIDIA 570 o più recente (CUDA 12.8).
+
 ### Motori
 
 In **Impostazioni → Motori** ogni funzione pesante (voce, e in arrivo musica, gemello foto e video) si installa con un

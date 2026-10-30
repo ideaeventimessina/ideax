@@ -736,6 +736,104 @@
      }
     }
    }
+  },
+  "/v1/music": {
+   "post": {
+    "summary": "Compone musica: basi, sottofondi, jingle, canzoni (ACE-Step 1.5)",
+    "description": "Stesse opzioni dei lavori: wait, callback_url, metadata, inline. Il brano è in results[0], con metas (bpm, tonalità, durata).",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "prompt"
+        ],
+        "properties": {
+         "prompt": {
+          "type": "string",
+          "example": "Lo-fi rilassata con pianoforte e batteria morbida, 80 BPM, sottofondo per un reel"
+         },
+         "duration": {
+          "type": "number",
+          "default": 30,
+          "description": "Secondi, da 10 a 600"
+         },
+         "instrumental": {
+          "type": "boolean",
+          "default": true,
+          "description": "false = canzone: con lyrics usa il tuo testo, senza lo scrive il motore"
+         },
+         "lyrics": {
+          "type": "string",
+          "description": "Testo della canzone, con [verse], [chorus]…"
+         },
+         "language": {
+          "type": "string",
+          "default": "it",
+          "description": "Lingua del canto"
+         },
+         "bpm": {
+          "type": "integer"
+         },
+         "key": {
+          "type": "string",
+          "example": "A Minor"
+         },
+         "seed": {
+          "type": "integer"
+         },
+         "quality": {
+          "type": "string",
+          "enum": [
+           "high",
+           "fast"
+          ],
+          "default": "high"
+         },
+         "format": {
+          "type": "string",
+          "enum": [
+           "mp3",
+           "wav"
+          ],
+          "default": "mp3"
+         },
+         "wait": {
+          "type": "boolean",
+          "default": true
+         },
+         "callback_url": {
+          "type": "string"
+         },
+         "metadata": {
+          "type": "object"
+         },
+         "inline": {
+          "type": "boolean"
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Brano pronto",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Job"
+        }
+       }
+      }
+     },
+     "202": {
+      "description": "Accettato (wait=false o webhook)"
+     }
+    }
+   }
   }
  },
  "components": {

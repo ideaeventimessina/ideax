@@ -47,6 +47,11 @@ export class Ideax {
 
   voices() { return this.#request('/v1/voices'); }
 
+  // Compone musica: options = duration, instrumental, lyrics, language, bpm, key, seed, quality, callback_url, metadata, wait
+  music(prompt, options = {}) {
+    return this.#request('/v1/music', { method: 'POST', json: { prompt, ...options } });
+  }
+
   // Crea una voce da un campione (Blob/File nel browser, Buffer in Node). Serve il consenso della persona.
   createVoice(name, sample, { language = 'it', consent = false } = {}) {
     const form = new FormData();

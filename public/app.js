@@ -33,7 +33,7 @@ async function api(path, options = {}) {
 }
 
 const fmtSize = (b) => (b == null ? '' : b >= 1e9 ? `${(b / 1e9).toFixed(1).replace('.', ',')} GB` : `${Math.max(1, Math.round(b / 1e6))} MB`);
-const kindOf = (task) => (task === 'speech' ? 'audio' : task === 'animation' ? 'animation' : VIDEO_TASKS.includes(task) ? 'video' : 'image');
+const kindOf = (task) => (['speech', 'music'].includes(task) ? 'audio' : task === 'animation' ? 'animation' : VIDEO_TASKS.includes(task) ? 'video' : 'image');
 const KIND_NAME = { image: 'Immagine', video: 'Video', animation: 'Animazione', audio: 'Audio' };
 const MIC = '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
 // Barre decorative "a onda", sempre uguali per lo stesso id
@@ -80,6 +80,7 @@ function showPage() {
   if (page === 'primi-passi') renderOnboarding();
   if (page === 'impostazioni') { renderEngine($('#engine-card')); loadNetwork(); loadEngines(); loadHfToken(); }
   if (page === 'voce') { loadEngines(); loadVoices(); }
+  if (page === 'musica') loadEngines();
   window.scrollTo({ top: 0 });
 }
 window.addEventListener('hashchange', showPage);
@@ -1358,6 +1359,13 @@ function renderEngines() {
     all.innerHTML = `<h2>Motori</h2><p class="muted">Ogni motore ha il suo ambiente separato dentro la cartella dei dati di ideax. Si installa con un clic, si accende quando serve e si spegne da solo dopo 10 minuti di inattività per liberare la scheda video.</p>
       ${state.engines.map((e) => engineBlock(e)).join('')}`;
   }
+  const mu = state.engines.find((e) => e.id === 'music');
+  const mbox = $('#music-engine');
+  if (mbox && mu) {
+    mbox.hidden = mu.status === 'installed';
+    mbox.innerHTML = mu.status === 'installed' ? '' : `<h2>Installa il motore musica</h2>${engineBlock(mu, true)}`;
+    $$('#music-form button').forEach((b) => { if (!b.type || b.type === 'submit') b.disabled = mu.status !== 'installed'; });
+  }
   const v = state.engines.find((e) => e.id === 'voice');
   const box = $('#voice-engine');
   if (box && v) {
@@ -1569,3 +1577,90 @@ document.addEventListener('click', async (e) => {
 });
 
 if (location.hash === '#voce') { loadEngines(); loadVoices(); }
+
+
+// ======================= Musica =======================
+
+const MUSIC_IDEAS = [
+  ['instrumental', 30, 'Lo-fi rilassata con pianoforte elettrico e batteria morbida, 80 BPM, atmosfera serale, sottofondo per un reel'],
+  ['instrumental', 20, 'Corporate motivazionale, chitarra acustica e archi leggeri, crescendo positivo, 110 BPM'],
+  ['instrumental', 15, 'Jingle allegro e brillante per un brand di caffè, ukulele e fischietto, 120 BPM'],
+  ['instrumental', 45, 'Cinematica epica con orchestra e percussioni potenti, tensione che cresce fino al finale'],
+  ['auto', 60, 'Canzone pop estiva in italiano, voce femminile, ritmo ballabile, ritornello facile da ricordare'],
+];
+$('#music-ideas').innerHTML = MUSIC_IDEAS.map(([, d, p], i) => `<button type="button" data-music-idea="${i}">${esc(p)}<br><span class="muted small">${d} secondi</span></button>`).join('');
+$('#music-form').language.innerHTML = Object.entries(LANGS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+
+function syncMusicForm() {
+  const f = $('#music-form');
+  const mode = f.mode.value;
+  $$('[data-music="lyrics"]').forEach((el) => { el.hidden = mode !== 'lyrics'; });
+  $$('[data-music="vocals"]').forEach((el) => { el.hidden = mode === 'instrumental'; });
+  const d = Number(f.duration.value);
+  $('[data-out-music="duration"]').textContent = d >= 60 ? `${Math.floor(d / 60)} min${d % 60 ? ` ${d % 60} s` : ''}` : `${d} secondi`;
+}
+$('#music-form').addEventListener('input', syncMusicForm);
+syncMusicForm();
+
+document.addEventListener('click', (e) => {
+  const idea = e.target.closest('[data-music-idea]');
+  if (!idea) return;
+  const [mode, dur, prompt] = MUSIC_IDEAS[Number(idea.dataset.musicIdea)];
+  const f = $('#music-form');
+  f.prompt.value = prompt;
+  f.mode.value = mode;
+  f.duration.value = dur;
+  syncMusicForm();
+  f.prompt.focus();
+});
+
+$('#music-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  const out = $('#music-result');
+  const btn = $('button.primary', f);
+  btn.disabled = true;
+  out.innerHTML = '<div class="audio-result"><span class="muted">Preparo la composizione…</span><div class="progress indeterminate"><div></div></div></div>';
+  const mode = f.mode.value;
+  try {
+    const { id } = await api('/v1/music', {
+      method: 'POST',
+      body: {
+        prompt: f.prompt.value,
+        instrumental: mode === 'instrumental',
+        lyrics: mode === 'lyrics' ? f.lyrics.value : '',
+        language: f.language.value,
+        duration: Number(f.duration.value),
+        quality: f.quality.value,
+        ...(f.bpm.value ? { bpm: Number(f.bpm.value) } : {}),
+        ...(f.key.value.trim() ? { key: f.key.value.trim() } : {}),
+        ...(f.seed.value ? { seed: Number(f.seed.value) } : {}),
+        wait: false,
+      },
+    });
+    for (;;) {
+      const j = await api(`/api/jobs/${id}`);
+      if (j.status === 'done') {
+        const r = j.results[0];
+        const m = r.metas || {};
+        out.innerHTML = `<div class="audio-result"><strong>${esc(j.title)}</strong><div class="wave">${waveBars(j.id, 36)}</div><audio src="${esc(r.url)}" controls autoplay></audio>
+          <div class="row"><a class="btn small" href="${esc(r.url)}" download>↓ Scarica</a>
+          <span class="muted small">${String(r.seconds).replace('.', ',')} s${m.bpm ? ` · ${m.bpm} BPM` : ''}${m.keyscale ? ` · ${esc(m.keyscale)}` : ''} · composto in ${j.seconds ?? '?'} s</span></div></div>`;
+        loadHistory();
+        break;
+      }
+      if (j.status === 'error' || j.status === 'cancelled') { out.innerHTML = `<p class="error-text">${esc(j.error)}</p>`; break; }
+      const el = j.progress?.elapsed;
+      out.innerHTML = `<div class="audio-result"><span class="muted">${j.waiting ? 'In fila: la GPU sta finendo un altro lavoro…' : el != null ? `Compongo… ${el} s` : 'Accendo il motore musica (la prima volta carica i modelli: qualche minuto)…'}</span>
+        <div class="progress indeterminate"><div></div></div>
+        <div class="row"><button type="button" class="btn small" data-cancel-job="${id}">Annulla</button></div></div>`;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+  } catch (err) {
+    out.innerHTML = `<p class="error-text">${esc(err.message)}</p>`;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+if (location.hash === '#musica') loadEngines();

@@ -379,3 +379,10 @@ pre.code { max-width: 100%; }
 .engine-row:first-of-type { border-top: 0; }
 .engine-row .desc { color: var(--muted); font-size: 13px; max-width: 640px; }
 @media (max-width: 1100px) { .voice-grid { grid-template-columns: 1fr; } }
+
+/* ---------- Musica ---------- */
+.seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.seg label { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; min-height: 44px; border: 1px solid var(--line); border-radius: 10px; color: var(--text); font-size: 14px; cursor: pointer; }
+.seg label:has(input:checked) { border-color: var(--accent); background: rgba(112, 85, 221, .12); }
+.seg input { width: auto; min-height: 0; accent-color: var(--btn); }
+#music-ideas { grid-template-columns: 1fr; }
