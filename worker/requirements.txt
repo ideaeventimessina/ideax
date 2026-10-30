@@ -1,0 +1,16 @@
+# Installa prima PyTorch adatto alla tua GPU: https://pytorch.org/get-started/locally/
+# (es. NVIDIA: pip install torch --index-url https://download.pytorch.org/whl/cu124)
+diffusers>=0.32
+transformers>=4.44
+accelerate>=0.33
+safetensors
+sentencepiece
+protobuf
+peft>=0.12
+fastapi
+uvicorn
+pillow
+numpy
+imageio
+imageio-ffmpeg
+# Facoltativo, per il cervello .gguf (vedi README): llama-cpp-python

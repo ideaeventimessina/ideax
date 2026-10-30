@@ -1,0 +1,10 @@
+node_modules/
+data/*.json
+outputs/*
+!outputs/.gitkeep
+models/*
+!models/.gitkeep
+__pycache__/
+.venv/
+*.part
+!data/.gitkeep
