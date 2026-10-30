@@ -356,3 +356,5 @@ dialog.sheet [data-for] { display: grid; gap: 16px; }
 pre.code { max-width: 100%; }
 .key-row > div { min-width: 0; overflow-wrap: anywhere; }
 .new-key code { display: block; }
+.caps label.off { opacity: .4; }
+#mf-caps-note:not(:empty) { margin-top: 10px; }

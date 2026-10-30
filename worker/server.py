@@ -60,6 +60,8 @@ class ModelSpec(BaseModel):
     arch: str = "unknown"
     pipeline_class: Optional[str] = None
     transformer_only: bool = False
+    flux_variant: Optional[str] = None  # dev | schnell
+    fp8: Optional[str] = None  # e4m3fn | e5m2: pesi FP8 da tenere compressi in memoria
 
 
 class Lora(BaseModel):
@@ -120,7 +122,7 @@ def dtype_for(arch: str):
     return t.float16
 
 
-def use_offload() -> bool:
+def use_offload(arch: str = "") -> bool:
     info = device_info()
     if info["device"] != "cuda":
         return False
@@ -128,11 +130,13 @@ def use_offload() -> bool:
         return True
     if OFFLOAD == "off":
         return False
-    return (info["vram_gb"] or 0) < 16
+    # Flux (transformer + encoder T5) e i modelli video superano i 16 GB: le parti non in uso vanno in RAM
+    needed = 24 if arch in ("flux", "diffusers") else 16
+    return (info["vram_gb"] or 0) < needed
 
 
 def place(pipe):
-    if use_offload():
+    if use_offload(_loaded.get("arch") or ""):
         pipe.enable_model_cpu_offload()
     else:
         pipe.to(device_info()["device"])
@@ -141,14 +145,71 @@ def place(pipe):
 
 # ---------------------------------------------------------------- caricamento modelli
 
-_loaded: dict[str, Any] = {"key": None, "pipe": None, "derived": {}}
+_loaded: dict[str, Any] = {"key": None, "pipe": None, "derived": {}, "arch": None, "variant": None}
+HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def free_memory():
-    _loaded.update(key=None, pipe=None, derived={})
+    _loaded.update(key=None, pipe=None, derived={}, arch=None, variant=None)
     gc.collect()
     if not DEMO and torch().cuda.is_available():
         torch().cuda.empty_cache()
+
+
+def flux_variant(spec: ModelSpec) -> str:
+    """dev o schnell: dev ha l'ingresso "guidance" (guidance_in)."""
+    if spec.flux_variant in ("dev", "schnell"):
+        return spec.flux_variant
+    if spec.path.lower().endswith(".gguf"):
+        try:
+            from gguf import GGUFReader
+
+            names = (t.name for t in GGUFReader(spec.path).tensors)
+            return "dev" if any("guidance_in" in n for n in names) else "schnell"
+        except Exception as err:  # noqa: BLE001
+            print(f"[ideax] non riesco a leggere il GGUF ({err}): suppongo Flux dev", flush=True)
+    return "dev" if "schnell" not in os.path.basename(spec.path).lower() else "schnell"
+
+
+def load_flux(spec: ModelSpec, dtype):
+    """Flux da un singolo file (Civitai): il transformer dal file, il resto (VAE, encoder di testo) dal modello base.
+    - la configurazione del transformer è inclusa in ideax: niente download dal repository protetto di FLUX.1-dev
+    - dal modello base si scaricano solo i componenti che servono (circa 10 GB, una volta sola)
+    - i pesi FP8 restano FP8 in memoria (circa 12 GB invece di 24) e si convertono strato per strato durante il calcolo
+    """
+    import diffusers as d
+    import transformers as tf
+
+    variant = flux_variant(spec)
+    _loaded["variant"] = variant
+    kwargs: dict[str, Any] = {"config": os.path.join(HERE, "flux", variant), "torch_dtype": dtype}
+    if spec.path.lower().endswith(".gguf"):
+        kwargs["quantization_config"] = d.GGUFQuantizationConfig(compute_dtype=dtype)
+    print(f"[ideax] Flux {variant}: carico il transformer", flush=True)
+    transformer = d.FluxTransformer2DModel.from_single_file(spec.path, **kwargs)
+    if spec.fp8 and "quantization_config" not in kwargs and hasattr(transformer, "enable_layerwise_casting"):
+        storage = torch().float8_e5m2 if spec.fp8 == "e5m2" else torch().float8_e4m3fn
+        transformer.enable_layerwise_casting(storage_dtype=storage, compute_dtype=dtype)
+
+    PROGRESS["phase"] = "Preparo VAE ed encoder di testo (la prima volta li scarico, circa 10 GB)"
+    print(f"[ideax] componenti da {FLUX_BASE}", flush=True)
+    sub = lambda cls, folder: cls.from_pretrained(FLUX_BASE, subfolder=folder, **({"torch_dtype": dtype} if folder not in ("tokenizer", "tokenizer_2", "scheduler") else {}))  # noqa: E731
+    pipe = d.FluxPipeline(
+        scheduler=sub(d.FlowMatchEulerDiscreteScheduler, "scheduler"),
+        vae=sub(d.AutoencoderKL, "vae"),
+        text_encoder=sub(tf.CLIPTextModel, "text_encoder"),
+        tokenizer=sub(tf.CLIPTokenizer, "tokenizer"),
+        text_encoder_2=sub(tf.T5EncoderModel, "text_encoder_2"),
+        tokenizer_2=sub(tf.T5TokenizerFast, "tokenizer_2"),
+        transformer=transformer,
+    )
+    if variant == "dev":
+        # Lo scheduler del modello base (schnell) va adattato a dev
+        pipe.scheduler = d.FlowMatchEulerDiscreteScheduler.from_config(
+            pipe.scheduler.config, shift=3.0, use_dynamic_shifting=True,
+            base_shift=0.5, max_shift=1.15, base_image_seq_len=256, max_image_seq_len=4096,
+        )
+    return pipe
 
 
 def load_base(spec: ModelSpec):
@@ -160,12 +221,10 @@ def load_base(spec: ModelSpec):
     dtype = dtype_for(spec.arch)
     PROGRESS["phase"] = "Carico il modello in memoria"
     print(f"[ideax] carico {spec.path} ({spec.arch})", flush=True)
-    if spec.format == "gguf" and spec.arch == "flux":
-        # Flux compresso (GGUF, molto diffuso su Civitai): serve il pacchetto "gguf"
-        transformer = d.FluxTransformer2DModel.from_single_file(
-            spec.path, quantization_config=d.GGUFQuantizationConfig(compute_dtype=dtype), torch_dtype=dtype
-        )
-        pipe = d.FluxPipeline.from_pretrained(FLUX_BASE, transformer=transformer, torch_dtype=dtype)
+    _loaded["arch"] = spec.arch
+    if spec.arch == "flux" and spec.format != "diffusers":
+        # Flux da file singolo, completo o solo transformer, FP8 o GGUF: stessa strada
+        pipe = load_flux(spec, dtype)
     elif spec.format == "diffusers":
         pipe = d.DiffusionPipeline.from_pretrained(spec.path, torch_dtype=dtype)
     elif spec.arch in ("sd15", "sd2"):
@@ -174,12 +233,6 @@ def load_base(spec: ModelSpec):
         pipe = d.StableDiffusionXLPipeline.from_single_file(spec.path, torch_dtype=dtype)
     elif spec.arch == "sd3":
         pipe = d.StableDiffusion3Pipeline.from_single_file(spec.path, torch_dtype=dtype)
-    elif spec.arch == "flux":
-        if spec.transformer_only:
-            transformer = d.FluxTransformer2DModel.from_single_file(spec.path, torch_dtype=dtype)
-            pipe = d.FluxPipeline.from_pretrained(FLUX_BASE, transformer=transformer, torch_dtype=dtype)
-        else:
-            pipe = d.FluxPipeline.from_single_file(spec.path, torch_dtype=dtype)
     else:
         raise HTTPException(400, "Architettura del modello sconosciuta: indicala nella pagina Modelli.")
     _loaded.update(key=spec.path, pipe=pipe, derived={})
@@ -310,6 +363,8 @@ def run_real(req: RunRequest) -> list[dict]:
     place(pipe)
 
     params = dict(ARCH_DEFAULTS.get(req.model.arch, {}))
+    if req.model.arch == "flux" and _loaded.get("variant") == "schnell":
+        params.update(num_inference_steps=4, guidance_scale=0.0)
     if req.task == "animation" and req.motion:
         params.update(ANIMATION_DEFAULTS)
     params.update(req.params)
@@ -506,7 +561,7 @@ def health():
         llm_ok = True
     except ImportError:
         llm_ok = False
-    return {**info, "demo": DEMO, "loaded": _loaded["key"], "llm_available": llm_ok, "offload": use_offload()}
+    return {**info, "demo": DEMO, "loaded": _loaded["key"], "llm_available": llm_ok, "offload": use_offload(_loaded.get("arch") or "")}
 
 
 if __name__ == "__main__":

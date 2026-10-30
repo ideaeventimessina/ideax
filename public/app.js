@@ -511,8 +511,11 @@ function modelCard(m) {
       : KIND_TAGS[m.kind] || [];
   const style = m.kind === 'checkpoint' && m.styleAuto !== undefined ? (m.promptStyle && m.promptStyle !== 'auto' ? m.promptStyle : m.styleAuto) : null;
   const meta = [fmtSize(m.size), m.kind === 'checkpoint' ? `Priorità ${m.priority}` : '', style && style !== 'plain' ? `Stile ${state.meta.styles[style]}` : '', m.kind === 'lora' ? `peso ${m.loraWeight}${m.loraAlways ? ' · sempre attiva' : ''}` : ''].filter(Boolean).join(' · ');
-  const warn = m.error || m.note || (m.kind === 'checkpoint' && m.arch === 'unknown' ? 'Indica l\'architettura per usarlo.' : '')
-    || (m.flags?.transformerOnly ? 'Flux "solo transformer": VAE ed encoder vengono dal modello base, scaricato una volta.' : '');
+  // Avvisi (gialli): qualcosa impedisce di usare il modello. Note (grigie): solo informazioni.
+  const warn = m.error || m.warn || m.note || (m.kind === 'checkpoint' && m.arch === 'unknown' ? 'Indica l\'architettura per usarlo.' : '');
+  const info = !warn && m.arch === 'flux'
+    ? `Flux ${m.flags?.fluxVariant || ''}${m.flags?.fp8 ? ' · FP8' : m.flags?.gguf ? ' · GGUF' : ''} · solo immagini. VAE ed encoder di testo arrivano dal modello base: la prima volta vengono scaricati (circa 10 GB).`
+    : '';
   return `<article class="mcard ${m.enabled ? '' : 'off'}">
     <div class="head"><span class="chip">${esc(m.format === 'gguf' && m.kind === 'llm' ? 'GGUF' : state.meta.archs[m.arch] || m.arch)}</span>
       <span class="state"><i class="dot ${m.enabled ? 'on' : ''}"></i>${m.enabled ? 'Attivo' : 'Disattivato'}</span></div>
@@ -521,6 +524,7 @@ function modelCard(m) {
     ${m.description ? `<p class="desc">${esc(m.description)}</p>` : ''}
     ${tags.length ? `<div class="tags">${tags.map((t) => `<span class="chip">${esc(t)}</span>`).join('')}</div>` : ''}
     ${warn ? `<p class="warn">${esc(warn)}</p>` : ''}
+    ${info ? `<p class="desc">${esc(info)}</p>` : ''}
     <p class="path">${esc(m.path)}</p>
     <div class="row">
       <button class="btn small" data-edit="${m.id}">Modifica</button>
@@ -618,7 +622,18 @@ function openModel(m) {
   mForm.promptStyle.value = m.promptStyle || 'auto';
   mForm.negativePrompt.value = m.negativePrompt || '';
   mForm.params.value = Object.keys(m.params || {}).length ? JSON.stringify(m.params, null, 2) : '';
-  $$('#mf-caps input').forEach((i) => { i.checked = m.capabilities.includes(i.value); });
+  // Si possono scegliere solo le capacità che l'architettura ha davvero (Flux e SDXL non fanno video)
+  const allowed = m.allowedCapabilities || Object.keys(state.meta.tasks);
+  $$('#mf-caps label').forEach((l) => {
+    const i = $('input', l);
+    i.checked = m.capabilities.includes(i.value);
+    i.disabled = !allowed.includes(i.value);
+    l.title = i.disabled ? 'Questo tipo di modello non può farlo' : '';
+    l.classList.toggle('off', i.disabled);
+  });
+  $('#mf-caps-note').textContent = allowed.length && allowed.length < Object.keys(state.meta.tasks).length
+    ? `${state.meta.archs[m.arch] || 'Questo modello'} crea solo immagini. Per i video serve un modello video (Wan, LTX, CogVideoX in cartella diffusers) oppure ComfyUI collegato a ideax. Le animazioni dei modelli SD 1.5 arrivano dai moduli di movimento.`
+    : '';
   syncModelForm();
   $('#model-dialog').showModal();
 }
@@ -774,7 +789,7 @@ function renderEngine(el) {
       ${w.device ? `<span class="chip">Dispositivo: ${esc(w.device)}</span>` : ''}
       ${w.vram_gb ? `<span class="chip">${w.vram_gb} GB · ${w.vram_free_gb ?? '?'} GB liberi</span>` : ''}
       ${w.offload ? '<span class="chip">Risparmio memoria attivo</span>' : ''}
-      ${w.loadedName ? `<span class="chip">In memoria: ${esc(w.loadedName)}</span>` : ''}
+      ${w.loadedName ? `<span class="chip">Modello caricato: ${esc(w.loadedName)}</span>` : ''}
     </div>
     ${w.log?.length ? `<details><summary class="muted small">Registro del worker</summary><div class="log">${w.log.map(esc).join('\n')}</div></details>` : ''}`;
 }
@@ -837,7 +852,7 @@ function renderStatus() {
   const working = state.job && !['done', 'error', 'cancelled'].includes(state.job.status);
   $('#statusbar').innerHTML = `${engine}
     <span class="item">Cervello <span class="${/regole/.test(brain) ? '' : 'good'}">${esc(brain || '…')}</span></span>
-    <span class="item hide-sm">In memoria: ${esc(w.loadedName || 'nessun modello')}</span>
+    <span class="item hide-sm" title="Il modello di immagini caricato ora nella scheda video. Si carica da solo alla prima creazione.">Modello caricato: ${esc(w.loadedName || 'nessuno, si carica alla prima creazione')}</span>
     <span class="item end">${working ? '<i class="dot warn"></i>Sto creando…' : w.online ? 'Worker acceso' : ''}</span>`;
 }
 
