@@ -33,8 +33,14 @@ async function api(path, options = {}) {
 }
 
 const fmtSize = (b) => (b == null ? '' : b >= 1e9 ? `${(b / 1e9).toFixed(1).replace('.', ',')} GB` : `${Math.max(1, Math.round(b / 1e6))} MB`);
-const kindOf = (task) => (task === 'animation' ? 'animation' : VIDEO_TASKS.includes(task) ? 'video' : 'image');
-const KIND_NAME = { image: 'Immagine', video: 'Video', animation: 'Animazione' };
+const kindOf = (task) => (task === 'speech' ? 'audio' : task === 'animation' ? 'animation' : VIDEO_TASKS.includes(task) ? 'video' : 'image');
+const KIND_NAME = { image: 'Immagine', video: 'Video', animation: 'Animazione', audio: 'Audio' };
+const MIC = '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+// Barre decorative "a onda", sempre uguali per lo stesso id
+function waveBars(seed, n = 48) {
+  let x = [...String(seed)].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0;
+  return Array.from({ length: n }, () => { x = (x * 1103515245 + 12345) >>> 0; return `<i style="height:${18 + (x % 72)}%"></i>`; }).join('');
+}
 
 function when(ts) {
   const d = new Date(ts);
@@ -72,7 +78,8 @@ function showPage() {
   $$('.page').forEach((p) => p.classList.toggle('active', p === (exists || $('#page-studio'))));
   $$('.nav a').forEach((a) => (a.dataset.page === page ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
   if (page === 'primi-passi') renderOnboarding();
-  if (page === 'impostazioni') { renderEngine($('#engine-card')); loadNetwork(); }
+  if (page === 'impostazioni') { renderEngine($('#engine-card')); loadNetwork(); loadEngines(); loadHfToken(); }
+  if (page === 'voce') { loadEngines(); loadVoices(); }
   window.scrollTo({ top: 0 });
 }
 window.addEventListener('hashchange', showPage);
@@ -297,6 +304,20 @@ function renderStage() {
     return;
   }
   const kind = kindOf(item.task);
+  if (kind === 'audio') {
+    const a = item.results[0];
+    stage.innerHTML = `<div class="stage-glow"></div><div class="audio-stage">
+      <span class="chip">${MIC.replace('<svg', '<svg style="width:14px;height:14px"')} ${esc(item.modelName || 'Audio')}${a.seconds ? ` · ${String(a.seconds).replace('.', ',')} s` : ''}</span>
+      <h2>${esc(item.title || item.prompt)}</h2>
+      <div class="wave">${waveBars(item.id)}</div>
+      <audio src="${esc(a.url)}" controls></audio>
+      <div class="row"><a class="btn light small" href="${esc(a.url)}" download>↓ Scarica ${a.type === 'audio/wav' ? 'WAV' : 'MP3'}</a>
+        <button class="btn small" data-act="delete" data-id="${esc(item.id)}">Elimina</button></div></div>`;
+    $('#stage-meta').innerHTML = `<span>✓ <strong>Completato</strong>${item.seconds != null ? ` · ${item.seconds} secondi` : ''}</span><span>${esc(item.modelName || '')}</span>`;
+    $('#how').hidden = false;
+    $('#how-body').innerHTML = `<dl><dt>Testo letto</dt><dd>${esc(item.prompt)}</dd>${item.client ? `<dt>Richiesto da</dt><dd>${esc(item.client)}</dd>` : ''}</dl>`;
+    return;
+  }
   const main = item.results.find((r) => r.type.startsWith('video/')) || item.results[0];
   const gif = item.results.find((r) => r.type === 'image/gif');
   const media = main.type.startsWith('video/')
@@ -393,11 +414,11 @@ function renderGallery() {
   $('#gallery').innerHTML = items.length ? items.map((h) => {
     const r = h.results?.find((x) => x.type.startsWith('video/')) || h.results?.[0];
     const kind = kindOf(h.task);
-    const media = !r ? '' : r.type.startsWith('video/')
+    const media = !r ? '' : r.type.startsWith('audio/') ? MIC : r.type.startsWith('video/')
       ? `<video src="${esc(r.url)}" muted loop playsinline preload="metadata"></video>`
       : `<img src="${esc(r.url)}" alt="" loading="lazy">`;
     return `<button class="tile" data-id="${h.id}">
-      <div class="frame">${media}${kind !== 'image' ? `<span class="chip">${KIND_NAME[kind]}</span>` : ''}</div>
+      <div class="frame${kind === 'audio' ? ' audio' : ''}">${media}${kind !== 'image' ? `<span class="chip">${KIND_NAME[kind]}</span>` : ''}</div>
       <div><strong>${esc(h.title || h.prompt)}</strong><span>${esc(when(h.createdAt))} · ${esc(h.modelName || '')}</span></div>
     </button>`;
   }).join('') : `<div class="empty">${state.history.length ? 'Nessuna creazione di questo tipo.' : 'Le tue creazioni compariranno qui.'}</div>`;
@@ -1286,3 +1307,250 @@ window.addEventListener('hashchange', () => { if (location.hash === '#impostazio
   await loadUpdate();
   setInterval(loadUpdate, 60000);
 })();
+
+
+// ======================= Motori (voce, musica…) =======================
+
+let enginesPoll = null;
+state.engines = [];
+
+async function loadEngines() {
+  state.engines = await api('/api/engines').catch(() => []);
+  renderEngines();
+  const busy = state.engines.some((e) => e.status === 'installing');
+  if (busy && !enginesPoll) enginesPoll = setInterval(loadEngines, 1500);
+  if (!busy && enginesPoll) { clearInterval(enginesPoll); enginesPoll = null; loadVoices(); }
+}
+
+function engineBlock(e, compact = false) {
+  const actions = !e.available ? '<span class="chip">In arrivo</span>'
+    : e.status === 'installing' ? '<button class="btn small" disabled>Installazione…</button>'
+      : e.status === 'installed' ? `${e.running ? '<span class="chip"><i class="dot on"></i> acceso</span> <button class="btn small" data-engine-stop="' + e.id + '">Spegni</button>' : '<span class="chip">pronto, si accende quando serve</span>'}
+        ${compact ? '' : `<button class="btn small danger" data-engine-remove="${e.id}" data-name="${esc(e.name)}">Disinstalla</button>`}`
+        : `<button class="btn ${compact ? 'primary' : 'small'}" data-engine-install="${e.id}">${e.status === 'error' ? 'Riprova l\'installazione' : `Installa · circa ${e.sizeGb} GB`}</button>`;
+  return `<div class="engine-row"><div><strong>${esc(e.name)}</strong> <span class="muted small">· ${esc(e.model)}${e.license ? ` · ${esc(e.license)}` : ''}</span>
+      <p class="desc">${esc(e.description)}</p>
+      ${e.status === 'installing' ? `<div class="progress indeterminate" style="margin-top:10px"><div></div></div><p class="muted small">${esc(e.step || '')} · ${esc(e.log.at(-1) || '')}</p>
+        <p class="muted small">La prima volta scarica qualche GB: possono servire 10–30 minuti. Puoi continuare a usare ideax.</p>` : ''}
+      ${e.status === 'error' ? `<p class="error-text small">${esc(e.error)}</p>` : ''}
+      ${!compact && e.log?.length && e.status !== 'missing' ? `<details><summary class="muted small">Registro</summary><div class="log">${e.log.map(esc).join('\n')}</div></details>` : ''}</div>
+    <div class="row">${actions}</div></div>`;
+}
+
+function renderEngines() {
+  const all = $('#engines-card');
+  if (all) {
+    all.innerHTML = `<h2>Motori</h2><p class="muted">Ogni motore ha il suo ambiente separato dentro la cartella dei dati di ideax. Si installa con un clic, si accende quando serve e si spegne da solo dopo 10 minuti di inattività per liberare la scheda video.</p>
+      ${state.engines.map((e) => engineBlock(e)).join('')}`;
+  }
+  const v = state.engines.find((e) => e.id === 'voice');
+  const box = $('#voice-engine');
+  if (box && v) {
+    box.hidden = v.status === 'installed';
+    box.innerHTML = v.status === 'installed' ? '' : `<h2>Installa il motore voce</h2>${engineBlock(v, true)}`;
+    $$('#speak-form button, #voice-form button').forEach((b) => { if (!b.type || b.type === 'submit') b.disabled = v.status !== 'installed'; });
+  }
+}
+
+document.addEventListener('click', async (e) => {
+  const ins = e.target.closest('[data-engine-install]');
+  if (ins) {
+    ins.disabled = true;
+    await api(`/api/engines/${ins.dataset.engineInstall}/install`, { method: 'POST' }).catch((err) => alert(err.message));
+    loadEngines();
+  }
+  const st = e.target.closest('[data-engine-stop]');
+  if (st) { await api(`/api/engines/${st.dataset.engineStop}/stop`, { method: 'POST' }); loadEngines(); }
+  const rm = e.target.closest('[data-engine-remove]');
+  if (rm && confirm(`Disinstallare il motore "${rm.dataset.name}"? Le tue voci restano salvate: potrai reinstallarlo.`)) {
+    await api(`/api/engines/${rm.dataset.engineRemove}`, { method: 'DELETE' });
+    loadEngines();
+  }
+});
+
+// ----- Token Hugging Face -----
+async function loadHfToken() {
+  const s = await api('/api/settings').catch(() => ({}));
+  $('#hf-token').value = s.hfToken || '';
+}
+$('#hf-save').addEventListener('click', async () => {
+  await api('/api/settings', { method: 'POST', body: { hfToken: $('#hf-token').value.trim() } });
+  $('#hf-ok').textContent = 'Salvato ✓';
+  setTimeout(() => { $('#hf-ok').textContent = ''; }, 2500);
+});
+
+// ======================= Voce =======================
+
+const LANGS = { it: 'Italiano', en: 'Inglese', es: 'Spagnolo', fr: 'Francese', de: 'Tedesco', pt: 'Portoghese', nl: 'Olandese', pl: 'Polacco', ru: 'Russo', tr: 'Turco', ar: 'Arabo', zh: 'Cinese', ja: 'Giapponese', ko: 'Coreano', hi: 'Hindi', el: 'Greco', sv: 'Svedese', da: 'Danese', no: 'Norvegese', fi: 'Finlandese', he: 'Ebraico', ms: 'Malese', sw: 'Swahili' };
+$$('#speak-form select[name=language], #voice-form select[name=language]').forEach((sel) => {
+  sel.innerHTML = Object.entries(LANGS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+});
+state.voices = [];
+
+async function loadVoices() {
+  const r = await api('/v1/voices').catch(() => ({ voices: [] }));
+  state.voices = r.voices;
+  const sel = $('#speak-form').voice;
+  const cur = sel.value;
+  sel.innerHTML = state.voices.length ? state.voices.map((v) => `<option value="${v.id}">${esc(v.name)}</option>`).join('') : '<option value="">Crea prima una voce</option>';
+  if (cur) sel.value = cur;
+  syncSpeakLanguage();
+  $('#voice-list').innerHTML = state.voices.length ? state.voices.map((v) => `
+    <article class="mcard"><div class="head"><span class="chip">${esc(LANGS[v.language] || v.language)}</span><span class="state"><i class="dot on"></i>Pronta</span></div>
+      <h3>${esc(v.name)}</h3>
+      <p class="meta">Campione di ${String(v.seconds).replace('.', ',')} s · creata ${esc(when(v.createdAt))}</p>
+      <audio src="/v1/voices/${v.id}/sample" controls preload="none"></audio>
+      <p class="path">Consenso: ${esc(v.consent?.by || '')}, ${esc(new Date(v.consent?.at).toLocaleDateString('it-IT'))}</p>
+      <div class="row"><button class="btn small" data-voice-use="${v.id}">Usa</button>
+        <button class="btn small danger" data-voice-del="${v.id}" data-name="${esc(v.name)}">Elimina</button></div></article>`).join('')
+    : '<div class="empty">Nessuna voce ancora. Registra 15–30 secondi qui sopra e crea la tua.</div>';
+}
+
+function syncSpeakLanguage() {
+  const v = state.voices.find((x) => x.id === $('#speak-form').voice.value);
+  if (v) $('#speak-form').language.value = v.language;
+}
+$('#speak-form').voice.addEventListener('change', syncSpeakLanguage);
+
+const LEVELS = {
+  exaggeration: (x) => (x < 0.4 ? 'pacata' : x < 0.65 ? 'naturale' : x < 0.9 ? 'vivace' : 'teatrale'),
+  cfg_weight: (x) => (x < 0.35 ? 'lento e calmo' : x < 0.6 ? 'normale' : 'deciso'),
+};
+$$('#speak-form input[type=range]').forEach((r) => r.addEventListener('input', () => {
+  $(`[data-out="${r.name}"]`).textContent = `${Number(r.value).toFixed(2).replace('.', ',')} · ${LEVELS[r.name](Number(r.value))}`;
+}));
+
+$('#speak-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  const out = $('#speak-result');
+  const btn = $('button.primary', f);
+  btn.disabled = true;
+  out.innerHTML = '<div class="audio-result"><span class="muted">Preparo la lettura…</span><div class="progress indeterminate"><div></div></div></div>';
+  try {
+    const { id } = await api('/v1/speech', {
+      method: 'POST',
+      body: {
+        text: f.text.value, voice: f.voice.value, language: f.language.value, wait: false,
+        exaggeration: Number(f.exaggeration.value), cfg_weight: Number(f.cfg_weight.value),
+        ...(f.seed.value ? { seed: Number(f.seed.value) } : {}),
+      },
+    });
+    for (;;) {
+      const j = await api(`/api/jobs/${id}`);
+      if (j.status === 'done') {
+        const r = j.results[0];
+        out.innerHTML = `<div class="audio-result"><strong>${esc(j.title)}</strong><audio src="${esc(r.url)}" controls autoplay></audio>
+          <div class="row"><a class="btn small" href="${esc(r.url)}" download>↓ Scarica MP3</a><span class="muted small">${String(r.seconds).replace('.', ',')} s di audio · creato in ${j.seconds ?? '?'} s</span></div></div>`;
+        loadHistory();
+        break;
+      }
+      if (j.status === 'error' || j.status === 'cancelled') { out.innerHTML = `<p class="error-text">${esc(j.error)}</p>`; break; }
+      const p = j.progress;
+      out.innerHTML = `<div class="audio-result"><span class="muted">${j.waiting ? 'In fila: la GPU sta finendo un altro lavoro…' : p?.total ? `Leggo la frase ${p.step} di ${p.total}…` : 'Accendo il motore voce (la prima volta carica il modello)…'}</span>
+        <div class="progress ${p?.total ? '' : 'indeterminate'}"><div style="width:${p?.total ? Math.round((p.step / p.total) * 100) : 0}%"></div></div>
+        <div class="row"><button type="button" class="btn small" data-cancel-job="${id}">Annulla</button></div></div>`;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  } catch (err) {
+    out.innerHTML = `<p class="error-text">${esc(err.message)}</p>`;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ----- Registrazione e creazione della voce -----
+let recorder = null;
+let recorded = null;
+let recTimer = null;
+
+$('#rec-btn').addEventListener('click', async () => {
+  const btn = $('#rec-btn');
+  if (recorder?.state === 'recording') { recorder.stop(); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true } });
+    const chunks = [];
+    recorder = new MediaRecorder(stream);
+    recorder.ondataavailable = (ev) => chunks.push(ev.data);
+    recorder.onstop = () => {
+      stream.getTracks().forEach((t) => t.stop());
+      clearInterval(recTimer);
+      recorded = new File([new Blob(chunks, { type: recorder.mimeType })], `registrazione.${recorder.mimeType.includes('ogg') ? 'ogg' : 'webm'}`, { type: recorder.mimeType });
+      $('#rec-preview').src = URL.createObjectURL(recorded);
+      $('#rec-preview').hidden = false;
+      btn.classList.remove('recording');
+      btn.textContent = '● Registra di nuovo';
+      $('#rec-status').textContent = 'Registrazione pronta: ascoltala prima di creare la voce.';
+    };
+    recorder.start();
+    const t0 = Date.now();
+    btn.classList.add('recording');
+    btn.textContent = '■ Ferma';
+    recTimer = setInterval(() => {
+      const s = Math.round((Date.now() - t0) / 1000);
+      $('#rec-status').textContent = `Sto registrando… ${s} s ${s < 15 ? '(continua fino a 15–30 s)' : '✓ va bene, puoi fermare'}`;
+      if (s >= 45) recorder.stop();
+    }, 500);
+  } catch {
+    $('#rec-status').textContent = 'Non riesco a usare il microfono: controlla i permessi del browser, oppure carica un file.';
+  }
+});
+$('#voice-file').addEventListener('change', (e) => {
+  recorded = e.target.files[0] || null;
+  if (recorded) {
+    $('#rec-preview').src = URL.createObjectURL(recorded);
+    $('#rec-preview').hidden = false;
+    $('#rec-status').textContent = `File: ${recorded.name}`;
+  }
+});
+
+$('#voice-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  $('#voice-error').textContent = '';
+  if (!recorded) { $('#voice-error').textContent = 'Registra la tua voce o carica un file audio.'; return; }
+  const btn = $('button.primary', f);
+  btn.disabled = true;
+  btn.textContent = 'Preparo la voce…';
+  try {
+    const form = new FormData();
+    form.append('name', f.name.value.trim());
+    form.append('language', f.language.value);
+    form.append('consent', f.consent.checked ? 'true' : 'false');
+    form.append('file', recorded, recorded.name);
+    const res = await fetch('/v1/voices', { method: 'POST', body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Errore ${res.status}`);
+    f.reset();
+    recorded = null;
+    $('#rec-preview').hidden = true;
+    $('#rec-status').textContent = `✓ Voce "${data.name}" creata.`;
+    await loadVoices();
+    $('#speak-form').voice.value = data.id;
+    syncSpeakLanguage();
+  } catch (err) {
+    $('#voice-error').textContent = err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Crea la voce';
+  }
+});
+
+document.addEventListener('click', async (e) => {
+  const use = e.target.closest('[data-voice-use]');
+  if (use) {
+    $('#speak-form').voice.value = use.dataset.voiceUse;
+    syncSpeakLanguage();
+    $('#speak-form').text.focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  const del = e.target.closest('[data-voice-del]');
+  if (del && confirm(`Eliminare la voce "${del.dataset.name}"? Il campione verrà cancellato.`)) {
+    await api(`/v1/voices/${del.dataset.voiceDel}`, { method: 'DELETE' });
+    loadVoices();
+  }
+  const c = e.target.closest('[data-cancel-job]');
+  if (c) { c.disabled = true; api(`/api/jobs/${c.dataset.cancelJob}/cancel`, { method: 'POST' }); }
+});
+
+if (location.hash === '#voce') { loadEngines(); loadVoices(); }

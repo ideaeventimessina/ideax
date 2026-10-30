@@ -10,7 +10,10 @@ import * as store from './lib/store.js';
 import { scanModels, readSafetensorsHeader, readGgufArchitecture, classifyKeys, ARCH_LABELS, KIND_LABELS } from './lib/scanner.js';
 import { route, buildCatalog, PROMPT_STYLES, styleFor } from './lib/router.js';
 import { resolveBrain } from './lib/brain.js';
-import { runModel, cancelOnWorker } from './lib/backends.js';
+import { runModel, cancelOnWorker, inGpuQueue } from './lib/backends.js';
+import * as engines from './lib/engines.js';
+import * as voices from './lib/voices.js';
+import { fallbackTitle } from './lib/router.js';
 import * as runtime from './lib/runtime.js';
 import * as updater from './lib/updater.js';
 import * as apikeys from './lib/apikeys.js';
@@ -136,6 +139,10 @@ async function normalizeAttachments(list = []) {
 }
 
 async function createJob(body, ctx = {}) {
+  if (body.kind === 'speech') {
+    if (!body.prompt?.trim()) throw new Error('Scrivi il testo da leggere');
+    if (body.prompt.length > 20000) throw new Error('Testo troppo lungo: massimo 20.000 caratteri per richiesta');
+  }
   if (!body.prompt?.trim()) throw new Error('Scrivi un prompt');
   if (body.task && !(body.task in store.TASKS)) throw new Error(`Compito sconosciuto: ${body.task}`);
   const callback = body.callback_url || body.callbackUrl || null;
@@ -147,6 +154,8 @@ async function createJob(body, ctx = {}) {
     forceModelId: body.model || body.modelId || null,
     forceTask: body.task || null,
     params: body.params && typeof body.params === 'object' ? body.params : {},
+    kind: body.kind || 'media',
+    speech: body.speech,
     client: ctx.client || 'ideax',
     origin: ctx.origin || '',
     callbackUrl: callback,
@@ -161,9 +170,44 @@ async function createJob(body, ctx = {}) {
   return job;
 }
 
+// Lettura di un testo con una voce clonata, sul motore voce locale
+async function runSpeech(job, log) {
+  const sp = job.speech || {};
+  const voice = voices.findVoice(sp.voice);
+  if (!voice) throw new Error(sp.voice ? `Voce non trovata: ${sp.voice}` : 'Non c\'è ancora nessuna voce: creala nella pagina Voce.');
+  if (!engines.isInstalled('voice')) throw new Error('Il motore voce non è installato: installalo dalla pagina Voce.');
+  Object.assign(job, {
+    task: 'speech', modelName: `Voce · ${voice.name}`, title: fallbackTitle(job.prompt), routedPrompt: job.prompt,
+    brain: 'motore voce', reason: `Letto con la voce "${voice.name}" (${sp.language || voice.language}).`,
+  });
+  job.status = 'running';
+  log(`Leggo con la voce "${voice.name}"…`);
+  const out = await inGpuQueue(job, log, () => {
+    job.backend = 'voice';
+    return engines.call('voice', '/speak', {
+      text: job.prompt,
+      language: sp.language || voice.language || 'it',
+      reference: voices.samplePath(voice.id),
+      format: sp.format === 'wav' ? 'wav' : 'mp3',
+      ...(voice.defaults || {}),
+      ...Object.fromEntries(['exaggeration', 'cfg_weight', 'temperature', 'seed', 'pause_ms'].filter((k) => sp[k] != null).map((k) => [k, Number(sp[k])])),
+    }, { onProgress: (p) => { if (p.total) job.progress = { step: p.step, total: p.total, phase: 'Leggo' }; } });
+  });
+  const ext = out.type === 'audio/wav' ? 'wav' : 'mp3';
+  const name = `${job.id}-voce-${crypto.randomUUID().slice(0, 4)}.${ext}`;
+  fs.writeFileSync(path.join(store.OUTPUT_DIR, name), Buffer.from(out.data, 'base64'));
+  job.results = [{ url: `/outputs/${name}`, type: out.type, seconds: out.seconds }];
+  job.status = 'done';
+  log(`Completato: ${out.seconds} secondi di audio in ${out.elapsed} s.`);
+}
+
 async function processJob(job) {
   const log = (msg) => job.log.push({ t: Date.now(), msg });
   try {
+    if (job.kind === 'speech') {
+      await runSpeech(job, log);
+      return;
+    }
     job.status = 'routing';
     log('Analizzo il prompt…');
     const d = await route(job.prompt, job.attachments, { forceModelId: job.forceModelId, forceTask: job.forceTask });
@@ -218,7 +262,7 @@ function withData(results) {
 
 function publicCreation(h, origin) {
   return {
-    id: h.id, title: h.title, prompt: h.prompt, task: h.task, type: h.task === 'animation' ? 'animation' : /video/.test(h.task || '') ? 'video' : 'image',
+    id: h.id, title: h.title, prompt: h.prompt, task: h.task, type: h.task === 'speech' ? 'audio' : h.task === 'animation' ? 'animation' : /video/.test(h.task || '') ? 'video' : 'image',
     model: h.modelName, routedPrompt: h.routedPrompt, negativePrompt: h.negativePrompt, loras: h.loras || [], status: h.status,
     error: h.error, client: h.client, metadata: h.metadata, createdAt: h.createdAt, seconds: h.seconds,
     results: (h.results || []).map((r) => ({ ...r, url: origin + r.url })),
@@ -307,6 +351,67 @@ const server = http.createServer(async (req, res) => {
       if (body.inline) out.results = withData(out.results);
       return send(res, job.status === 'done' ? 200 : 500, out);
     }
+    // ----- Voce -----
+    if (p === '/v1/voices' && req.method === 'GET') {
+      return send(res, 200, { voices: voices.listVoices().map((v) => ({ ...v, sample_url: `${origin}/v1/voices/${v.id}/sample` })), engine: engines.isInstalled('voice') ? 'installed' : 'missing' });
+    }
+    if (p === '/v1/voices' && req.method === 'POST') {
+      const body = await readBody(req);
+      const a = body.attachments?.[0];
+      const file = a && { name: a.name, buffer: Buffer.from(a.dataUrl.slice(a.dataUrl.indexOf(',') + 1), 'base64') };
+      try {
+        const v = await voices.createVoice({
+          name: body.name, language: body.language || 'it',
+          consent: [true, 'true', '1', 'yes', 'si', 'sì'].includes(body.consent), consentBy: body.consent_by || client?.name, file,
+        });
+        return send(res, 201, v);
+      } catch (err) {
+        return send(res, err.status || 400, { error: err.message });
+      }
+    }
+    if (/^\/v1\/voices\/[\w-]+\/sample$/.test(p) && req.method === 'GET') {
+      const file = voices.samplePath(p.split('/')[3]);
+      if (!fs.existsSync(file)) return send(res, 404, { error: 'Voce non trovata' });
+      res.writeHead(200, { 'Content-Type': 'audio/wav' });
+      return fs.createReadStream(file).pipe(res);
+    }
+    if (/^\/v1\/voices\/[\w-]+$/.test(p) && req.method === 'PATCH') {
+      return send(res, 200, voices.updateVoice(p.split('/').pop(), await readJson(req)));
+    }
+    if (/^\/v1\/voices\/[\w-]+$/.test(p) && req.method === 'DELETE') {
+      return voices.deleteVoice(p.split('/').pop()) ? send(res, 200, { ok: true }) : send(res, 404, { error: 'Voce non trovata' });
+    }
+    if (p === '/v1/speech' && req.method === 'POST') {
+      const body = await readBody(req);
+      const { text, voice, language, format, exaggeration, cfg_weight, temperature, seed, pause_ms } = body;
+      const job = await createJob({
+        ...body, prompt: text || body.prompt, kind: 'speech',
+        speech: { voice, language, format, exaggeration, cfg_weight, temperature, seed, pause_ms },
+      }, ctx);
+      if (body.wait === false || (job.callbackUrl && body.wait !== true)) {
+        return send(res, 202, { id: job.id, status: job.status, status_url: `${origin}/v1/jobs/${job.id}` });
+      }
+      await job.done;
+      const out = publicJob(job, origin);
+      if (body.inline) out.results = withData(out.results);
+      return send(res, job.status === 'done' ? 200 : 500, out);
+    }
+    // Compatibile OpenAI TTS: client.audio.speech.create(model=…, voice="Marco", input=…)
+    if (p === '/v1/audio/speech' && req.method === 'POST') {
+      const body = await readJson(req);
+      const fmt = body.response_format === 'wav' ? 'wav' : 'mp3';
+      const job = await createJob({ prompt: body.input, kind: 'speech', speech: { voice: body.voice, format: fmt } }, ctx);
+      await job.done;
+      if (job.status !== 'done') return send(res, 500, { error: { message: job.error } });
+      res.writeHead(200, { 'Content-Type': job.results[0].type });
+      return fs.createReadStream(path.join(store.OUTPUT_DIR, path.basename(job.results[0].url))).pipe(res);
+    }
+    // ----- Motori -----
+    if (p === '/api/engines' && req.method === 'GET') return send(res, 200, engines.listEngines());
+    if (/^\/api\/engines\/\w+\/install$/.test(p) && req.method === 'POST') return send(res, 200, await engines.install(p.split('/')[3]));
+    if (/^\/api\/engines\/\w+\/stop$/.test(p) && req.method === 'POST') { engines.stop(p.split('/')[3]); return send(res, 200, { ok: true }); }
+    if (/^\/api\/engines\/\w+$/.test(p) && req.method === 'DELETE') { engines.uninstall(p.split('/')[3]); return send(res, 200, { ok: true }); }
+
     if (p === '/v1/health' && req.method === 'GET') {
       const w = await runtime.workerResponds();
       const active = [...jobs.values()].filter((j) => !['done', 'error', 'cancelled'].includes(j.status));
@@ -347,6 +452,7 @@ const server = http.createServer(async (req, res) => {
       if (!['done', 'error', 'cancelled'].includes(job.status)) {
         job.cancelled = true;
         if (job.status === 'running' && !job.waiting && job.backend === 'worker') await cancelOnWorker();
+        if (job.status === 'running' && !job.waiting && job.backend === 'voice') await engines.cancel('voice');
       }
       return send(res, 200, { ok: true });
     }
@@ -520,4 +626,4 @@ server.listen(PORT, HOST, () => {
 for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) {
   process.on(sig, () => { runtime.stopWorker(); process.exit(0); });
 }
-process.on('exit', () => { runtime.stopWorker(); apikeys.flushKeys(); });
+process.on('exit', () => { runtime.stopWorker(); engines.stopAll(); apikeys.flushKeys(); });

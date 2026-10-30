@@ -64,6 +64,26 @@ class Ideax:
         parts.append(f"--{boundary}--\r\n".encode())
         return self._request("/v1/generate", "POST", b"".join(parts), f"multipart/form-data; boundary={boundary}")
 
+    def speak(self, text, voice=None, **options):
+        """Legge un testo con una voce clonata. options: language, format, exaggeration, cfg_weight, seed, callback_url, metadata, wait."""
+        return self._request("/v1/speech", "POST", {"text": text, "voice": voice, **options})
+
+    def voices(self):
+        return self._request("/v1/voices")
+
+    def create_voice(self, name, sample_path, language="it", consent=False):
+        """Crea una voce da un file audio di 10–30 secondi. Serve il consenso della persona (consent=True)."""
+        boundary = uuid.uuid4().hex
+        parts = []
+        for k, v in {"name": name, "language": language, "consent": "true" if consent else "false"}.items():
+            parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode())
+        mime = mimetypes.guess_type(sample_path)[0] or "application/octet-stream"
+        with open(sample_path, "rb") as fh:
+            parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{os.path.basename(sample_path)}"\r\n'
+                         f"Content-Type: {mime}\r\n\r\n".encode() + fh.read() + b"\r\n")
+        parts.append(f"--{boundary}--\r\n".encode())
+        return self._request("/v1/voices", "POST", b"".join(parts), f"multipart/form-data; boundary={boundary}")
+
     def job(self, job_id):
         return self._request(f"/v1/jobs/{job_id}")
 

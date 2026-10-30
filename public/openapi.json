@@ -172,7 +172,8 @@
        "enum": [
         "image",
         "video",
-        "animation"
+        "animation",
+        "audio"
        ]
       }
      },
@@ -442,6 +443,296 @@
     "responses": {
      "200": {
       "description": "OpenAPI 3"
+     }
+    }
+   }
+  },
+  "/v1/voices": {
+   "get": {
+    "summary": "Voci clonate",
+    "responses": {
+     "200": {
+      "description": "Elenco",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "voices": {
+           "type": "array",
+           "items": {
+            "$ref": "#/components/schemas/Voice"
+           }
+          },
+          "engine": {
+           "type": "string",
+           "enum": [
+            "installed",
+            "missing"
+           ]
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "summary": "Crea una voce clonata da un campione audio (10–30 s)",
+    "description": "Serve il consenso della persona: consent=true. Il campione può essere wav, mp3, m4a, webm…",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "name",
+         "consent",
+         "file"
+        ],
+        "properties": {
+         "name": {
+          "type": "string"
+         },
+         "language": {
+          "type": "string",
+          "default": "it"
+         },
+         "consent": {
+          "type": "string",
+          "enum": [
+           "true"
+          ]
+         },
+         "consent_by": {
+          "type": "string"
+         },
+         "file": {
+          "type": "string",
+          "format": "binary"
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Voce creata",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Voice"
+        }
+       }
+      }
+     },
+     "400": {
+      "$ref": "#/components/responses/Error"
+     },
+     "409": {
+      "description": "Motore voce non installato"
+     }
+    }
+   }
+  },
+  "/v1/voices/{id}": {
+   "patch": {
+    "summary": "Rinomina o imposta i valori predefiniti di una voce",
+    "parameters": [
+     {
+      "$ref": "#/components/parameters/Id"
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "name": {
+          "type": "string"
+         },
+         "language": {
+          "type": "string"
+         },
+         "defaults": {
+          "type": "object",
+          "example": {
+           "exaggeration": 0.6,
+           "cfg_weight": 0.4
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Aggiornata"
+     }
+    }
+   },
+   "delete": {
+    "summary": "Elimina una voce e il suo campione",
+    "parameters": [
+     {
+      "$ref": "#/components/parameters/Id"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Eliminata"
+     }
+    }
+   }
+  },
+  "/v1/voices/{id}/sample": {
+   "get": {
+    "summary": "Campione della voce (WAV)",
+    "parameters": [
+     {
+      "$ref": "#/components/parameters/Id"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "audio/wav"
+     }
+    }
+   }
+  },
+  "/v1/speech": {
+   "post": {
+    "summary": "Legge un testo con una voce clonata",
+    "description": "Stesse opzioni dei lavori: wait, callback_url, metadata, inline. Il risultato è un MP3 (o WAV) in results[0].",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "text"
+        ],
+        "properties": {
+         "text": {
+          "type": "string",
+          "example": "Ciao a tutti! Oggi vi presento il nostro nuovo prodotto."
+         },
+         "voice": {
+          "type": "string",
+          "description": "Id o nome della voce. Se manca, la più recente"
+         },
+         "language": {
+          "type": "string",
+          "description": "Se manca, quella della voce"
+         },
+         "format": {
+          "type": "string",
+          "enum": [
+           "mp3",
+           "wav"
+          ],
+          "default": "mp3"
+         },
+         "exaggeration": {
+          "type": "number",
+          "default": 0.5,
+          "description": "Espressività: 0.25 pacata, 0.5 naturale, 0.8+ teatrale"
+         },
+         "cfg_weight": {
+          "type": "number",
+          "default": 0.5,
+          "description": "Ritmo: più basso = più lento e calmo"
+         },
+         "temperature": {
+          "type": "number",
+          "default": 0.8
+         },
+         "seed": {
+          "type": "integer"
+         },
+         "pause_ms": {
+          "type": "integer",
+          "default": 180,
+          "description": "Pausa tra le frasi"
+         },
+         "wait": {
+          "type": "boolean",
+          "default": true
+         },
+         "callback_url": {
+          "type": "string"
+         },
+         "metadata": {
+          "type": "object"
+         },
+         "inline": {
+          "type": "boolean"
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Audio pronto",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Job"
+        }
+       }
+      }
+     },
+     "202": {
+      "description": "Accettato (wait=false o webhook)"
+     }
+    }
+   }
+  },
+  "/v1/audio/speech": {
+   "post": {
+    "summary": "Compatibile OpenAI TTS: restituisce direttamente l'audio",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "input"
+        ],
+        "properties": {
+         "model": {
+          "type": "string"
+         },
+         "input": {
+          "type": "string"
+         },
+         "voice": {
+          "type": "string",
+          "description": "Nome della voce clonata in ideax"
+         },
+         "response_format": {
+          "type": "string",
+          "enum": [
+           "mp3",
+           "wav"
+          ]
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "audio/mpeg o audio/wav"
      }
     }
    }
@@ -745,6 +1036,45 @@
       "type": "array",
       "items": {
        "$ref": "#/components/schemas/Result"
+      }
+     }
+    }
+   },
+   "Voice": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "language": {
+      "type": "string",
+      "example": "it"
+     },
+     "seconds": {
+      "type": "number",
+      "description": "Durata del campione"
+     },
+     "createdAt": {
+      "type": "integer"
+     },
+     "sample_url": {
+      "type": "string"
+     },
+     "consent": {
+      "type": "object",
+      "properties": {
+       "given": {
+        "type": "boolean"
+       },
+       "by": {
+        "type": "string"
+       },
+       "at": {
+        "type": "string"
+       }
       }
      }
     }

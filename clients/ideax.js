@@ -40,6 +40,23 @@ export class Ideax {
     return this.#request('/v1/generate', { method: 'POST', form });
   }
 
+  // Legge un testo con una voce clonata: options = language, format, exaggeration, cfg_weight, seed, callback_url, metadata, wait
+  speak(text, voice, options = {}) {
+    return this.#request('/v1/speech', { method: 'POST', json: { text, voice, ...options } });
+  }
+
+  voices() { return this.#request('/v1/voices'); }
+
+  // Crea una voce da un campione (Blob/File nel browser, Buffer in Node). Serve il consenso della persona.
+  createVoice(name, sample, { language = 'it', consent = false } = {}) {
+    const form = new FormData();
+    form.append('name', name);
+    form.append('language', language);
+    form.append('consent', String(!!consent));
+    form.append('file', sample instanceof Blob ? sample : new Blob([sample]), sample.name || 'campione.wav');
+    return this.#request('/v1/voices', { method: 'POST', form });
+  }
+
   job(id) { return this.#request(`/v1/jobs/${id}`); }
   cancel(id) { return this.#request(`/v1/jobs/${id}/cancel`, { method: 'POST' }); }
   models() { return this.#request('/v1/models'); }

@@ -225,6 +225,35 @@ job = ai.generate("Anima questa foto, le foglie si muovono", files=["foto.jpg"],
 ai.download(job, "risultati/")
 ```
 
+### Voce clonata
+
+Pagina **Voce**: registri 15–30 secondi dal microfono (o carichi un file) e crei la tua voce; poi qualsiasi testo
+viene letto con quella voce. Motore: Chatterbox Multilingual (licenza MIT, 23 lingue, italiano compreso), installato
+con un clic. Si può clonare solo la propria voce o quella di chi ha dato il permesso: ideax registra il consenso.
+
+```bash
+curl http://192.168.1.10:7800/v1/speech \
+  -H "Authorization: Bearer ideax_sk_..." \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Ciao a tutti! Oggi vi presento il nuovo prodotto.", "voice": "Marco"}'
+```
+
+| Endpoint | Cosa fa |
+|---|---|
+| `GET /v1/voices` | voci disponibili |
+| `POST /v1/voices` | crea una voce (multipart: `name`, `language`, `consent=true`, `file`) |
+| `PATCH` / `DELETE /v1/voices/:id` | rinomina, valori predefiniti, eliminazione |
+| `POST /v1/speech` | legge un testo: `text`, `voice`, `language`, `format`, `exaggeration`, `cfg_weight`, `seed`, più `wait`, `callback_url`, `metadata` |
+| `POST /v1/audio/speech` | compatibile OpenAI TTS: risponde direttamente con l'MP3 |
+
+### Motori
+
+In **Impostazioni → Motori** ogni funzione pesante (voce, e in arrivo musica, gemello foto e video) si installa con un
+clic: ideax crea un ambiente Python separato con [uv](https://github.com/astral-sh/uv), scarica modello e librerie e lo
+prova. I motori si accendono quando servono e si spengono dopo 10 minuti di inattività per liberare la scheda video.
+Tutto resta nella cartella dei dati (`runtime/engines`). Per i modelli protetti di Hugging Face inserisci il tuo token
+in Impostazioni.
+
 ### Dai server su internet
 
 ideax gira sul tuo PC. Se un vostro sistema sta su un server in internet, il modo più semplice e sicuro è una rete

@@ -14,6 +14,7 @@
     <nav class="nav">
       <a href="#studio" data-page="studio"><svg viewBox="0 0 24 24"><path d="M12 3l8 9-8 9-8-9z"/></svg>Studio</a>
       <a href="#modelli" data-page="modelli"><svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>Modelli</a>
+      <a href="#voce" data-page="voce"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Voce</a>
       <a href="#impostazioni" data-page="impostazioni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Impostazioni</a>
       <a href="#collega" data-page="collega"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>Collega app</a>
     </nav>
@@ -95,6 +96,7 @@
             <button data-filter="image">Immagini</button>
             <button data-filter="video">Video</button>
             <button data-filter="animation">Animazioni</button>
+            <button data-filter="audio">Audio</button>
           </div>
         </div>
         <div id="gallery" class="gallery"></div>
@@ -143,11 +145,67 @@
       </div>
     </section>
 
+    <!-- ================= VOCE ================= -->
+    <section class="page" id="page-voce">
+      <header class="page-head"><div><h1>Voce</h1><p>La tua voce clonata, sul tuo PC. Senza abbonamenti.</p></div></header>
+      <div class="card" id="voice-engine"></div>
+      <div class="voice-grid">
+        <div class="card">
+          <h2>Leggi un testo</h2>
+          <form id="speak-form" class="stack-sm">
+            <label>Testo <textarea name="text" rows="6" required placeholder="Ciao a tutti! Oggi vi racconto come abbiamo ridotto i costi del 40% in tre mesi."></textarea></label>
+            <div class="grid2">
+              <label>Voce <select name="voice" required></select></label>
+              <label>Lingua <select name="language"></select></label>
+            </div>
+            <details class="choices"><summary>✧ Regolazioni</summary>
+              <div class="choices-grid">
+                <label>Espressività <input type="range" name="exaggeration" min="0.25" max="1.2" step="0.05" value="0.5"><span class="muted small" data-out="exaggeration">0,50 · naturale</span></label>
+                <label>Ritmo <input type="range" name="cfg_weight" min="0.2" max="0.8" step="0.05" value="0.5"><span class="muted small" data-out="cfg_weight">0,50 · normale</span></label>
+                <label>Seme <span class="muted">(stesso numero = stessa lettura)</span><input type="number" name="seed" min="0" placeholder="Casuale"></label>
+              </div>
+            </details>
+            <button class="btn primary create"><span>Leggi con questa voce</span><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></button>
+          </form>
+          <div id="speak-result"></div>
+        </div>
+        <div class="card">
+          <h2>Crea una voce</h2>
+          <p class="muted small">Servono 15–30 secondi di voce pulita: una persona sola, niente musica né rumori, il microfono vicino.</p>
+          <form id="voice-form" class="stack-sm">
+            <div class="grid2">
+              <label>Nome <input name="name" required maxlength="60" placeholder="Es. Marco"></label>
+              <label>Lingua <select name="language"></select></label>
+            </div>
+            <div class="rec">
+              <div class="row"><button type="button" class="btn" id="rec-btn">● Registra dal microfono</button>
+                <label class="btn">Oppure carica un file<input type="file" id="voice-file" accept="audio/*,video/*" hidden></label>
+                <span class="muted small" id="rec-status"></span></div>
+              <p class="read-this" id="read-this">Leggi ad alta voce, con calma e con il tuo tono naturale:<br>«Ciao, questa è la mia voce. Sto registrando questo campione per creare la mia voce digitale. Parlo con calma, come faccio di solito, e cerco di variare un po' il tono: a volte sono più entusiasta, a volte più riflessivo. Grazie per l'ascolto, ci sentiamo presto!»</p>
+              <audio id="rec-preview" controls hidden></audio>
+            </div>
+            <label class="check"><input type="checkbox" name="consent" required> Questa è la mia voce, oppure ho il permesso scritto della persona di clonarla</label>
+            <button class="btn primary">Crea la voce</button>
+            <p class="error-text" id="voice-error"></p>
+          </form>
+        </div>
+      </div>
+      <h2 class="section-title">Le tue voci</h2>
+      <div id="voice-list" class="grid-cards"></div>
+    </section>
+
     <!-- ================= IMPOSTAZIONI ================= -->
     <section class="page" id="page-impostazioni">
       <header class="page-head"><div><h1>Impostazioni</h1><p>Un ambiente locale, configurato come vuoi tu.</p></div></header>
       <div class="card" id="about-card"></div>
       <div class="card" id="engine-card"></div>
+      <div class="card" id="engines-card"></div>
+      <div class="card">
+        <h2>Hugging Face</h2>
+        <p class="muted">Alcuni modelli (es. Flux dev, Stable Video Diffusion) richiedono di accettare la licenza sul sito. Con il tuo token ideax li scarica da solo.</p>
+        <label>Token di accesso <span class="row"><input id="hf-token" class="mono grow" type="password" autocomplete="off" placeholder="hf_…"><button type="button" class="btn" id="hf-save">Salva</button></span></label>
+        <p class="muted small">Crealo su <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">huggingface.co/settings/tokens</a> (tipo "Read"). Poi accetta la licenza sulla pagina di ciascun modello protetto. <span id="hf-ok" class="ok-text"></span></p>
+      </div>
       <form id="settings-form" class="stack">
         <div class="card">
           <h2>Il cervello di ideax</h2>
