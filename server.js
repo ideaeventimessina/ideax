@@ -222,7 +222,7 @@ async function runMusic(job, log) {
     log('Accendo il motore musica (la prima volta carica i modelli: può servire qualche minuto)…');
     return music.generate({ ...m, prompt: job.prompt }, {
       isCancelled: () => job.cancelled,
-      onProgress: (p) => { job.progress = { phase: p.phase, elapsed: p.elapsed }; },
+      onProgress: (p) => { job.progress = { phase: p.phase, elapsed: p.elapsed, coldStart: p.coldStart, detail: p.detail }; },
     });
   });
   const ext = out.type === 'audio/wav' ? 'wav' : 'mp3';

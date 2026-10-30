@@ -1652,7 +1652,10 @@ $('#music-form').addEventListener('submit', async (e) => {
       }
       if (j.status === 'error' || j.status === 'cancelled') { out.innerHTML = `<p class="error-text">${esc(j.error)}</p>`; break; }
       const el = j.progress?.elapsed;
-      out.innerHTML = `<div class="audio-result"><span class="muted">${j.waiting ? 'In fila: la GPU sta finendo un altro lavoro…' : el != null ? `Compongo… ${el} s` : 'Accendo il motore musica (la prima volta carica i modelli: qualche minuto)…'}</span>
+      const pr = j.progress || {};
+      const note = pr.coldStart ? '<br><span class="small">Primo brano dopo l\'avvio: il motore carica i modelli in memoria. I brani successivi sono molto più veloci.</span>' : '';
+      const detail = pr.detail ? `<br><span class="small mono">${esc(pr.detail)}</span>` : '';
+      out.innerHTML = `<div class="audio-result"><span class="muted">${j.waiting ? 'In fila: la GPU sta finendo un altro lavoro…' : el != null ? `Compongo… ${el} s${note}${detail}` : 'Accendo il motore musica…'}</span>
         <div class="progress indeterminate"><div></div></div>
         <div class="row"><button type="button" class="btn small" data-cancel-job="${id}">Annulla</button></div></div>`;
       await new Promise((r) => setTimeout(r, 1500));
