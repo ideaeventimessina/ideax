@@ -33,7 +33,7 @@ async function api(path, options = {}) {
 }
 
 const fmtSize = (b) => (b == null ? '' : b >= 1e9 ? `${(b / 1e9).toFixed(1).replace('.', ',')} GB` : `${Math.max(1, Math.round(b / 1e6))} MB`);
-const kindOf = (task) => (task === 'reel' ? 'video' : ['speech', 'music'].includes(task) ? 'audio' : task === 'animation' ? 'animation' : VIDEO_TASKS.includes(task) ? 'video' : 'image');
+const kindOf = (task) => (['reel', 'talk'].includes(task) ? 'video' : ['speech', 'music'].includes(task) ? 'audio' : task === 'animation' ? 'animation' : VIDEO_TASKS.includes(task) ? 'video' : 'image');
 const KIND_NAME = { image: 'Immagine', video: 'Video', animation: 'Animazione', audio: 'Audio' };
 const MIC = '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
 // Barre decorative "a onda", sempre uguali per lo stesso id
@@ -84,6 +84,7 @@ function showPage() {
   if (page === 'reel') loadReelForm();
   if (page === 'cervello') loadBrainPage();
   if (page === 'collega') loadSystems();
+  if (page === 'gemello') { loadEngines(); loadTwin(); }
   window.scrollTo({ top: 0 });
 }
 window.addEventListener('hashchange', showPage);
@@ -845,23 +846,25 @@ document.addEventListener('click', async (e) => {
     e.target.disabled = true;
     e.target.textContent = 'Installazione in corso…';
     await api('/api/setup/llm', { method: 'POST' }).catch((err) => alert(err.message));
-    const t = setInterval(async () => {
-      await refreshSetup();
-      renderLlmSupport();
-      if (state.setup.llm?.status !== 'running') clearInterval(t);
-    }, 2000);
+    await refreshSetup();
+    renderLlmSupport();
   }
 });
 
 function renderLlmSupport() {
   const el = $('#llm-support');
   const llm = state.setup?.llm;
-  if (!state.worker.online) { el.innerHTML = ''; return; }
-  if (state.worker.llm_available) { el.innerHTML = '<p class="ok-text small">✓ Supporto per i file .gguf installato.</p>'; return; }
-  el.innerHTML = `<div class="note"><h3>Supporto per i file .gguf</h3>
-    <p class="muted">Serve per usare un cervello .gguf caricato in ideax. In alternativa puoi usare Ollama o LM Studio.</p>
-    ${llm?.status === 'error' ? `<p class="error-text">${esc(llm.error)}</p>` : ''}
-    <div class="row"><button type="button" class="btn" data-install-llm ${llm?.status === 'running' ? 'disabled' : ''}>${llm?.status === 'running' ? 'Installazione in corso…' : 'Installa il supporto .gguf'}</button></div></div>`;
+  if (!llm) { el.innerHTML = ''; return; }
+  if (llm.installed && llm.status !== 'installing') {
+    el.innerHTML = `<p class="ok-text small">✓ Motore del cervello pronto: llama.cpp ${esc(llm.version || '')}${llm.status === 'running' ? ' · acceso' : ''}</p>`;
+    return;
+  }
+  el.innerHTML = `<div class="note"><h3>Motore del cervello (llama.cpp)</h3>
+    <p class="muted">Fa girare il file .gguf sulla scheda video. ideax lo scarica da solo al primo messaggio in chat; puoi anche prepararlo adesso (circa 300–600 MB).</p>
+    ${llm.status === 'error' ? `<p class="error-text">${esc(llm.error)}</p>` : ''}
+    ${llm.status === 'installing' ? `<p class="small">${esc(llm.step || 'Preparazione…')}</p>` : ''}
+    <div class="row"><button type="button" class="btn" data-install-llm ${llm.status === 'installing' ? 'disabled' : ''}>${llm.status === 'installing' ? 'Scarico…' : 'Prepara il motore del cervello'}</button></div></div>`;
+  if (llm.status === 'installing') setTimeout(async () => { await refreshSetup(); renderLlmSupport(); }, 2000);
 }
 
 // ======================= Barra di stato =======================
@@ -1379,6 +1382,11 @@ function renderEngines() {
     mbox.hidden = mu.status === 'installed';
     mbox.innerHTML = mu.status === 'installed' ? '' : `<h2>Installa il motore musica</h2>${engineBlock(mu, true)}`;
     $$('#music-form button').forEach((b) => { if (!b.type || b.type === 'submit') b.disabled = mu.status !== 'installed'; });
+  }
+  for (const id of ['twin', 'lipsync']) {
+    const en = state.engines.find((e) => e.id === id);
+    const el = $(`#${id}-engine`);
+    if (el && en) el.innerHTML = en.status === 'installed' ? `<p class="ok-text small">✓ Motore ${esc(en.model)} installato${en.running ? ' · acceso' : ''}</p>` : engineBlock(en, true);
   }
   const v = state.engines.find((e) => e.id === 'voice');
   const box = $('#voice-engine');
@@ -2365,5 +2373,131 @@ $('#systems-list').addEventListener('click', async (e) => {
   if (e.target.closest('[data-system-del]') && confirm('Scollegare questo sistema? Non riceverà più lavori da ideax.')) {
     await api(`/api/systems/${id}`, { method: 'DELETE' });
     loadSystems();
+  }
+});
+
+// ======================= Gemello =======================
+
+const twinState = { photos: [], video: null, timer: null };
+
+async function loadTwin() {
+  clearTimeout(twinState.timer);
+  const [t, vs] = await Promise.all([api('/api/twin').catch(() => null), api('/v1/voices').catch(() => ({ voices: [] }))]);
+  if (!t) return;
+  const voiceOpts = vs.voices.length ? vs.voices.map((v) => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join('') : '<option value="">Nessuna voce: creala nella pagina Voce</option>';
+  $$('#twin-video-form select[name=voice], #talk-form select[name=voice]').forEach((sel) => { const keep = sel.value; sel.innerHTML = voiceOpts; if (keep) sel.value = keep; });
+  $('#twin-photo-list').innerHTML = t.photo.map((g) => {
+    const pr = g.progress;
+    const pct = pr?.total ? Math.round((pr.step / pr.total) * 100) : null;
+    const status = g.status === 'ready' ? '<span class="chip"><i class="dot on"></i> pronto</span>'
+      : g.status === 'error' ? `<span class="error-text small">${esc(g.error || 'non riuscito')}</span>`
+        : `<span class="small">${esc(pr?.phase || 'In addestramento')}${pr?.total ? ` · passo ${pr.step} di ${pr.total}` : ''}</span>`;
+    return `<div class="teacher" data-twin-photo="${esc(g.id)}"><strong>${esc(g.name)}</strong><span class="muted small">${g.photos} foto</span>${status}
+      ${g.status === 'training' ? '<button class="btn small" type="button" data-twin-cancel>Annulla</button>' : ''}
+      ${g.status === 'ready' ? `<a class="btn small primary" href="#studio" data-twin-try="${esc(g.name)}">Prova in Studio</a>` : ''}
+      <button class="btn small danger" type="button" data-twin-del aria-label="Elimina il gemello ${esc(g.name)}">✕</button>
+      ${g.status === 'training' ? `<div class="progress ${pct == null ? 'indeterminate' : ''}" style="flex-basis:100%"><div style="width:${pct ?? 0}%"></div></div>` : ''}</div>`;
+  }).join('');
+  $('#twin-video-list').innerHTML = t.video.map((g) => `<div class="teacher" data-twin-video-id="${esc(g.id)}">
+      <video src="/api/twin/video/${esc(g.id)}/file" muted playsinline preload="metadata" style="width:72px;height:72px;object-fit:cover;border-radius:10px"></video>
+      <strong>${esc(g.name)}</strong><button class="btn small danger" type="button" data-twin-video-del aria-label="Elimina il video ${esc(g.name)}">✕</button></div>`).join('');
+  $('#talk-form').hidden = !t.video.length;
+  const sel = $('#talk-form select[name=twin]');
+  const keep = sel.value;
+  sel.innerHTML = t.video.map((g) => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('');
+  if (keep) sel.value = keep;
+  if (t.photo.some((g) => g.status === 'training') && $('#page-gemello').classList.contains('active')) twinState.timer = setTimeout(loadTwin, 5000);
+}
+
+const twinForm = $('#twin-photo-form');
+twinForm.photos.addEventListener('change', async () => {
+  twinState.photos = await Promise.all([...twinForm.photos.files].slice(0, 40).map(readFile));
+  $('[data-twin-count]').textContent = `${twinState.photos.length} foto`;
+  $('#twin-thumbs').innerHTML = twinState.photos.map((p) => `<div class="thumb"><img src="${p.dataUrl}" alt=""></div>`).join('');
+});
+twinForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const err = $('[data-twin-err]');
+  const btn = $('button.primary', twinForm);
+  btn.disabled = true;
+  err.textContent = '';
+  try {
+    await api('/api/twin/photo', { method: 'POST', body: { name: twinForm.name.value, photos: twinState.photos, consent: twinForm.consent.checked } });
+    twinForm.reset();
+    twinState.photos = [];
+    $('#twin-thumbs').innerHTML = '';
+    $('[data-twin-count]').textContent = 'nessuna';
+    loadTwin();
+  } catch (x) {
+    err.textContent = x.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+const videoForm = $('#twin-video-form');
+videoForm.video.addEventListener('change', async () => {
+  const f = videoForm.video.files[0];
+  twinState.video = f ? await readFile(f) : null;
+  $('[data-twin-video]').textContent = f ? f.name : 'nessuno';
+});
+videoForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const err = $('[data-twin-video-err]');
+  err.textContent = '';
+  try {
+    await api('/api/twin/video', { method: 'POST', body: { name: videoForm.name.value, video: twinState.video, voice: videoForm.voice.value, consent: videoForm.consent.checked } });
+    videoForm.reset();
+    twinState.video = null;
+    $('[data-twin-video]').textContent = 'nessuno';
+    loadTwin();
+  } catch (x) {
+    err.textContent = x.message;
+  }
+});
+
+$('#page-gemello').addEventListener('click', async (e) => {
+  const row = e.target.closest('[data-twin-photo]');
+  if (row && e.target.closest('[data-twin-cancel]')) { await api('/api/twin/photo/cancel', { method: 'POST' }); loadTwin(); }
+  if (row && e.target.closest('[data-twin-del]') && confirm('Eliminare questo gemello e le sue foto?')) {
+    await api(`/api/twin/photo/${row.dataset.twinPhoto}`, { method: 'DELETE' }).catch((x) => alert(x.message));
+    loadTwin();
+  }
+  const tr = e.target.closest('[data-twin-try]');
+  if (tr) {
+    setTimeout(() => { setStudioMode('chat'); $('#chat-input').value = `Fammi una foto di me in barca al tramonto, stile fotografico`; autosize(); $('#chat-input').focus(); }, 50);
+  }
+  const vrow = e.target.closest('[data-twin-video-id]');
+  if (vrow && e.target.closest('[data-twin-video-del]') && confirm('Eliminare questo video di base?')) {
+    await api(`/api/twin/video/${vrow.dataset.twinVideoId}`, { method: 'DELETE' });
+    loadTwin();
+  }
+});
+
+$('#talk-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  const out = $('#talk-result');
+  const btn = $('button.primary', f);
+  btn.disabled = true;
+  try {
+    const { id } = await api('/api/twin/talk', { method: 'POST', body: { text: f.text.value, twin: f.twin.value, voice: f.voice.value } });
+    for (;;) {
+      const j = await api(`/api/jobs/${id}`);
+      if (j.status === 'done') {
+        const r = j.results[0];
+        out.innerHTML = `<div class="job-card"><video src="${esc(r.url)}" controls playsinline></video><div class="jc-foot"><span class="muted">${esc(j.title || '')}</span><a class="btn small" href="${esc(r.url)}" download>↓ Scarica</a></div></div>`;
+        loadHistory();
+        break;
+      }
+      if (j.status === 'error' || j.status === 'cancelled') { out.innerHTML = `<p class="error-text">${esc(j.error || 'Annullato')}</p>`; break; }
+      const p = j.progress || {};
+      out.innerHTML = `<div class="note"><h3>${esc(p.phase || 'Preparo…')}</h3>${p.total ? `<div class="progress"><div style="width:${Math.round((p.step / p.total) * 100)}%"></div></div>` : '<div class="progress indeterminate"><div></div></div>'}</div>`;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+  } catch (x) {
+    out.innerHTML = `<p class="error-text">${esc(x.message)}</p>`;
+  } finally {
+    btn.disabled = false;
   }
 });

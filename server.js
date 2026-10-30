@@ -28,6 +28,8 @@ import * as teachers from './lib/teachers.js';
 import * as github from './lib/github.js';
 import * as systems from './lib/systems.js';
 import * as laser from './lib/laser.js';
+import * as llama from './lib/llamaserver.js';
+import * as twin from './lib/twin.js';
 
 process.title = 'ideax';
 const startup = store.getSettings();
@@ -167,6 +169,7 @@ async function createJob(body, ctx = {}) {
     speech: body.speech,
     music: body.music,
     reel: body.reel,
+    talk: body.talk,
     client: ctx.client || 'ideax',
     origin: ctx.origin || '',
     callbackUrl: callback,
@@ -226,6 +229,7 @@ async function runMusic(job, log) {
     job.backend = 'music';
     await fetch(`${store.getSettings().workerUrl}/unload`, { method: 'POST', signal: AbortSignal.timeout(5000) }).catch(() => {});
     engines.stop('voice');
+    llama.stop();
     log('Accendo il motore musica (la prima volta carica i modelli: può servire qualche minuto)…');
     return music.generate({ ...m, prompt: job.prompt }, {
       isCancelled: () => job.cancelled,
@@ -267,6 +271,15 @@ async function processJob(job) {
       await runReel(job, log);
       return;
     }
+    if (job.kind === 'talk') {
+      await twin.runTalk(job, log);
+      return;
+    }
+    // "una foto di me al mare": il gemello si usa con il suo modello (Flux), se la richiesta non ne sceglie un altro
+    if (!job.forceModelId && !job.attachments.length) {
+      const tw = twin.twinForPrompt(job.prompt);
+      if (tw?.modelId) { job.forceModelId = tw.modelId; log(`Uso il gemello "${tw.lora.name}"`); }
+    }
     job.status = 'routing';
     log('Analizzo il prompt…');
     const d = await route(job.prompt, job.attachments, { forceModelId: job.forceModelId, forceTask: job.forceTask });
@@ -282,6 +295,10 @@ async function processJob(job) {
       task: d.task, modelId: d.model.id, modelName: d.model.name, routedPrompt: d.prompt,
       negativePrompt: d.negativePrompt, loras: d.loras, reason: d.reason, brain: d.brain, title: d.title,
     });
+    // La parola imparata da una LoRA (il viso del gemello) deve stare nel prompt, altrimenti la LoRA non "riconosce" la richiesta
+    for (const l of d.loras || []) {
+      if (l.promptToken && !job.routedPrompt.includes(l.promptToken)) job.routedPrompt = `${l.promptToken}, ${job.routedPrompt}`;
+    }
     log(`Compito: ${store.TASKS[d.task]} → ${d.model.name}`);
     if (d.reason) log(d.reason);
     job.status = 'running';
@@ -327,7 +344,7 @@ function withData(results) {
 
 function publicCreation(h, origin) {
   return {
-    id: h.id, title: h.title, prompt: h.prompt, task: h.task, type: h.task === 'reel' ? 'reel' : ['speech', 'music'].includes(h.task) ? 'audio' : h.task === 'animation' ? 'animation' : /video/.test(h.task || '') ? 'video' : 'image',
+    id: h.id, title: h.title, prompt: h.prompt, task: h.task, type: h.task === 'reel' ? 'reel' : h.task === 'talk' ? 'video' : ['speech', 'music'].includes(h.task) ? 'audio' : h.task === 'animation' ? 'animation' : /video/.test(h.task || '') ? 'video' : 'image',
     model: h.modelName, routedPrompt: h.routedPrompt, negativePrompt: h.negativePrompt, loras: h.loras || [], status: h.status,
     error: h.error, client: h.client, metadata: h.metadata, createdAt: h.createdAt, seconds: h.seconds, reel: h.reel,
     results: (h.results || []).map((r) => ({ ...r, url: origin + r.url })),
@@ -622,6 +639,35 @@ const server = http.createServer(async (req, res) => {
       const saved = await agent.extractFacts(text.slice(0, 200000), body.source || 'importato');
       return send(res, 200, { saved, total: memory.stats().total });
     }
+    // ----- Gemello -----
+    if (/^\/(api|v1)\/twin$/.test(p) && req.method === 'GET') return send(res, 200, { ...twin.list(), engines: engines.listEngines().filter((e) => ['twin', 'lipsync'].includes(e.id)) });
+    if (/^\/(api|v1)\/twin\/photo$/.test(p) && req.method === 'POST') {
+      const body = await readBody(req);
+      const consent = [true, 'true', '1', 'si', 'sì', 'yes'].includes(body.consent);
+      return send(res, 202, await twin.createPhotoTwin({ name: body.name, photos: body.photos || body.attachments, consent }));
+    }
+    if (/^\/(api|v1)\/twin\/photo\/cancel$/.test(p) && req.method === 'POST') { await twin.cancelTraining(); return send(res, 200, { ok: true }); }
+    if (/^\/(api|v1)\/twin\/photo\/[\w-]+$/.test(p) && req.method === 'DELETE') return send(res, 200, { ok: twin.deletePhotoTwin(p.split('/').pop()) });
+    if (/^\/(api|v1)\/twin\/video$/.test(p) && req.method === 'POST') {
+      const body = await readBody(req);
+      const consent = [true, 'true', '1', 'si', 'sì', 'yes'].includes(body.consent);
+      return send(res, 201, await twin.createVideoTwin({ name: body.name, video: body.video || body.attachments?.[0], consent, voice: body.voice }));
+    }
+    if (/^\/(api|v1)\/twin\/video\/[\w-]+$/.test(p) && req.method === 'DELETE') return send(res, 200, { ok: twin.deleteVideoTwin(p.split('/').pop()) });
+    if (/^\/(api|v1)\/twin\/video\/[\w-]+\/file$/.test(p) && req.method === 'GET') {
+      const t = twin.findVideoTwin(p.split('/')[4]);
+      if (!t) return send(res, 404, { error: 'Video non trovato' });
+      res.writeHead(200, { 'Content-Type': 'video/mp4' });
+      return fs.createReadStream(twin.videoPath(t)).pipe(res);
+    }
+    // Il gemello che parla: testo → voce clonata → video con le labbra a tempo
+    if (/^\/(api|v1)\/twin\/talk$/.test(p) && req.method === 'POST') {
+      const body = await readBody(req);
+      const job = await createJob({ ...body, prompt: body.text || body.prompt, kind: 'talk', talk: { twin: body.twin, voice: body.voice, language: body.language } }, ctx);
+      if (body.wait !== true) return send(res, 202, { id: job.id, status: job.status, status_url: `${origin}/v1/jobs/${job.id}` });
+      await job.done;
+      return send(res, job.status === 'done' ? 200 : 500, publicJob(job, origin));
+    }
     // ----- Sistemi collegati (ideax va a prendere il lavoro) -----
     if (p === '/api/systems' && req.method === 'GET') return send(res, 200, { systems: systems.listSystems(), capabilities: systems.capabilities() });
     if (p === '/api/systems' && req.method === 'POST') return send(res, 200, systems.saveSystem(await readJson(req)));
@@ -710,6 +756,7 @@ const server = http.createServer(async (req, res) => {
         job.cancelled = true;
         if (job.status === 'running' && !job.waiting && job.backend === 'worker') await cancelOnWorker();
         if (job.status === 'running' && !job.waiting && job.backend === 'voice') await engines.cancel('voice');
+        if (job.status === 'running' && job.backend === 'lipsync') await engines.cancel('lipsync');
         // Musica: il lavoro si interrompe al prossimo controllo dello stato (job.cancelled)
       }
       return send(res, 200, { ok: true });
@@ -739,7 +786,7 @@ const server = http.createServer(async (req, res) => {
     if (p.startsWith('/api/models/') && req.method === 'PATCH') {
       const id = p.split('/').pop();
       const patch = await readJson(req);
-      const allowed = ['name', 'description', 'priority', 'enabled', 'triggerWords', 'loraWeight', 'loraAlways', 'arch', 'kind', 'capabilities', 'params', 'promptStyle', 'negativePrompt'];
+      const allowed = ['name', 'description', 'priority', 'enabled', 'triggerWords', 'loraWeight', 'loraAlways', 'arch', 'kind', 'capabilities', 'params', 'promptStyle', 'negativePrompt', 'promptToken'];
       return send(res, 200, store.saveOverride(id, Object.fromEntries(Object.entries(patch).filter(([k]) => allowed.includes(k)))));
     }
     if (p.startsWith('/api/models/') && req.method === 'DELETE') {
@@ -787,11 +834,14 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, {
         ...runtime.setup, log: runtime.setup.log.slice(-60), installed: runtime.isInstalled(),
         variant: runtime.setup.variant || runtime.torchVariant(runtime.setup.gpu),
-        platform: process.platform, llm: runtime.llmSetup,
+        platform: process.platform, llm: { ...llama.llm, log: llama.llm.log.slice(-20), installed: llama.isInstalled() },
       });
     }
     if (p === '/api/setup' && req.method === 'POST') return send(res, 200, await runtime.startSetup());
-    if (p === '/api/setup/llm' && req.method === 'POST') return send(res, 200, await runtime.installLlmSupport());
+    if (p === '/api/setup/llm' && req.method === 'POST') {
+      llama.install().catch(() => {});
+      return send(res, 200, llama.llm);
+    }
     if (p === '/api/about' && req.method === 'GET') {
       return send(res, 200, { version: store.VERSION, installed: store.INSTALLED, home: store.ROOT, appRoot: store.APP_ROOT, platform: process.platform });
     }
@@ -900,4 +950,4 @@ server.listen(PORT, HOST, () => {
 for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) {
   process.on(sig, () => { runtime.stopWorker(); process.exit(0); });
 }
-process.on('exit', () => { runtime.stopWorker(); engines.stopAll(); apikeys.flushKeys(); });
+process.on('exit', () => { runtime.stopWorker(); engines.stopAll(); llama.stop(); apikeys.flushKeys(); });

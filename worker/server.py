@@ -567,6 +567,30 @@ class VectorizeRequest(BaseModel):
     threshold: int = 128
 
 
+class DecorateRequest(BaseModel):
+    image: str
+    width_mm: float
+    height_mm: float
+    min_mm: float = 3.0
+    gap_mm: float = 2.0
+
+
+@app.post("/decorate")
+def decorate_endpoint(req: DecorateRequest):
+    """Illustrazione su fondo bianco → pezzo vero: contorno da tagliare + dettagli da incidere, in mm."""
+    import sys
+
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    from vectorize import decorate
+
+    raw = req.image.split(",", 1)[1] if req.image.startswith("data:") else req.image
+    try:
+        return decorate(base64.b64decode(raw), req.width_mm, req.height_mm, req.min_mm, req.gap_mm)
+    except ValueError as err:
+        raise HTTPException(400, str(err))
+
+
 @app.post("/vectorize")
 def vectorize_endpoint(req: VectorizeRequest):
     import sys

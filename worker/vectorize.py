@@ -13,7 +13,7 @@ import re
 import subprocess
 import sys
 
-from PIL import Image, ImageFilter, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageOps
 
 MAX_CHARS = 180_000
 TOKEN = re.compile(r"[MLHVCSQTAZmlhvcsqtaz]|-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?")
@@ -75,46 +75,58 @@ def transform_path(d: str, scale: float, ox: float, oy: float) -> str:
     return " ".join(out)
 
 
-def vectorize(data: bytes, width_mm: float, height_mm: float, mode: str = "taglio",
-              min_mm: float = 3.0, gap_mm: float = 2.0, threshold: int = 128) -> dict:
-    vt = _vtracer()
+def _load(data: bytes) -> Image.Image:
     src = Image.open(io.BytesIO(data))
     if src.mode in ("RGBA", "LA", "P"):
         src = src.convert("RGBA")
         bg = Image.new("RGBA", src.size, (255, 255, 255, 255))
         src = Image.alpha_composite(bg, src)
-    gray = src.convert("L")
-    # La forma è bianca (255) su nero: così erosione = MinFilter e dilatazione = MaxFilter
-    mask = gray.point(lambda v: 255 if v < threshold else 0)
-    box = mask.getbbox()
-    if not box:
-        raise ValueError("L'immagine è vuota: nessuna forma scura su fondo chiaro.")
-    mask = mask.crop(box)
-    cw, ch = mask.size
+    return src.convert("RGB")
+
+
+def _layout(box_size, width_mm, height_mm):
+    """Misure in mm della forma (proporzioni conservate) e risoluzione di lavoro: fino a 6 px/mm, max 1600 px."""
+    cw, ch = box_size
     mm_per_src = min(width_mm / cw, height_mm / ch)
     w_mm, h_mm = cw * mm_per_src, ch * mm_per_src
-    # Risoluzione di lavoro: fino a 6 pixel per mm, al massimo 1600 pixel sul lato lungo
     ppm = max(2.0, min(6.0, 1600 / max(w_mm, h_mm)))
     size = (max(8, round(w_mm * ppm)), max(8, round(h_mm * ppm)))
-    mask = mask.resize(size, Image.LANCZOS).point(lambda v: 255 if v >= 128 else 0)
-    if mode == "taglio":
-        rc = max(1, round(gap_mm * ppm / 2))
-        ro = max(1, round(min_mm * ppm / 2))
-        pad = rc + ro + 2
-        mask = ImageOps.expand(mask, border=pad, fill=0)
-        mask = _morph(_morph(mask, ImageFilter.MaxFilter, rc), ImageFilter.MinFilter, rc)  # chiude i varchi stretti
-        mask = _morph(_morph(mask, ImageFilter.MinFilter, ro), ImageFilter.MaxFilter, ro)  # toglie le parti sottili
-        mask = mask.crop((pad, pad, pad + size[0], pad + size[1]))
-        # Bordi morbidi: la morfologia lascia gradini, una sfocatura leggera e una nuova soglia li arrotondano
-        mask = mask.filter(ImageFilter.GaussianBlur(ppm * 0.35)).point(lambda v: 255 if v >= 128 else 0)
-        speckle = max(4, round(min_mm * ppm))
-    else:
-        speckle = max(2, round(0.6 * ppm))
+    return w_mm, h_mm, ppm, size
+
+
+def _binary(img: Image.Image) -> Image.Image:
+    return img.point(lambda v: 255 if v >= 128 else 0)
+
+
+def _cleanup_cut(mask: Image.Image, ppm: float, min_mm: float, gap_mm: float) -> Image.Image:
+    """Per il taglio: chiude i varchi più stretti di gap_mm, toglie le parti più sottili di min_mm, arrotonda i bordi.
+    La forma è bianca (255) su nero: erosione = MinFilter, dilatazione = MaxFilter."""
+    rc = max(1, round(gap_mm * ppm / 2))
+    ro = max(1, round(min_mm * ppm / 2))
+    pad = rc + ro + 2
+    w, h = mask.size
+    mask = ImageOps.expand(mask, border=pad, fill=0)
+    mask = _morph(_morph(mask, ImageFilter.MaxFilter, rc), ImageFilter.MinFilter, rc)
+    mask = _morph(_morph(mask, ImageFilter.MinFilter, ro), ImageFilter.MaxFilter, ro)
+    mask = mask.crop((pad, pad, pad + w, pad + h))
+    return _binary(mask.filter(ImageFilter.GaussianBlur(ppm * 0.35)))
+
+
+def _fill_holes(mask: Image.Image) -> Image.Image:
+    """Riempie i buchi interni: la sagoma da tagliare è un pezzo unico (i dettagli interni si incidono)."""
+    padded = ImageOps.expand(mask, border=1, fill=0)
+    ImageDraw.floodfill(padded, (0, 0), 128)
+    filled = padded.point(lambda v: 0 if v == 128 else 255)
+    return filled.crop((1, 1, 1 + mask.size[0], 1 + mask.size[1]))
+
+
+def _trace(mask: Image.Image, ppm: float, speckle: int) -> list[str]:
+    """Contorni della forma bianca, in mm. I tracciati troppo lunghi si semplificano (IDEAlab: max 200.000 caratteri)."""
+    vt = _vtracer()
     border = 4
     img = ImageOps.expand(ImageOps.invert(mask), border=border, fill=255).convert("RGB")
     buf = io.BytesIO()
     img.save(buf, "PNG")
-    # I tracciati troppo lunghi (disegni molto fitti) si semplificano: IDEAlab accetta fino a 200.000 caratteri
     for attempt in range(4):
         svg = vt.convert_raw_image_to_svg(
             buf.getvalue(), img_format="png", colormode="binary", mode="spline",
@@ -131,12 +143,81 @@ def vectorize(data: bytes, width_mm: float, height_mm: float, mode: str = "tagli
             oy = ((float(t.group(2)) if t else 0) - border) / ppm
             parts.append(transform_path(d.group(1), 1 / ppm, ox, oy))
         if sum(len(x) + 1 for x in parts) <= MAX_CHARS:
-            break
+            return parts
+    raise ValueError("Il disegno è troppo fitto per il laser anche semplificato: chiedi un soggetto più semplice.")
+
+
+def _svg(w_mm: float, h_mm: float, layers: list[tuple[str, str]]) -> str:
+    body = "".join(f'<path d="{d}" fill="{color}" fill-rule="evenodd"/>' for d, color in layers if d)
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {_fmt(w_mm)} {_fmt(h_mm)}" '
+            f'width="{_fmt(w_mm)}mm" height="{_fmt(h_mm)}mm">{body}</svg>')
+
+
+def vectorize(data: bytes, width_mm: float, height_mm: float, mode: str = "taglio",
+              min_mm: float = 3.0, gap_mm: float = 2.0, threshold: int = 128) -> dict:
+    gray = _load(data).convert("L")
+    mask = gray.point(lambda v: 255 if v < threshold else 0)
+    box = mask.getbbox()
+    if not box:
+        raise ValueError("L'immagine è vuota: nessuna forma scura su fondo chiaro.")
+    mask = mask.crop(box)
+    w_mm, h_mm, ppm, size = _layout(mask.size, width_mm, height_mm)
+    mask = _binary(mask.resize(size, Image.LANCZOS))
+    if mode == "taglio":
+        mask = _cleanup_cut(mask, ppm, min_mm, gap_mm)
+        speckle = max(4, round(min_mm * ppm))
     else:
-        raise ValueError("Il disegno è troppo fitto per il laser anche semplificato: chiedi una sagoma più semplice.")
+        speckle = max(2, round(0.6 * ppm))
+    parts = _trace(mask, ppm, speckle)
     if not parts:
         raise ValueError("Dopo la pulizia non resta nessuna forma: prova con un disegno più pieno o misure più grandi.")
     d_all = " ".join(parts)
-    preview = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {_fmt(w_mm)} {_fmt(h_mm)}" width="{_fmt(w_mm)}mm" height="{_fmt(h_mm)}mm">'
-               f'<path d="{d_all}" fill="{"#000" if mode == "taglio" else "#316bba"}" fill-rule="evenodd"/></svg>')
-    return {"d": d_all, "w": round(w_mm, 2), "h": round(h_mm, 2), "paths": len(parts), "svg": preview, "mode": mode}
+    return {"d": d_all, "w": round(w_mm, 2), "h": round(h_mm, 2), "paths": len(parts), "mode": mode,
+            "svg": _svg(w_mm, h_mm, [(d_all, "#000" if mode == "taglio" else "#316bba")])}
+
+
+def decorate(data: bytes, width_mm: float, height_mm: float, min_mm: float = 3.0, gap_mm: float = 2.0,
+             line_mm: float = 0.4, margin_mm: float = 2.5, background: int = 232, line_threshold: int = 110) -> dict:
+    """Da un'illustrazione su fondo bianco a un pezzo vero: il contorno esterno si taglia, i tratti scuri
+    dentro il pezzo si incidono. Le misure di entrambi i livelli sono nello stesso riquadro w×h (mm)."""
+    rgb = _load(data)
+    # Tutto ciò che non è fondo bianco fa parte del pezzo
+    fg = rgb.point(lambda v: 255 if v < background else 0).convert("L").point(lambda v: 255 if v > 0 else 0)
+    fg = ImageChops.lighter(fg, rgb.convert("L").point(lambda v: 255 if v < background else 0))
+    fg = fg.filter(ImageFilter.MedianFilter(5))
+    box = fg.getbbox()
+    if not box:
+        raise ValueError("Il disegno è vuoto: niente su fondo bianco.")
+    fg = fg.crop(box)
+    gray = rgb.convert("L").crop(box)
+    w_mm, h_mm, ppm, size = _layout(fg.size, max(10, width_mm - 4), max(10, height_mm - 4))
+    # Un po' di aria intorno: la pulizia e l'arrotondamento non devono schiacciare i bordi contro la cornice
+    air = max(2, round(2 * ppm))
+    fg = ImageOps.expand(_binary(fg.resize(size, Image.LANCZOS)), border=air, fill=0)
+    gray = ImageOps.expand(gray.resize(size, Image.LANCZOS), border=air, fill=255)
+    size = fg.size
+    w_mm, h_mm = size[0] / ppm, size[1] / ppm
+    sil = _fill_holes(fg)
+    sil = _fill_holes(_cleanup_cut(sil, ppm, min_mm, gap_mm))
+    cut = _trace(sil, ppm, max(4, round(min_mm * ppm)))
+    if not cut:
+        raise ValueError("Dopo la pulizia per il taglio non resta nessuna forma: chiedi un soggetto più pieno o misure più grandi.")
+    # I tratti scuri, solo dentro il pezzo e lontano dal bordo: il bordo lo fa già il taglio
+    lines = _binary(gray.point(lambda v: 255 if v < line_threshold else 0))
+    rm = max(1, round(margin_mm * ppm))
+    # il bordo dell'immagine conta come fuori dal pezzo, altrimenti l'erosione non lo tocca
+    inner = _morph(ImageOps.expand(sil, border=rm + 1, fill=0), ImageFilter.MinFilter, rm).crop((rm + 1, rm + 1, rm + 1 + size[0], rm + 1 + size[1]))
+    lines = ImageChops.multiply(lines, inner)
+    ro = max(1, round(line_mm * ppm / 2))
+    lines = _morph(_morph(lines, ImageFilter.MinFilter, ro), ImageFilter.MaxFilter, ro)
+    engrave = _trace(lines, ppm, max(3, round(1.5 * ppm))) if lines.getbbox() else []
+    d_cut, d_eng = " ".join(cut), " ".join(engrave)
+    return {
+        "w": round(w_mm, 2), "h": round(h_mm, 2),
+        "livelli": [
+            {"nome": "Sagoma", "operazione": "taglio", "d": d_cut},
+            *([{"nome": "Dettagli incisi", "operazione": "incisione", "d": d_eng, "pieno": True}] if d_eng else []),
+        ],
+        # anteprima nel legno: il pezzo color pioppo, le incisioni bruciate
+        "svg": _svg(w_mm, h_mm, [(d_cut, "#d8b483"), (d_eng, "#6b4a2b")]),
+    }
