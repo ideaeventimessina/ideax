@@ -555,6 +555,33 @@ def translate(req: TranslateRequest):
     return {"text": text}
 
 
+# ---------------------------------------------------------------- vettorizzazione per il laser
+
+class VectorizeRequest(BaseModel):
+    image: str  # PNG/JPG in base64 (anche data URL)
+    width_mm: float
+    height_mm: float
+    mode: str = "taglio"  # taglio | incisione
+    min_mm: float = 3.0
+    gap_mm: float = 2.0
+    threshold: int = 128
+
+
+@app.post("/vectorize")
+def vectorize_endpoint(req: VectorizeRequest):
+    import sys
+
+    if HERE not in sys.path:  # il Python "embeddable" di Windows non aggiunge la cartella dello script
+        sys.path.insert(0, HERE)
+    from vectorize import vectorize
+
+    raw = req.image.split(",", 1)[1] if req.image.startswith("data:") else req.image
+    try:
+        return vectorize(base64.b64decode(raw), req.width_mm, req.height_mm, req.mode, req.min_mm, req.gap_mm, req.threshold)
+    except ValueError as err:
+        raise HTTPException(400, str(err))
+
+
 # ---------------------------------------------------------------- montaggio dei reel
 
 compose_lock = threading.Lock()

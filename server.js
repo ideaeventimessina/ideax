@@ -26,6 +26,8 @@ import * as memory from './lib/memory.js';
 import * as chats from './lib/chats.js';
 import * as teachers from './lib/teachers.js';
 import * as github from './lib/github.js';
+import * as systems from './lib/systems.js';
+import * as laser from './lib/laser.js';
 
 process.title = 'ideax';
 const startup = store.getSettings();
@@ -271,6 +273,11 @@ async function processJob(job) {
     if (job.cancelled) throw new Error('Annullato');
     // Parametri dello stile (es. clip_skip per Pony) < parametri del modello < parametri della richiesta
     job.params = { ...(d.styleParams || {}), ...(d.model.params || {}), ...job.params };
+    // Chi chiama può aggiungere cose da evitare (es. le decorazioni laser): si sommano a quelle dello stile
+    if (job.params.negative_prompt) {
+      d.negativePrompt = [d.negativePrompt, job.params.negative_prompt].filter(Boolean).join(', ');
+      delete job.params.negative_prompt;
+    }
     Object.assign(job, {
       task: d.task, modelId: d.model.id, modelName: d.model.name, routedPrompt: d.prompt,
       negativePrompt: d.negativePrompt, loras: d.loras, reason: d.reason, brain: d.brain, title: d.title,
@@ -368,9 +375,23 @@ function modelsPayload() {
 
 agent.configure({ createJob, musicFromPrompt, getJob: (id) => jobs.get(id) || store.getHistory(id) });
 
+// Chat chiesta da un sistema online: una conversazione per sistema (e per utente, se lo indica)
+async function chatForSystem(d, sys) {
+  const key = `${sys.name}:${d.utente || ''}`;
+  let chat = chats.getChat(d.chat_id) || chats.listChats().map((c) => chats.getChat(c.id)).find((c) => c.externalKey === key);
+  if (!chat) {
+    chat = chats.createChat({ client: sys.name, title: d.titolo || `${sys.name}${d.utente ? ` · ${d.utente}` : ''}` });
+    chat.externalKey = key;
+    chats.saveChat(chat);
+  }
+  const msg = await agent.send(chat, { text: d.messaggio || d.message, ctx: { client: sys.name } });
+  return { chat_id: chat.id, risposta: msg.content, lavori: msg.jobs || [], ricordati: msg.remembered || [] };
+}
+systems.configure({ createJob, chat: chatForSystem });
+
 function publicSettings() {
   const s = store.getSettings();
-  return { ...s, github: { allowWrite: s.github.allowWrite, hasToken: !!s.github.token }, teachers: teachers.listTeachers() };
+  return { ...s, github: { allowWrite: s.github.allowWrite, hasToken: !!s.github.token }, teachers: teachers.listTeachers(), systems: systems.listSystems() };
 }
 
 function chatPayload(chat) {
@@ -601,6 +622,18 @@ const server = http.createServer(async (req, res) => {
       const saved = await agent.extractFacts(text.slice(0, 200000), body.source || 'importato');
       return send(res, 200, { saved, total: memory.stats().total });
     }
+    // ----- Sistemi collegati (ideax va a prendere il lavoro) -----
+    if (p === '/api/systems' && req.method === 'GET') return send(res, 200, { systems: systems.listSystems(), capabilities: systems.capabilities() });
+    if (p === '/api/systems' && req.method === 'POST') return send(res, 200, systems.saveSystem(await readJson(req)));
+    if (/^\/api\/systems\/[\w-]+$/.test(p) && req.method === 'DELETE') { systems.deleteSystem(p.split('/').pop()); return send(res, 200, { ok: true }); }
+    if (/^\/api\/systems\/[\w-]+\/test$/.test(p) && req.method === 'POST') return send(res, 200, await systems.test(p.split('/')[3]));
+    // Decorazioni laser anche dall'API locale
+    if (p === '/v1/laser/decoration' && req.method === 'POST') return send(res, 200, await laser.decoration(await readJson(req), { createJob, ctx }));
+    if (p === '/v1/laser/vectorize' && req.method === 'POST') {
+      const body = await readBody(req);
+      const img = body.immagine || body.image || body.attachments?.[0]?.dataUrl;
+      return send(res, 200, await laser.vectorize({ ...body, immagine: img }));
+    }
     if (p === '/api/teachers' && req.method === 'GET') return send(res, 200, teachers.listTeachers());
     if (p === '/api/teachers' && req.method === 'POST') return send(res, 200, teachers.saveTeacher(await readJson(req)));
     if (/^\/api\/teachers\/[\w-]+$/.test(p) && req.method === 'DELETE') { teachers.deleteTeacher(p.split('/').pop()); return send(res, 200, { ok: true }); }
@@ -730,7 +763,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/settings' && req.method === 'GET') return send(res, 200, publicSettings());
     if (p === '/api/settings' && req.method === 'POST') {
       // Token GitHub e maestri hanno le loro pagine: qui non si toccano
-      const { github: _g, teachers: _t, ...patch } = await readJson(req);
+      const { github: _g, teachers: _t, systems: _s, ...patch } = await readJson(req);
       store.saveSettings(patch);
       return send(res, 200, publicSettings());
     }
@@ -860,6 +893,7 @@ server.listen(PORT, HOST, () => {
   console.log('');
   runtime.startWorker();
   updater.scheduleChecks();
+  systems.startAll();
   if (shouldOpen) openBrowser(localUrl);
 });
 

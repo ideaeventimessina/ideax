@@ -83,6 +83,7 @@ function showPage() {
   if (page === 'musica') loadEngines();
   if (page === 'reel') loadReelForm();
   if (page === 'cervello') loadBrainPage();
+  if (page === 'collega') loadSystems();
   window.scrollTo({ top: 0 });
 }
 window.addEventListener('hashchange', showPage);
@@ -2302,3 +2303,67 @@ $('#persona-form').addEventListener('submit', async (e) => {
   else renderChat();
   loadMemoryCount();
 })();
+
+// ======================= Sistemi online =======================
+
+const SYS_STATUS = { online: ['on', 'Collegato'], errore: ['off', 'Non raggiungibile'], spento: ['', 'Spento'], 'in collegamento': ['warn', 'Mi collego…'], 'in attesa': ['warn', 'In attesa'] };
+let systemsTimer = null;
+
+async function loadSystems() {
+  clearTimeout(systemsTimer);
+  const data = await api('/api/systems').catch(() => null);
+  if (!data) return;
+  $('#systems-list').innerHTML = data.systems.map((s) => {
+    const st = s.state || {};
+    const [dot, label] = SYS_STATUS[st.status] || ['', st.status || ''];
+    const last = st.history?.[0];
+    return `<div class="teacher" data-system="${esc(s.id)}">
+      <span class="dot ${dot}"></span><strong>${esc(s.name)}</strong>
+      <span class="small muted">${esc(label)}${st.current ? ` · sto facendo ${esc(st.current)}` : ''}${st.done ? ` · ${st.done} lavori fatti` : ''}</span>
+      <button class="btn small" type="button" data-system-test>Prova</button>
+      <button class="btn small" type="button" data-system-toggle>${s.enabled === false ? 'Accendi' : 'Spegni'}</button>
+      <button class="btn small danger" type="button" data-system-del aria-label="Scollega ${esc(s.name)}">✕</button>
+      <span class="small muted" style="flex-basis:100%">${esc(s.url)}${st.error ? ` · <span class="error-text">${esc(st.error)}</span>` : ''}${last ? ` · ultimo lavoro: ${esc(last.tipo)} ${last.ok ? '✓' : '✕'} in ${last.secondi} s` : ''}${st.lastJobError ? ` · ${esc(st.lastJobError)}` : ''}</span>
+      <span class="small" data-system-out style="flex-basis:100%"></span></div>`;
+  }).join('') + (data.systems.length ? `<p class="muted small">Ora ideax sa fare: ${esc(data.capabilities.join(', '))}.</p>` : '');
+  if ($('#page-collega').classList.contains('active')) systemsTimer = setTimeout(loadSystems, 4000);
+}
+
+$('#system-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  try {
+    await api('/api/systems', { method: 'POST', body: Object.fromEntries(new FormData(f)) });
+    f.reset();
+    $('[data-system-err]').textContent = '';
+    loadSystems();
+  } catch (err) {
+    $('[data-system-err]').textContent = err.message;
+  }
+});
+
+$('#systems-list').addEventListener('click', async (e) => {
+  const row = e.target.closest('[data-system]');
+  if (!row) return;
+  const id = row.dataset.system;
+  const out = $('[data-system-out]', row);
+  if (e.target.closest('[data-system-test]')) {
+    out.textContent = 'Provo…';
+    try {
+      await api(`/api/systems/${id}/test`, { method: 'POST' });
+      out.innerHTML = '<span class="ok-text">Collegamento riuscito ✓</span>';
+    } catch (err) {
+      out.innerHTML = `<span class="error-text">${esc(err.message)}</span>`;
+    }
+  }
+  if (e.target.closest('[data-system-toggle]')) {
+    const { systems: list } = await api('/api/systems');
+    const s = list.find((x) => x.id === id);
+    await api('/api/systems', { method: 'POST', body: { ...s, enabled: s.enabled === false } });
+    loadSystems();
+  }
+  if (e.target.closest('[data-system-del]') && confirm('Scollegare questo sistema? Non riceverà più lavori da ideax.')) {
+    await api(`/api/systems/${id}`, { method: 'DELETE' });
+    loadSystems();
+  }
+});

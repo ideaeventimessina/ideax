@@ -1,0 +1,46 @@
+# Sistemi online: ideax va a prendere il lavoro
+
+I tuoi programmi su internet (IDEAlab, billpro, il gestionale) non possono chiamare il PC dove gira ideax.
+Allora è ideax che passa da loro: chiede "c'è qualcosa per me?", fa il lavoro sulla scheda video e rimanda
+il risultato. Il PC esce verso internet come fa il browser: nessuna porta aperta, nessun tunnel.
+
+## Collegare un sistema
+
+In ideax: **Collega app → Sistemi online**: nome, indirizzo pubblico del sistema, chiave
+(la stessa del secret `IDEAX_KEY` del sistema). Premi **Prova**. Funziona finché ideax è acceso.
+
+## Il patto (per chi costruisce il lato del sistema)
+
+```
+GET  {url}/api/ponte/ideax/lavori?attendi=25&capacita=json,chat,genera,decorazione,vettorizza
+     header: x-ideax-key, x-ideax-versione
+  →  { "lavori": [ { "id": "…", "tipo": "…", "dati": { … } } ] }   (lavori già presi da ideax)
+
+POST {url}/api/ponte/ideax/lavori/{id}
+     { "ok": true, "risultato": { … }, "secondi": 12 }  oppure  { "ok": false, "errore": "…" }
+```
+
+- La GET può aspettare fino a `attendi` secondi prima di rispondere vuota (attesa lunga).
+- `capacita` dice cosa sa fare ideax adesso: `json` e `chat` solo con un cervello caricato,
+  `musica` con il motore musica, `voce` e `reel` con il motore voce.
+- Se il sistema non vede ideax da 90 secondi, lo consideri spento e usi il suo motore di riserva.
+
+## I lavori
+
+| tipo | dati | risultato |
+|---|---|---|
+| `json` | `sistema`, `richiesta`, `schema`, `temperatura`, `maxToken` | l'oggetto JSON secondo lo schema |
+| `chat` | `messaggio`, `utente`, `chat_id` | `{ chat_id, risposta, lavori, ricordati }` |
+| `genera` | come `POST /v1/generate` | `{ titolo, modello, prompt, risultati: [{ tipo, base64, secondi }] }` |
+| `musica` | come `POST /v1/music` | come `genera` |
+| `voce` | `testo`, `voice`, `language` | come `genera` |
+| `reel` | come `POST /v1/reels` | come `genera` |
+| `decorazione` | `tema`, `operazione` (taglio/incisione), `larghezzaMm`, `altezzaMm`, `varianti` | `{ proposte: [{ d, w, h, svg, immagine }] }` |
+| `vettorizza` | `immagine` (base64), `larghezzaMm`, `altezzaMm`, `operazione` | `{ d, w, h, svg }` |
+
+Le decorazioni: il modello di immagini (Flux, se c'è) disegna una sagoma nera su bianco, il worker la
+vettorizza con vtracer in millimetri. Per il taglio toglie le parti più sottili di 3 mm e chiude i varchi
+sotto i 2 mm; per l'incisione tiene i dettagli. Le stesse funzioni sono anche nell'API locale:
+`POST /v1/laser/decoration` e `POST /v1/laser/vectorize`.
+
+Esempio completo dal lato del sistema: `PONTE_IDEAX.md` nel repository di IDEAlab.

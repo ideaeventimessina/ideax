@@ -431,6 +431,21 @@
         <button class="btn" data-copy-text="">Copia indirizzo</button>
       </div>
 
+      <div class="card" id="systems-card">
+        <div class="section-head"><div><h2>Sistemi online</h2>
+          <p class="muted">IDEAlab, billpro e gli altri programmi su internet non possono chiamare il tuo PC: è ideax che va da loro a prendere il lavoro. Nessuna porta da aprire. Funziona finché ideax è acceso.</p></div></div>
+        <div id="systems-list" class="stack-sm"></div>
+        <form id="system-form" class="stack-sm">
+          <input type="hidden" name="id">
+          <div class="grid2">
+            <label>Nome <input name="name" required placeholder="IDEAlab"></label>
+            <label>Indirizzo <input name="url" required class="mono" placeholder="https://idealab.replit.app"></label>
+          </div>
+          <label>Chiave del ponte <input name="key" type="password" autocomplete="off" class="mono" placeholder="la stessa scritta nel secret IDEAX_KEY del sistema"></label>
+          <div class="row"><button class="btn primary">Collega</button><span class="error-text small" data-system-err></span></div>
+        </form>
+      </div>
+
       <div class="card">
         <div class="section-head"><div><h2>Chiavi API</h2>
           <p class="muted">Una per ogni sistema che usa ideax: vedi chi lo usa e puoi bloccarne uno senza toccare gli altri.</p></div></div>
