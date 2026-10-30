@@ -53,6 +53,20 @@ export class Ideax {
     return this.#request('/v1/reels', { method: 'POST', json: options });
   }
 
+  // Parla con il cervello di ideax (con la sua memoria). Ripassare chat_id per continuare la conversazione.
+  chat(message, options = {}) {
+    return this.#request('/v1/chat', { method: 'POST', json: { message, ...options } });
+  }
+
+  // Tutto quello che ideax sa (i ricordi) e come insegnargli un testo
+  memory() {
+    return this.#request('/v1/memory');
+  }
+
+  teach(text, source = 'api') {
+    return this.#request('/v1/memory/import', { method: 'POST', json: { text, source } });
+  }
+
   // Compone musica: options = duration, instrumental, lyrics, language, bpm, key, seed, quality, callback_url, metadata, wait
   music(prompt, options = {}) {
     return this.#request('/v1/music', { method: 'POST', json: { prompt, ...options } });

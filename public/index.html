@@ -13,6 +13,7 @@
     <a class="logo" href="#studio">idea<span>x</span></a>
     <nav class="nav">
       <a href="#studio" data-page="studio"><svg viewBox="0 0 24 24"><path d="M12 3l8 9-8 9-8-9z"/></svg>Studio</a>
+      <a href="#cervello" data-page="cervello"><svg viewBox="0 0 24 24"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V5a2 2 0 0 0-3-1zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/></svg>Cervello</a>
       <a href="#modelli" data-page="modelli"><svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>Modelli</a>
       <a href="#reel" data-page="reel"><svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 9.5l4 2.5-4 2.5z"/></svg>Reel</a>
       <a href="#voce" data-page="voce"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Voce</a>
@@ -32,10 +33,40 @@
     <!-- ================= STUDIO ================= -->
     <section class="page" id="page-studio">
       <div class="topline">
-        <span>Il tuo studio creativo</span>
+        <div class="formats studio-modes" role="tablist" aria-label="Modalità dello Studio">
+          <button role="tab" data-studio-mode="chat" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Conversa</button>
+          <button role="tab" data-studio-mode="crea"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>Crea direttamente</button>
+        </div>
         <span class="pill"><i class="dot on"></i>Tutto sul tuo PC</span>
       </div>
-      <div class="studio">
+
+      <div class="chat-wrap" id="chat-wrap">
+        <aside class="chat-side" id="chat-side">
+          <button class="btn primary" id="chat-new" type="button">+ Nuova chat</button>
+          <div class="chat-list" id="chat-list" role="list"></div>
+          <a class="chat-mem" href="#cervello"><span>Cosa so di te</span><b id="mem-count">0</b></a>
+        </aside>
+        <div class="chat-main">
+          <div class="chat-head">
+            <button class="btn icon small chat-toggle" id="chat-toggle" type="button" aria-label="Mostra le chat"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+            <div class="grow"><strong id="chat-title">Nuova chat</strong><div class="muted small" id="chat-sub"></div></div>
+            <button class="btn small" id="chat-rename" type="button" hidden>Rinomina</button>
+            <button class="btn small danger" id="chat-delete" type="button" hidden>Elimina</button>
+          </div>
+          <div class="chat-thread" id="chat-thread" aria-live="polite"></div>
+          <form class="chat-composer" id="chat-form">
+            <div id="chat-attachments" class="attachments"></div>
+            <div class="chat-input" id="chat-drop">
+              <label class="btn icon small" title="Allega foto, video o testi"><input id="chat-file" type="file" multiple hidden accept="image/*,video/*,audio/*,.txt,.md,.csv,.json,.html,.js,.ts,.py"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></label>
+              <textarea id="chat-input" rows="1" placeholder="Scrivi a ideax…" aria-label="Messaggio"></textarea>
+              <button class="btn primary icon" id="chat-send" aria-label="Invia"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+            </div>
+            <p class="muted small chat-hint">Invio per mandare · Maiusc+Invio per andare a capo · Resta tutto sul tuo PC</p>
+          </form>
+        </div>
+      </div>
+
+      <div class="studio" id="studio-crea" hidden>
         <div class="composer">
           <p class="eyebrow">Dall'immaginazione alla realtà</p>
           <h1 class="hero">Hai un'idea.<br><span>Falla esistere.</span></h1>
@@ -103,6 +134,73 @@
         </div>
         <div id="gallery" class="gallery"></div>
       </section>
+    </section>
+
+    <!-- ================= CERVELLO ================= -->
+    <section class="page" id="page-cervello">
+      <header class="page-head"><div><h1>Cervello</h1><p>ideax impara chi sei e lavora come lavori tu. Ricordi, chat e insegnamenti restano sul tuo PC.</p></div>
+        <a class="btn primary" href="#studio">Parla con ideax</a></header>
+      <div class="card" id="brain-status"></div>
+
+      <div class="card">
+        <h2>Addestramento rapido</h2>
+        <p class="muted">Tre modi per insegnargli in pochi minuti quello che altri hanno imparato in anni.</p>
+        <div class="train-grid">
+          <div class="train">
+            <span class="chip">1 · Intervista</span>
+            <h3>Fatti conoscere</h3>
+            <p class="muted small">ideax ti fa una domanda alla volta su di te, il lavoro, i progetti e i gusti, e si segna tutto.</p>
+            <button class="btn" type="button" id="start-interview">Inizia l'intervista</button>
+          </div>
+          <div class="train">
+            <span class="chip">2 · Insegna con un testo</span>
+            <h3>Dagli i tuoi appunti</h3>
+            <p class="muted small">Incolla un profilo, appunti, documenti o l'esportazione di un altro assistente: diventano ricordi.</p>
+            <form id="import-form" class="stack-sm">
+              <textarea name="text" rows="4" placeholder="Mi chiamo… Lavoro con… I miei sistemi sono…"></textarea>
+              <div class="row"><label class="btn small"><input type="file" name="file" accept=".txt,.md,.csv,.json,.html" multiple hidden>Allega file</label><span class="muted small" data-import-files></span>
+                <button class="btn primary small">Impara</button></div>
+              <p class="small" data-import-out></p>
+            </form>
+          </div>
+          <div class="train">
+            <span class="chip">3 · Da un altro cervello</span>
+            <h3>Impara da Axel</h3>
+            <p class="muted small">Collega un altro assistente che ti conosce già: ideax gli fa le domande giuste e salva le risposte.</p>
+            <div id="teacher-list" class="stack-sm"></div>
+            <button class="btn" type="button" id="teacher-add">+ Collega un cervello</button>
+          </div>
+        </div>
+        <div id="learn-progress"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-head"><div><h2>Cosa so di te</h2><p class="muted" id="mem-summary"></p></div>
+          <div class="filters" id="mem-filters" role="tablist" aria-label="Filtra i ricordi"></div></div>
+        <form id="mem-add" class="row"><input class="grow" name="text" placeholder="Aggiungi un ricordo, es. &quot;Il mio colore di marca è il viola #7055dd&quot;"><select name="category" class="mem-cat"></select><button class="btn">Aggiungi</button></form>
+        <div id="mem-list" class="mem-list"></div>
+        <div class="row" style="margin-top:18px"><button class="btn small danger" type="button" id="mem-clear">Dimentica tutto</button></div>
+      </div>
+
+      <div class="card">
+        <h2>GitHub</h2>
+        <p class="muted">Con il tuo token ideax trova i tuoi repository, li legge, li scarica sul PC e, se lo permetti, li modifica.</p>
+        <label>Token di accesso <span class="row"><input id="gh-token" class="mono grow" type="password" autocomplete="off" placeholder="github_pat_… oppure ghp_…"><button type="button" class="btn" id="gh-save">Salva</button></span></label>
+        <p class="muted small">Crealo su <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens</a>: scegli i repository e i permessi "Contents" (lettura, o lettura e scrittura per le modifiche), "Issues" e "Pull requests". <span id="gh-status"></span></p>
+        <label class="check"><input type="checkbox" id="gh-write"> Permetti modifiche (commit, issue, pull request) quando glielo chiedo</label>
+        <p class="muted small" id="gh-repos"></p>
+      </div>
+
+      <div class="card">
+        <h2>Personalità</h2>
+        <form id="persona-form" class="stack-sm">
+          <div class="grid2">
+            <label>Come si chiama <input name="name" placeholder="ideax"></label>
+            <label>Come deve parlarti <input name="style" placeholder="Diretto, informale, risposte brevi, dammi del tu"></label>
+          </div>
+          <div class="row"><button class="btn">Salva</button><span class="ok-text" data-persona-ok></span></div>
+        </form>
+      </div>
     </section>
 
     <!-- ================= MODELLI ================= -->
@@ -462,6 +560,22 @@
 
   <!-- Anteprima a schermo intero -->
   <dialog id="lightbox" class="lightbox"><button class="btn icon" data-close aria-label="Chiudi">✕</button><div id="lightbox-body"></div></dialog>
+
+  <dialog class="sheet" id="teacher-dialog">
+    <form method="dialog" id="teacher-form">
+      <h2>Collega un altro cervello</h2>
+      <p class="muted small">Per esempio Axel. Serve il suo indirizzo: un servizio compatibile con "chat/completions" (come quelli di OpenAI) oppure un webhook che riceve <code>{"message": "..."}</code> e risponde con <code>{"reply": "..."}</code>.</p>
+      <input type="hidden" name="id">
+      <label>Nome <input name="name" required placeholder="Axel"></label>
+      <label>Tipo
+        <select name="type"><option value="openai">Compatibile chat/completions</option><option value="webhook">Webhook semplice</option></select></label>
+      <label>Indirizzo <input name="url" required class="mono" placeholder="https://…/v1"></label>
+      <label data-teacher="openai">Modello <input name="model" placeholder="es. gpt-4o o il nome dell'assistente"></label>
+      <label>Chiave (se serve) <input name="apiKey" type="password" autocomplete="off" class="mono"></label>
+      <p class="error-text small" data-teacher-err></p>
+      <div class="row"><button class="btn primary" value="save">Salva</button><button type="button" class="btn" data-close>Annulla</button></div>
+    </form>
+  </dialog>
 
   <script src="app.js"></script>
 </body>

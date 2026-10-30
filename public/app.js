@@ -82,6 +82,7 @@ function showPage() {
   if (page === 'voce') { loadEngines(); loadVoices(); }
   if (page === 'musica') loadEngines();
   if (page === 'reel') loadReelForm();
+  if (page === 'cervello') loadBrainPage();
   window.scrollTo({ top: 0 });
 }
 window.addEventListener('hashchange', showPage);
@@ -142,7 +143,10 @@ $('#attachments').addEventListener('click', (e) => {
 $('#file').addEventListener('change', (e) => { addAttachments(e.target.files); e.target.value = ''; });
 document.addEventListener('paste', (e) => {
   const files = [...(e.clipboardData?.files || [])];
-  if (files.length && $('#page-studio').classList.contains('active')) addAttachments(files);
+  if (files.length && $('#page-studio').classList.contains('active')) {
+    if (chatMode()) addChatAttachments(files);
+    else addAttachments(files);
+  }
 });
 $('#prompt').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) $('#create').click(); });
 
@@ -436,6 +440,7 @@ $('#gallery').addEventListener('click', (e) => {
   if (!tile) return;
   state.shown = state.history.find((h) => h.id === tile.dataset.id);
   if (state.job && ['done', 'error', 'cancelled'].includes(state.job.status)) state.job = null;
+  setStudioMode('crea');
   renderStage();
   $('#stage').scrollIntoView({ behavior: 'smooth', block: 'center' });
 });
@@ -451,12 +456,12 @@ document.addEventListener('dragenter', (e) => {
   if (!hasFiles(e)) return;
   e.preventDefault();
   dragDepth++;
-  if (onStudio()) $('#idea').classList.add('over');
+  if (onStudio()) $(chatMode() ? '#chat-drop' : '#idea').classList.add('over');
   else $('#dropmask').classList.add('show');
 });
 document.addEventListener('dragover', (e) => { if (hasFiles(e)) e.preventDefault(); });
 document.addEventListener('dragleave', () => {
-  if (--dragDepth <= 0) { dragDepth = 0; $('#dropmask').classList.remove('show'); $('#idea').classList.remove('over'); }
+  if (--dragDepth <= 0) { dragDepth = 0; $('#dropmask').classList.remove('show'); $('#idea').classList.remove('over'); $('#chat-drop').classList.remove('over'); }
 });
 document.addEventListener('drop', (e) => {
   if (!hasFiles(e)) return;
@@ -464,6 +469,7 @@ document.addEventListener('drop', (e) => {
   dragDepth = 0;
   $('#dropmask').classList.remove('show');
   $('#idea').classList.remove('over');
+  $('#chat-drop').classList.remove('over');
   const files = [...e.dataTransfer.files];
   const models = files.filter((f) => MODEL_FILE.test(f.name));
   const media = files.filter((f) => /^(image|video)\//.test(f.type));
@@ -473,8 +479,12 @@ document.addEventListener('drop', (e) => {
   }
   if (media.length) {
     if (!onStudio()) location.hash = 'studio';
-    addAttachments(media);
+    if (chatMode()) addChatAttachments(media);
+    else addAttachments(media);
   }
+  // Testi trascinati nella chat: li legge il cervello
+  const texts = files.filter((f) => !models.includes(f) && !media.includes(f) && /\.(txt|md|csv|json|html?)$/i.test(f.name));
+  if (texts.length && onStudio() && chatMode()) addChatAttachments(texts);
 });
 $$('[data-model-input]').forEach((input) => input.addEventListener('change', (e) => {
   [...e.target.files].forEach(uploadModel);
@@ -1152,6 +1162,7 @@ document.addEventListener('click', (e) => {
     const [format, prompt] = EXAMPLES[Number(ex.dataset.example)];
     try { localStorage.setItem('ideax-onboarded', '1'); } catch {}
     location.hash = 'studio';
+    setStudioMode('crea');
     setFormat(format);
     $('#prompt').value = prompt;
     $('#prompt').focus();
@@ -1171,6 +1182,7 @@ document.addEventListener('click', (e) => {
   await Promise.all([loadSettings(), loadModels(), loadHistory(), refreshStatus(), refreshSetup()]);
   renderStage();
   renderLlmSupport();
+  if (typeof renderChat === 'function' && !chat.current) renderChat();
 
   let onboarded = false;
   try { onboarded = localStorage.getItem('ideax-onboarded') === '1'; } catch {}
@@ -1766,3 +1778,527 @@ $('#reel-form').addEventListener('submit', async (e) => {
 });
 
 if (location.hash === '#reel') loadReelForm();
+
+// ======================= Studio: conversazione =======================
+
+const chat = { list: [], current: null, attachments: [], jobs: {}, polling: null, sending: false };
+
+function setStudioMode(mode) {
+  try { localStorage.setItem('ideax-studio-mode', mode); } catch {}
+  $$('[data-studio-mode]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.studioMode === mode)));
+  $('#chat-wrap').hidden = mode !== 'chat';
+  $('#studio-crea').hidden = mode !== 'crea';
+  if (mode === 'chat') setTimeout(() => $('#chat-input').focus(), 50);
+}
+$$('[data-studio-mode]').forEach((b) => b.addEventListener('click', () => setStudioMode(b.dataset.studioMode)));
+const chatMode = () => !$('#chat-wrap').hidden;
+
+// Markdown essenziale e sicuro: prima si fa l'escape, poi si aggiunge la formattazione
+function md(text) {
+  const blocks = [];
+  let t = esc(text).replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => { blocks.push(`<pre><code>${code.replace(/\n$/, '')}</code></pre>`); return `\u0000${blocks.length - 1}\u0000`; });
+  const inline = (s) => s
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[\s(])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+    .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+  return t.split(/\n{2,}/).map((para) => {
+    const block = para.match(/^\u0000(\d+)\u0000$/);
+    if (block) return blocks[Number(block[1])];
+    const lines = para.split('\n');
+    if (lines.every((l) => /^\s*[-*•]\s+/.test(l))) return `<ul>${lines.map((l) => `<li>${inline(l.replace(/^\s*[-*•]\s+/, ''))}</li>`).join('')}</ul>`;
+    if (lines.every((l) => /^\s*\d+[.)]\s+/.test(l))) return `<ol>${lines.map((l) => `<li>${inline(l.replace(/^\s*\d+[.)]\s+/, ''))}</li>`).join('')}</ol>`;
+    const h = para.match(/^#{1,4}\s+(.+)$/);
+    if (h && lines.length === 1) return `<h4>${inline(h[1])}</h4>`;
+    return `<p>${inline(para).replace(/\n/g, '<br>').replace(/\u0000(\d+)\u0000/g, (_, i) => blocks[Number(i)])}</p>`;
+  }).join('');
+}
+
+async function loadChats() {
+  chat.list = await api('/api/chats').catch(() => []);
+  renderChatList();
+}
+
+function renderChatList() {
+  $('#chat-list').innerHTML = chat.list.length ? chat.list.map((c) => `
+    <button class="chat-item" role="listitem" data-chat="${esc(c.id)}" aria-current="${c.id === chat.current?.id}">
+      <span class="t">${c.mode === 'intervista' ? '◎ ' : c.mode === 'lezione' ? '✦ ' : ''}${esc(c.title || 'Nuova chat')}</span>
+      <span class="p">${esc(when(c.updatedAt))}${c.preview ? ` · ${esc(c.preview.replace(/[*_`#>]+/g, ''))}` : ''}</span>
+    </button>`).join('') : '<p class="empty">Le tue conversazioni appariranno qui.</p>';
+}
+
+$('#chat-list').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-chat]');
+  if (b) { openChat(b.dataset.chat); $('#chat-wrap').classList.remove('side-open'); }
+});
+$('#chat-toggle').addEventListener('click', () => $('#chat-wrap').classList.toggle('side-open'));
+$('#chat-new').addEventListener('click', () => { newChat(); $('#chat-wrap').classList.remove('side-open'); });
+
+function newChat() {
+  stopChatPoll();
+  chat.current = null;
+  renderChat();
+  renderChatList();
+  $('#chat-input').focus();
+}
+
+async function openChat(id) {
+  stopChatPoll();
+  chat.current = await api(`/api/chats/${id}`).catch(() => null);
+  try { localStorage.setItem('ideax-chat', id); } catch {}
+  renderChat();
+  renderChatList();
+  if (chat.current?.busy) pollChat();
+}
+
+const SUGGESTIONS = [
+  ['interview', 'Fammi qualche domanda per conoscermi'],
+  ['', 'Cosa sai di me?'],
+  ['', 'Mostrami i miei repository su GitHub'],
+  ['', 'Crea un\'immagine di una spiaggia siciliana al tramonto, stile fotografico'],
+  ['', 'Componi una base lo-fi rilassata di 30 secondi'],
+];
+
+function renderChat() {
+  const c = chat.current;
+  const name = state.settings?.assistant?.name || 'ideax';
+  $('#chat-title').textContent = c?.title || 'Nuova chat';
+  $('#chat-sub').textContent = c ? `${c.mode === 'intervista' ? 'Intervista · ' : ''}${c.messages.length} messaggi` : `Cervello: ${state.models.brain || '…'}`;
+  $('#chat-rename').hidden = !c;
+  $('#chat-delete').hidden = !c;
+  const thread = $('#chat-thread');
+  const atBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80;
+  if (!c || (!c.messages.length && !c.pending)) {
+    thread.innerHTML = `<div class="chat-empty">
+      <p class="eyebrow">Il tuo cervello</p>
+      <h2>Ciao, sono ${esc(name)}. Di cosa parliamo?</h2>
+      <p class="muted">Parlami di te e dei tuoi progetti: imparo e me lo ricordo in tutte le chat. Posso anche creare immagini, video, voce, musica e reel, e lavorare sui tuoi repository GitHub.</p>
+      <div class="suggest">${SUGGESTIONS.map(([k, t], i) => `<button type="button" data-suggest="${i}">${esc(t)}</button>`).join('')}</div>
+    </div>`;
+    return;
+  }
+  thread.innerHTML = c.messages.map((m) => messageHtml(m, name)).join('') + (c.pending ? pendingHtml(c.pending, name) : '');
+  $$('[data-job]', thread).forEach((el) => renderJobCard(el));
+  if (atBottom || c.pending) thread.scrollTop = thread.scrollHeight;
+}
+
+function messageHtml(m, name) {
+  if (m.role === 'user') {
+    const atts = [...(m.attachments || []).map((a) => (a.type.startsWith('video/') ? `<video src="${esc(a.url)}" muted playsinline></video>` : a.type.startsWith('audio/') ? `<span class="file">♪ ${esc(a.name)}</span>` : `<img src="${esc(a.url)}" alt="${esc(a.name)}" data-zoom>`)),
+      ...(m.files || []).map((f) => `<span class="file">📄 ${esc(f.name)}</span>`)];
+    return `<div class="msg user">${atts.length ? `<div class="atts">${atts.join('')}</div>` : ''}${m.content ? `<div class="bubble">${esc(m.content)}</div>` : ''}</div>`;
+  }
+  const who = m.from ? esc(m.from) : esc(name);
+  return `<div class="msg assistant">
+    <div class="who"><b>${who}</b>${m.ts ? `<span>${esc(when(m.ts))}</span>` : ''}</div>
+    ${m.steps?.length ? `<div class="steps-line">${m.steps.map((s) => `<span class="chip">${esc(s)}</span>`).join('')}</div>` : ''}
+    <div class="bubble${m.error ? ' error' : ''}">${md(m.content || '')}</div>
+    ${(m.jobs || []).map((id) => `<div class="job-card" data-job="${esc(id)}"></div>`).join('')}
+    ${m.needsBrain ? '<div class="row"><a class="btn small" href="#cervello">Dammi un cervello</a></div>' : ''}
+    ${m.remembered?.length ? `<div class="remembered">✓ Mi segno: ${m.remembered.map(esc).join(' · ')}</div>` : ''}
+  </div>`;
+}
+
+function pendingHtml(p, name) {
+  return `<div class="msg assistant">
+    <div class="who"><b>${esc(name)}</b><span>sta pensando…</span></div>
+    ${p.steps?.length ? `<div class="steps-line">${p.steps.map((s) => `<span class="chip">${esc(s)}</span>`).join('')}</div>` : ''}
+    ${p.text ? `<div class="bubble muted">${md(p.text)}</div>` : ''}
+    <div class="typing" aria-label="Sta scrivendo"><i></i><i></i><i></i></div>
+  </div>`;
+}
+
+// Le creazioni avviate dalla chat: si aggiornano da sole finché non sono pronte
+async function fetchJob(id) {
+  const j = await api(`/api/jobs/${id}`).catch(() => null);
+  if (j) return j;
+  return api(`/api/history/${id}`).catch(() => ({ id, status: 'error', error: 'Creazione non più disponibile' }));
+}
+
+function renderJobCard(el) {
+  const id = el.dataset.job;
+  const j = chat.jobs[id];
+  if (!j) {
+    el.innerHTML = '<div class="jc-wait"><span class="muted">Preparo…</span><div class="progress indeterminate"><div></div></div></div>';
+    refreshJob(id);
+    return;
+  }
+  if (j.status === 'error' || j.status === 'cancelled') {
+    el.innerHTML = `<div class="jc-wait error">${esc(j.status === 'cancelled' ? 'Annullato' : errorAdvice(j.error || '').title)}<span class="small muted">${esc(j.error || '')}</span></div>`;
+    return;
+  }
+  if (j.status !== 'done') {
+    const p = j.progress || {};
+    const pct = p.total ? Math.round((p.step / p.total) * 100) : null;
+    const text = j.waiting ? 'In fila: la GPU sta finendo un altro lavoro' : p.total ? `${p.phase || 'Genero'} · ${p.step} di ${p.total}` : p.elapsed != null ? `${p.phase || 'Lavoro'}… ${p.elapsed} s` : p.phase || (j.status === 'routing' ? 'Scelgo il modello…' : 'Il modello sta lavorando…');
+    const sig = `${j.status}|${pct == null}`;
+    if (el.dataset.sig === sig) {
+      $('.jc-text', el).textContent = text;
+      $('.progress > div', el).style.width = `${pct ?? 0}%`;
+    } else {
+      el.dataset.sig = sig;
+      el.innerHTML = `<div class="jc-wait"><span class="jc-text">${esc(text)}</span><div class="progress ${pct == null ? 'indeterminate' : ''}"><div style="width:${pct ?? 0}%"></div></div>
+        <div class="row"><button class="btn small" type="button" data-job-cancel="${esc(id)}">Annulla</button></div></div>`;
+    }
+    setTimeout(() => refreshJob(id), 1200);
+    return;
+  }
+  delete el.dataset.sig;
+  const r = j.results?.find((x) => x.type.startsWith('video/')) || j.results?.[0];
+  if (!r) { el.innerHTML = '<div class="jc-wait muted">Nessun risultato</div>'; return; }
+  const media = r.type.startsWith('audio/') ? `<audio src="${esc(r.url)}" controls></audio>`
+    : r.type.startsWith('video/') ? `<video src="${esc(r.url)}" controls loop playsinline></video>`
+      : `<img src="${esc(r.url)}" alt="${esc(j.title || j.prompt)}" data-zoom>`;
+  el.innerHTML = `${media}<div class="jc-foot"><span class="muted">${esc(j.title || '')}${j.model || j.modelName ? ` · ${esc(j.model || j.modelName)}` : ''}</span>
+    <a class="btn small" href="${esc(r.url)}" download>↓ Scarica</a></div>`;
+}
+
+async function refreshJob(id) {
+  const before = chat.jobs[id]?.status;
+  chat.jobs[id] = await fetchJob(id);
+  $$(`[data-job="${CSS.escape(id)}"]`).forEach(renderJobCard);
+  if (before && before !== 'done' && chat.jobs[id].status === 'done') loadHistory();
+}
+
+$('#chat-thread').addEventListener('click', async (e) => {
+  const s = e.target.closest('[data-suggest]');
+  if (s) {
+    const [kind, text] = SUGGESTIONS[Number(s.dataset.suggest)];
+    if (kind === 'interview') return startInterview();
+    return sendChat(text);
+  }
+  const z = e.target.closest('[data-zoom]');
+  if (z) {
+    $('#lightbox-body').innerHTML = `<img src="${esc(z.getAttribute('src'))}" alt="">`;
+    $('#lightbox').showModal();
+  }
+  const cancel = e.target.closest('[data-job-cancel]');
+  if (cancel) { cancel.disabled = true; await api(`/api/jobs/${cancel.dataset.jobCancel}/cancel`, { method: 'POST' }).catch(() => {}); }
+});
+
+async function startInterview() {
+  location.hash = 'studio';
+  setStudioMode('chat');
+  stopChatPoll();
+  chat.current = await api('/api/chats', { method: 'POST', body: { title: 'Ti conosco meglio', mode: 'intervista' } });
+  await sendChat('Iniziamo! Fammi la prima domanda per conoscermi.');
+}
+
+async function sendChat(text) {
+  if (chat.sending || chat.current?.busy) return;
+  const message = String(text ?? $('#chat-input').value).trim();
+  if (!message && !chat.attachments.length) return;
+  chat.sending = true;
+  $('#chat-send').disabled = true;
+  try {
+    if (!chat.current) chat.current = await api('/api/chats', { method: 'POST', body: {} });
+    const attachments = chat.attachments;
+    $('#chat-input').value = '';
+    autosize();
+    chat.attachments = [];
+    renderChatAttachments();
+    chat.current = await api(`/api/chats/${chat.current.id}/messages`, { method: 'POST', body: { message, attachments } });
+    try { localStorage.setItem('ideax-chat', chat.current.id); } catch {}
+    renderChat();
+    loadChats();
+    pollChat();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    chat.sending = false;
+    $('#chat-send').disabled = false;
+  }
+}
+
+function stopChatPoll() { clearTimeout(chat.polling); chat.polling = null; }
+function pollChat() {
+  stopChatPoll();
+  const id = chat.current?.id;
+  chat.polling = setTimeout(async () => {
+    const c = await api(`/api/chats/${id}`).catch(() => null);
+    if (!c || chat.current?.id !== id) return;
+    const changed = JSON.stringify([c.messages.length, c.pending]) !== JSON.stringify([chat.current.messages.length, chat.current.pending]);
+    chat.current = c;
+    if (changed) renderChat();
+    if (c.busy) pollChat();
+    else { loadChats(); loadMemoryCount(); }
+  }, 700);
+}
+
+$('#chat-form').addEventListener('submit', (e) => { e.preventDefault(); sendChat(); });
+function autosize() {
+  const t = $('#chat-input');
+  t.style.height = 'auto';
+  t.style.height = `${Math.min(t.scrollHeight, 220)}px`;
+}
+$('#chat-input').addEventListener('input', autosize);
+$('#chat-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendChat(); }
+});
+
+async function addChatAttachments(files) {
+  for (const f of files) {
+    if (f.size > 200 * 1024 * 1024) { alert(`${f.name}: file troppo grande`); continue; }
+    chat.attachments.push(await readFile(f));
+  }
+  renderChatAttachments();
+}
+function renderChatAttachments() {
+  $('#chat-attachments').innerHTML = chat.attachments.map((a, i) => `
+    <div class="thumb">
+      ${a.type.startsWith('video/') ? `<video src="${a.dataUrl}" muted></video>` : a.type.startsWith('image/') ? `<img src="${a.dataUrl}" alt="${esc(a.name)}">` : `<span class="small" style="display:grid;place-items:center;height:100%;padding:6px;text-align:center;color:#fff">${esc(a.name)}</span>`}
+      <button type="button" data-rm="${i}" aria-label="Rimuovi ${esc(a.name)}">✕</button>
+    </div>`).join('');
+}
+$('#chat-attachments').addEventListener('click', (e) => {
+  const i = e.target.dataset.rm;
+  if (i !== undefined) { chat.attachments.splice(Number(i), 1); renderChatAttachments(); }
+});
+$('#chat-file').addEventListener('change', (e) => { addChatAttachments([...e.target.files]); e.target.value = ''; });
+
+$('#chat-rename').addEventListener('click', async () => {
+  const title = prompt('Nuovo nome della chat', chat.current?.title || '');
+  if (!title) return;
+  chat.current = { ...chat.current, ...(await api(`/api/chats/${chat.current.id}`, { method: 'PATCH', body: { title } })) };
+  renderChat();
+  loadChats();
+});
+$('#chat-delete').addEventListener('click', async () => {
+  if (!confirm('Eliminare questa chat? I ricordi che ha imparato restano.')) return;
+  await api(`/api/chats/${chat.current.id}`, { method: 'DELETE' }).catch(() => {});
+  newChat();
+  loadChats();
+});
+
+async function loadMemoryCount() {
+  const m = await api('/api/memory').catch(() => null);
+  if (m) $('#mem-count').textContent = m.total;
+  return m;
+}
+
+// ======================= Cervello =======================
+
+const brainPage = { memory: null, filter: 'all', teachers: [], learnTimer: null };
+
+async function loadBrainPage() {
+  const [mem, settings, gh, learn] = await Promise.all([
+    loadMemoryCount(), api('/api/settings').catch(() => ({})), api('/api/github').catch(() => ({})), api('/api/learn').catch(() => null),
+  ]);
+  brainPage.memory = mem;
+  brainPage.teachers = settings.teachers || [];
+  renderBrainStatus();
+  renderMemory();
+  renderTeachers();
+  renderGithub(gh);
+  const pf = $('#persona-form');
+  pf.name.value = settings.assistant?.name || '';
+  pf.style.value = settings.assistant?.style || '';
+  if (learn) renderLearn(learn);
+}
+
+function renderBrainStatus() {
+  const label = state.models.brain || '';
+  const none = !label || /regole/.test(label);
+  $('#brain-status').innerHTML = none ? `
+    <h2>Dagli un cervello per conversare</h2>
+    <p class="muted">Adesso ideax capisce le richieste di creazione, ma per parlare, ragionare e imparare serve un modello linguistico che gira sul tuo PC.</p>
+    <ol class="small" style="display:grid;gap:8px;padding-left:20px;margin:0">
+      <li>Scarica <strong>Qwen3 14B</strong> in formato .gguf (file <code>Qwen3-14B-Q4_K_M.gguf</code>, circa 9 GB) da <a href="https://huggingface.co/Qwen/Qwen3-14B-GGUF/tree/main" target="_blank" rel="noopener">Hugging Face</a>. Se vuoi lasciare più memoria alla grafica scegli <a href="https://huggingface.co/Qwen/Qwen3-8B-GGUF/tree/main" target="_blank" rel="noopener">Qwen3 8B</a> (circa 5 GB).</li>
+      <li>Trascinalo nella pagina <a href="#modelli">Modelli</a>.</li>
+      <li>In <a href="#impostazioni">Impostazioni → Il cervello di ideax</a> installa il supporto per i file .gguf se te lo chiede.</li>
+    </ol>
+    <p class="muted small" style="margin-top:12px">Hai già Ollama o LM Studio? Collegali da Impostazioni → Il cervello di ideax → Server locale.</p>`
+    : `<div class="row"><span class="dot on"></span><div class="grow"><h2>Il cervello è attivo</h2><p class="muted small">${esc(label)} · gira sul tuo PC. Con 16 GB di scheda video, quando crei immagini o video il cervello si scarica e si ricarica alla chat successiva (qualche secondo).</p></div>
+      <a class="btn" href="#studio">Parla con ideax</a></div>`;
+}
+
+function renderMemory() {
+  const m = brainPage.memory;
+  if (!m) return;
+  const cats = m.categories;
+  $('#mem-summary').textContent = m.total ? `${m.total} ricordi. Li usa in tutte le chat e li aggiorna mentre parlate.` : 'Ancora niente: parla con ideax, fai l\'intervista o insegnagli con un testo.';
+  $('#mem-filters').innerHTML = [['all', 'Tutti'], ...Object.entries(cats).filter(([k]) => m.byCategory[k])].map(([k, v]) => `<button type="button" data-mem-filter="${k}" aria-selected="${brainPage.filter === k}">${esc(v)}${k !== 'all' ? ` · ${m.byCategory[k]}` : ''}</button>`).join('');
+  $('#mem-add').category.innerHTML = Object.entries(cats).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('');
+  const facts = m.facts.filter((f) => brainPage.filter === 'all' || f.category === brainPage.filter);
+  $('#mem-list').innerHTML = facts.map((f) => `<div class="mem-item" data-fact="${esc(f.id)}">
+      <span class="txt">${esc(f.text)}</span><span class="src">${esc(cats[f.category] || '')} · ${esc(f.source === 'chat' ? 'dalla chat' : f.source)}</span>
+      <button class="btn small" type="button" data-fact-edit>Modifica</button><button class="btn small danger" type="button" data-fact-del aria-label="Dimentica">✕</button></div>`).join('');
+}
+
+$('#mem-filters').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-mem-filter]');
+  if (b) { brainPage.filter = b.dataset.memFilter; renderMemory(); }
+});
+$('#mem-list').addEventListener('click', async (e) => {
+  const item = e.target.closest('[data-fact]');
+  if (!item) return;
+  const id = item.dataset.fact;
+  if (e.target.closest('[data-fact-del]')) {
+    await api(`/api/memory/${id}`, { method: 'DELETE' }).catch(() => {});
+  } else if (e.target.closest('[data-fact-edit]')) {
+    const f = brainPage.memory.facts.find((x) => x.id === id);
+    const text = prompt('Modifica il ricordo', f.text);
+    if (!text) return;
+    await api(`/api/memory/${id}`, { method: 'PATCH', body: { text } });
+  } else return;
+  brainPage.memory = await loadMemoryCount();
+  renderMemory();
+});
+$('#mem-add').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  if (!f.text.value.trim()) return;
+  await api('/api/memory', { method: 'POST', body: { text: f.text.value, category: f.category.value, source: 'manuale' } });
+  f.text.value = '';
+  brainPage.memory = await loadMemoryCount();
+  renderMemory();
+});
+$('#mem-clear').addEventListener('click', async () => {
+  if (!confirm('Dimenticare tutto quello che ideax sa di te? Non si può annullare.')) return;
+  await api('/api/memory', { method: 'DELETE' });
+  brainPage.memory = await loadMemoryCount();
+  renderMemory();
+});
+
+$('#start-interview').addEventListener('click', startInterview);
+
+const importForm = $('#import-form');
+importForm.file.addEventListener('change', () => {
+  $('[data-import-files]').textContent = [...importForm.file.files].map((f) => f.name).join(', ');
+});
+importForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const out = $('[data-import-out]');
+  const btn = $('button.primary', importForm);
+  const attachments = await Promise.all([...importForm.file.files].map(readFile));
+  if (!importForm.text.value.trim() && !attachments.length) { out.textContent = 'Incolla un testo o allega un file.'; return; }
+  btn.disabled = true;
+  out.className = 'small muted';
+  out.textContent = 'Leggo e imparo… (con testi lunghi ci vuole qualche minuto)';
+  try {
+    const r = await api('/api/memory/import', { method: 'POST', body: { text: importForm.text.value, attachments, source: attachments[0]?.name || 'testo incollato' } });
+    out.className = 'small ok-text';
+    out.textContent = `Imparato: ${r.saved.length} nuovi ricordi.`;
+    importForm.reset();
+    $('[data-import-files]').textContent = '';
+    brainPage.memory = await loadMemoryCount();
+    renderMemory();
+  } catch (err) {
+    out.className = 'small error-text';
+    out.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+function renderTeachers() {
+  $('#teacher-list').innerHTML = brainPage.teachers.map((t) => `<div class="teacher" data-teacher-id="${esc(t.id)}">
+    <strong>${esc(t.name)}</strong>
+    <button class="btn small primary" type="button" data-teacher-learn>Impara da ${esc(t.name)}</button>
+    <button class="btn small" type="button" data-teacher-test>Prova</button>
+    <button class="btn small" type="button" data-teacher-edit>Modifica</button>
+    <span class="small muted" data-teacher-out style="flex-basis:100%"></span></div>`).join('');
+}
+
+const tForm = $('#teacher-form');
+function openTeacher(t = {}) {
+  tForm.reset();
+  for (const k of ['id', 'name', 'type', 'url', 'model', 'apiKey']) if (t[k] != null) tForm[k].value = t[k];
+  if (!t.type) tForm.type.value = 'openai';
+  if (!t.name) tForm.name.value = 'Axel';
+  syncTeacherForm();
+  $('[data-teacher-err]').textContent = '';
+  $('#teacher-dialog').showModal();
+}
+function syncTeacherForm() { $('[data-teacher="openai"]').hidden = tForm.type.value !== 'openai'; }
+tForm.type.addEventListener('change', syncTeacherForm);
+$('#teacher-add').addEventListener('click', () => openTeacher());
+tForm.addEventListener('submit', async (e) => {
+  if (e.submitter?.value !== 'save') return;
+  e.preventDefault();
+  try {
+    await api('/api/teachers', { method: 'POST', body: Object.fromEntries(new FormData(tForm)) });
+    $('#teacher-dialog').close();
+    brainPage.teachers = await api('/api/teachers');
+    renderTeachers();
+  } catch (err) {
+    $('[data-teacher-err]').textContent = err.message;
+  }
+});
+$('#teacher-list').addEventListener('click', async (e) => {
+  const row = e.target.closest('[data-teacher-id]');
+  if (!row) return;
+  const t = brainPage.teachers.find((x) => x.id === row.dataset.teacherId);
+  const out = $('[data-teacher-out]', row);
+  if (e.target.closest('[data-teacher-edit]')) return openTeacher(t);
+  if (e.target.closest('[data-teacher-test]')) {
+    out.textContent = 'Provo a parlarci…';
+    try {
+      const r = await api(`/api/teachers/${t.id}/test`, { method: 'POST' });
+      out.textContent = `Risponde: "${r.reply}"`;
+    } catch (err) {
+      out.textContent = err.message;
+    }
+  }
+  if (e.target.closest('[data-teacher-learn]')) {
+    try {
+      renderLearn(await api('/api/learn', { method: 'POST', body: { teacher: t.id } }));
+    } catch (err) {
+      out.textContent = err.message;
+    }
+  }
+});
+
+function renderLearn(l) {
+  clearTimeout(brainPage.learnTimer);
+  const el = $('#learn-progress');
+  if (l.status === 'idle') { el.innerHTML = ''; return; }
+  const pct = l.total ? Math.round((l.step / l.total) * 100) : 0;
+  el.innerHTML = l.status === 'running'
+    ? `<div class="note"><h3>Sto imparando da ${esc(l.teacher)} · ${l.step} di ${l.total}</h3><p class="muted small">${esc(l.current)}</p>
+        <div class="progress"><div style="width:${pct}%"></div></div><p class="small">${l.learned} ricordi nuovi finora</p></div>`
+    : `<div class="note ${l.status === 'error' ? 'error' : ''}"><h3>${l.status === 'error' ? `${esc(l.teacher)} non ha risposto` : `Lezione da ${esc(l.teacher)} finita`}</h3>
+        <p class="small">${l.status === 'error' ? esc(l.error) : `${l.learned} ricordi nuovi. La conversazione completa è nella chat "Lezione da ${esc(l.teacher)}".`}</p></div>`;
+  if (l.status === 'running') {
+    brainPage.learnTimer = setTimeout(async () => {
+      const next = await api('/api/learn').catch(() => null);
+      if (next) renderLearn(next);
+      if (next?.status !== 'running') { brainPage.memory = await loadMemoryCount(); renderMemory(); loadChats(); }
+    }, 1500);
+  }
+}
+
+function renderGithub(gh) {
+  $('#gh-write').checked = !!gh.allowWrite;
+  $('#gh-token').placeholder = gh.hasToken ? 'Token salvato · incollane uno nuovo per cambiarlo' : 'github_pat_… oppure ghp_…';
+  $('#gh-status').innerHTML = gh.user ? `<span class="ok-text">Collegato come ${esc(gh.user.login)} ✓</span>` : gh.error ? `<span class="error-text">${esc(gh.error)}</span>` : '';
+  $('#gh-repos').textContent = gh.downloaded?.length ? `Repository scaricati sul PC: ${gh.downloaded.join(', ')}` : '';
+}
+$('#gh-save').addEventListener('click', async () => {
+  await api('/api/github', { method: 'POST', body: { token: $('#gh-token').value } });
+  $('#gh-token').value = '';
+  renderGithub(await api('/api/github'));
+});
+$('#gh-write').addEventListener('change', async (e) => {
+  await api('/api/github', { method: 'POST', body: { allowWrite: e.target.checked } });
+});
+$('#persona-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  state.settings = await api('/api/settings', { method: 'POST', body: { assistant: { name: f.name.value.trim() || 'ideax', style: f.style.value.trim() } } });
+  $('[data-persona-ok]').textContent = 'Salvato ✓';
+  setTimeout(() => { $('[data-persona-ok]').textContent = ''; }, 1500);
+});
+
+(async () => {
+  let mode = 'chat';
+  try { mode = localStorage.getItem('ideax-studio-mode') || 'chat'; } catch {}
+  setStudioMode(mode);
+  await loadChats();
+  let last = null;
+  try { last = localStorage.getItem('ideax-chat'); } catch {}
+  if (last && chat.list.some((c) => c.id === last)) await openChat(last);
+  else renderChat();
+  loadMemoryCount();
+})();

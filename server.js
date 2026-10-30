@@ -21,6 +21,11 @@ import * as updater from './lib/updater.js';
 import * as apikeys from './lib/apikeys.js';
 import { deliver } from './lib/webhooks.js';
 import { Readable } from 'node:stream';
+import * as agent from './lib/agent.js';
+import * as memory from './lib/memory.js';
+import * as chats from './lib/chats.js';
+import * as teachers from './lib/teachers.js';
+import * as github from './lib/github.js';
 
 process.title = 'ideax';
 const startup = store.getSettings();
@@ -361,6 +366,17 @@ function modelsPayload() {
   };
 }
 
+agent.configure({ createJob, musicFromPrompt, getJob: (id) => jobs.get(id) || store.getHistory(id) });
+
+function publicSettings() {
+  const s = store.getSettings();
+  return { ...s, github: { allowWrite: s.github.allowWrite, hasToken: !!s.github.token }, teachers: teachers.listTeachers() };
+}
+
+function chatPayload(chat) {
+  return { ...chat, busy: agent.isBusy(chat.id) };
+}
+
 // ---------- HTTP ----------
 
 const server = http.createServer(async (req, res) => {
@@ -494,6 +510,126 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': job.results[0].type });
       return fs.createReadStream(path.join(store.OUTPUT_DIR, path.basename(job.results[0].url))).pipe(res);
     }
+
+    // ----- Cervello: chat, memoria, maestri -----
+    if (p === '/v1/chat' && req.method === 'POST') {
+      const body = await readBody(req);
+      let chat = chats.getChat(body.chat_id);
+      if (!chat) chat = chats.createChat({ client: ctx.client, title: body.title || '' });
+      const msg = await agent.send(chat, { text: body.message || body.prompt, attachments: body.attachments, ctx });
+      return send(res, 200, {
+        chat_id: chat.id, reply: msg.content, steps: msg.steps || [], remembered: msg.remembered || [],
+        jobs: (msg.jobs || []).map((id) => ({ id, status_url: `${origin}/v1/jobs/${id}` })),
+      });
+    }
+    // Compatibile OpenAI: qualsiasi app che parla con "chat/completions" può usare ideax come cervello (con la sua memoria)
+    if (p === '/v1/chat/completions' && req.method === 'POST') {
+      const body = await readJson(req);
+      const msgs = Array.isArray(body.messages) ? body.messages : [];
+      const last = [...msgs].reverse().find((m) => m.role === 'user');
+      if (!last) return send(res, 400, { error: { message: 'Serve almeno un messaggio "user"' } });
+      const text = Array.isArray(last.content) ? last.content.map((c) => c.text || '').join('\n') : String(last.content || '');
+      const key = String(body.user || body.chat_id || '');
+      let chat = key ? chats.listChats().map((c) => chats.getChat(c.id)).find((c) => c.externalKey === key) : null;
+      if (!chat) {
+        chat = chats.createChat({ client: ctx.client, title: '' });
+        chat.externalKey = key || undefined;
+        // La conversazione precedente arriva dall'app che chiama
+        for (const m of msgs.slice(0, msgs.lastIndexOf(last))) {
+          if (['user', 'assistant'].includes(m.role)) chat.messages.push({ id: crypto.randomUUID().slice(0, 8), ts: Date.now(), role: m.role, content: String(m.content || '') });
+        }
+        chats.saveChat(chat);
+      }
+      const msg = await agent.send(chat, { text, ctx });
+      return send(res, 200, {
+        id: `chatcmpl-${msg.id}`, object: 'chat.completion', created: Math.floor(Date.now() / 1000), model: 'ideax',
+        choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content: msg.content } }],
+        ideax: { chat_id: chat.id, jobs: msg.jobs || [], remembered: msg.remembered || [] },
+      });
+    }
+    if (/^\/(v1|api)\/chats$/.test(p) && req.method === 'GET') return send(res, 200, chats.listChats());
+    if (/^\/(v1|api)\/chats$/.test(p) && req.method === 'POST') {
+      const body = await readJson(req);
+      return send(res, 200, chats.createChat({ client: ctx.client, title: body.title || '', mode: body.mode === 'intervista' ? 'intervista' : '' }));
+    }
+    if (/^\/(v1|api)\/chats\/[\w-]+$/.test(p) && req.method === 'GET') {
+      const chat = chats.getChat(p.split('/').pop());
+      return chat ? send(res, 200, chatPayload(chat)) : send(res, 404, { error: 'Chat non trovata' });
+    }
+    if (/^\/(v1|api)\/chats\/[\w-]+$/.test(p) && req.method === 'PATCH') {
+      const chat = chats.getChat(p.split('/').pop());
+      if (!chat) return send(res, 404, { error: 'Chat non trovata' });
+      const body = await readJson(req);
+      if (body.title != null) chat.title = String(body.title).slice(0, 120);
+      if (body.mode != null) chat.mode = body.mode === 'intervista' ? 'intervista' : '';
+      return send(res, 200, chats.saveChat(chat));
+    }
+    if (/^\/(v1|api)\/chats\/[\w-]+$/.test(p) && req.method === 'DELETE') {
+      return chats.deleteChat(p.split('/').pop()) ? send(res, 200, { ok: true }) : send(res, 404, { error: 'Chat non trovata' });
+    }
+    // Dall'interfaccia: il messaggio parte e la pagina segue i passi leggendo la chat
+    if (/^\/api\/chats\/[\w-]+\/messages$/.test(p) && req.method === 'POST') {
+      const chat = chats.getChat(p.split('/')[3]);
+      if (!chat) return send(res, 404, { error: 'Chat non trovata' });
+      const body = await readJson(req);
+      agent.send(chat, { text: body.message, attachments: body.attachments, ctx });
+      return send(res, 202, chatPayload(chat));
+    }
+    if (/^\/(v1|api)\/memory$/.test(p) && req.method === 'GET') {
+      return send(res, 200, { facts: memory.listFacts(), categories: memory.CATEGORIES, ...memory.stats() });
+    }
+    if (/^\/(v1|api)\/memory$/.test(p) && req.method === 'POST') {
+      const body = await readJson(req);
+      const list = Array.isArray(body.facts) ? body.facts : [body];
+      const saved = list.map((f) => memory.remember(typeof f === 'string' ? f : f.text, { category: f.category, source: body.source || ctx.client })).filter(Boolean);
+      return send(res, 200, { saved });
+    }
+    if (/^\/(v1|api)\/memory$/.test(p) && req.method === 'DELETE') { memory.forgetAll(); return send(res, 200, { ok: true }); }
+    if (/^\/(v1|api)\/memory\/[\w-]+$/.test(p) && req.method === 'PATCH') {
+      const f = memory.updateFact(p.split('/').pop(), await readJson(req));
+      return f ? send(res, 200, f) : send(res, 404, { error: 'Ricordo non trovato' });
+    }
+    if (/^\/(v1|api)\/memory\/[\w-]+$/.test(p) && req.method === 'DELETE') {
+      return memory.forget(p.split('/').pop()) ? send(res, 200, { ok: true }) : send(res, 404, { error: 'Ricordo non trovato' });
+    }
+    // Insegnare in blocco: un testo (appunti, profilo, esportazione di un altro assistente) diventa ricordi
+    if (/^\/(v1|api)\/memory\/import$/.test(p) && req.method === 'POST') {
+      const body = await readBody(req);
+      let text = String(body.text || '');
+      for (const a of body.attachments || []) text += `\n\n${Buffer.from(a.dataUrl.slice(a.dataUrl.indexOf(',') + 1), 'base64').toString('utf8')}`;
+      if (!text.trim()) return send(res, 400, { error: 'Incolla un testo o allega un file .txt / .md' });
+      const saved = await agent.extractFacts(text.slice(0, 200000), body.source || 'importato');
+      return send(res, 200, { saved, total: memory.stats().total });
+    }
+    if (p === '/api/teachers' && req.method === 'GET') return send(res, 200, teachers.listTeachers());
+    if (p === '/api/teachers' && req.method === 'POST') return send(res, 200, teachers.saveTeacher(await readJson(req)));
+    if (/^\/api\/teachers\/[\w-]+$/.test(p) && req.method === 'DELETE') { teachers.deleteTeacher(p.split('/').pop()); return send(res, 200, { ok: true }); }
+    if (/^\/api\/teachers\/[\w-]+\/test$/.test(p) && req.method === 'POST') {
+      const t = teachers.findTeacher(p.split('/')[3]);
+      if (!t) return send(res, 404, { error: 'Maestro non trovato' });
+      const reply = await teachers.ask(t, 'Ciao! Sono ideax. Rispondi con una frase per confermare che mi senti.', { timeout: 60_000 });
+      return send(res, 200, { reply: reply.slice(0, 500) });
+    }
+    if (p === '/api/learn' && req.method === 'GET') return send(res, 200, agent.learning);
+    if (p === '/api/learn' && req.method === 'POST') {
+      const body = await readJson(req);
+      return send(res, 200, agent.learnFromTeacher(body.teacher, body.questions || []));
+    }
+    if (p === '/api/github' && req.method === 'GET') {
+      const gs = store.getSettings().github;
+      let user = null;
+      let error = null;
+      if (gs.token) user = await github.whoami().catch((err) => { error = err.message; return null; });
+      return send(res, 200, { hasToken: !!gs.token, allowWrite: gs.allowWrite, user, error, downloaded: github.listDownloaded() });
+    }
+    if (p === '/api/github' && req.method === 'POST') {
+      const body = await readJson(req);
+      const patch = {};
+      if (body.token != null) patch.token = String(body.token).trim();
+      if (body.allowWrite != null) patch.allowWrite = !!body.allowWrite;
+      store.saveSettings({ github: patch });
+      return send(res, 200, { ok: true });
+    }
     // ----- Motori -----
     if (p === '/api/engines' && req.method === 'GET') return send(res, 200, engines.listEngines());
     if (/^\/api\/engines\/\w+\/install$/.test(p) && req.method === 'POST') return send(res, 200, await engines.install(p.split('/')[3]));
@@ -591,8 +727,13 @@ const server = http.createServer(async (req, res) => {
       store.deleteServer(p.split('/').pop());
       return send(res, 200, { ok: true });
     }
-    if (p === '/api/settings' && req.method === 'GET') return send(res, 200, store.getSettings());
-    if (p === '/api/settings' && req.method === 'POST') return send(res, 200, store.saveSettings(await readJson(req)));
+    if (p === '/api/settings' && req.method === 'GET') return send(res, 200, publicSettings());
+    if (p === '/api/settings' && req.method === 'POST') {
+      // Token GitHub e maestri hanno le loro pagine: qui non si toccano
+      const { github: _g, teachers: _t, ...patch } = await readJson(req);
+      store.saveSettings(patch);
+      return send(res, 200, publicSettings());
+    }
     if (p === '/api/worker' && req.method === 'GET') {
       const proc = { process: runtime.worker.state, installed: runtime.isInstalled(), log: runtime.worker.tail.slice(-40) };
       try {

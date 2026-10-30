@@ -86,6 +86,8 @@ class LlmRequest(BaseModel):
     model_path: str
     messages: list[dict[str, str]]
     schema_: Optional[dict] = Field(None, alias="schema")
+    temperature: float = 0.2
+    max_tokens: int = 1024
 
 
 # ---------------------------------------------------------------- dispositivo
@@ -217,6 +219,9 @@ def load_base(spec: ModelSpec):
     if _loaded["key"] == spec.path:
         return _loaded["pipe"]
     free_memory()
+    # Con meno di 24 GB il cervello e un modello grafico insieme non ci stanno: il cervello si ricarica alla prossima chat
+    if not DEMO and _llm.get("model") is not None and (device_info()["vram_gb"] or 0) < 24:
+        free_llm()
     import diffusers as d
 
     dtype = dtype_for(spec.arch)
@@ -485,6 +490,17 @@ def run(req: RunRequest):
 # ---------------------------------------------------------------- cervello (LLM .gguf)
 
 _llm: dict[str, Any] = {"path": None, "model": None}
+# La chat porta con sé memoria e conversazione: serve un contesto ampio
+LLM_CTX = int(os.environ.get("IDEAX_LLM_CTX", "16384"))
+
+
+def free_llm():
+    with llm_lock:
+        if _llm.get("model") is not None:
+            _llm.update(path=None, model=None)
+            gc.collect()
+            if not DEMO and torch().cuda.is_available():
+                torch().cuda.empty_cache()
 
 
 @app.post("/llm")
@@ -499,9 +515,9 @@ def llm(req: LlmRequest):
         if _llm["path"] != req.model_path:
             _llm.update(path=None, model=None)
             gc.collect()
-            _llm.update(path=req.model_path, model=Llama(model_path=req.model_path, n_ctx=8192, n_gpu_layers=LLM_GPU_LAYERS, verbose=False))
+            _llm.update(path=req.model_path, model=Llama(model_path=req.model_path, n_ctx=LLM_CTX, n_gpu_layers=LLM_GPU_LAYERS, verbose=False))
         fmt = {"type": "json_object", "schema": req.schema_} if req.schema_ else {"type": "json_object"}
-        out = _llm["model"].create_chat_completion(messages=req.messages, response_format=fmt, temperature=0.2, max_tokens=1024)
+        out = _llm["model"].create_chat_completion(messages=req.messages, response_format=fmt, temperature=req.temperature, max_tokens=min(req.max_tokens, 4096))
     return {"content": out["choices"][0]["message"]["content"]}
 
 
@@ -704,6 +720,7 @@ def unload():
     """Libera la memoria della scheda video (ideax lo chiede prima di lavori pesanti come la musica)."""
     with gen_lock:
         free_memory()
+    free_llm()
     return {"ok": True}
 
 

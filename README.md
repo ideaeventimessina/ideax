@@ -143,6 +143,17 @@ Ci sono due modi per tenerlo in locale:
 
 Se il cervello non c'è o non risponde, ideax usa le regole integrate (parole chiave in italiano e inglese + allegati).
 
+### Conversare con ideax
+
+Lo **Studio** si apre su una chat: ideax parla con te, si ricorda di te in tutte le chat (pagina **Cervello → Cosa so di te**)
+e usa i suoi strumenti: crea immagini, video, voce, musica e reel, cerca nelle altre chat, legge, scarica e (se lo permetti)
+modifica i tuoi repository GitHub, e fa domande ad altri cervelli collegati (es. Axel).
+Per conversare bene serve un modello più grande di quello per il solo instradamento: consigliato **Qwen3 14B Q4_K_M** (circa 9 GB)
+oppure **Qwen3 8B** (circa 5 GB). Con 16 GB di scheda video il cervello si scarica quando crei immagini o video e si ricarica alla chat dopo.
+
+Addestramento rapido (pagina Cervello): intervista, testi e documenti da cui imparare, lezione da un altro cervello.
+Come collegare Axel: [docs/cervello.md](docs/cervello.md). I dati stanno in `data/cervello` (ricordi e chat) e `data/repository` (repository scaricati).
+
 ## Collegare le app e i vostri sistemi
 
 Tutti i sistemi usano lo stesso indirizzo. La pagina **Collega app** mostra l'indirizzo giusto, gli esempi pronti

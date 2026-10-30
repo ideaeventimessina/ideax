@@ -72,6 +72,19 @@ class Ideax:
         """Compone musica. options: duration, instrumental, lyrics, language, bpm, key, seed, quality, callback_url, metadata, wait."""
         return self._request("/v1/music", "POST", {"prompt": prompt, **options})
 
+    def chat(self, message, chat_id=None, **options):
+        """Parla con il cervello di ideax (con la sua memoria). Risponde con chat_id, reply, jobs, remembered.
+        Ripassa chat_id per continuare la stessa conversazione."""
+        return self._request("/v1/chat", "POST", {"message": message, "chat_id": chat_id, **options})
+
+    def memory(self):
+        """Tutto quello che ideax sa (i ricordi)."""
+        return self._request("/v1/memory")
+
+    def teach(self, text, source="api"):
+        """Insegna a ideax un testo: diventa ricordi."""
+        return self._request("/v1/memory/import", "POST", {"text": text, "source": source})
+
     def reel(self, **options):
         """Reel: prompt=…, oppure script=…, oppure plan={"scenes": [{"text": …, "visual": … | "image": …}], …}.
         Altre opzioni: voice, duration, style, music, captions, callback_url, metadata. Risponde subito: usa wait_for(id)."""

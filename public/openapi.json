@@ -956,6 +956,326 @@
      }
     }
    }
+  },
+  "/v1/chat": {
+   "post": {
+    "tags": [
+     "Cervello"
+    ],
+    "summary": "Parla con il cervello di ideax",
+    "description": "Il cervello usa la memoria comune a tutte le chat, impara da quello che gli dici e può usare gli strumenti (creazioni, GitHub, altre chat, maestri). Ripassa chat_id per continuare la conversazione. Le creazioni avviate sono in jobs.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "message"
+        ],
+        "properties": {
+         "message": {
+          "type": "string",
+          "example": "Preparami tre idee di post per il nuovo menu"
+         },
+         "chat_id": {
+          "type": "string"
+         },
+         "title": {
+          "type": "string"
+         },
+         "attachments": {
+          "type": "array",
+          "items": {
+           "type": "object"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Risposta",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "chat_id": {
+           "type": "string"
+          },
+          "reply": {
+           "type": "string"
+          },
+          "steps": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          },
+          "remembered": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          },
+          "jobs": {
+           "type": "array",
+           "items": {
+            "type": "object",
+            "properties": {
+             "id": {
+              "type": "string"
+             },
+             "status_url": {
+              "type": "string"
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/chat/completions": {
+   "post": {
+    "tags": [
+     "Cervello"
+    ],
+    "summary": "Compatibile OpenAI: usa ideax come modello linguistico",
+    "description": "Le app che parlano con chat/completions possono usare ideax (con memoria e strumenti) cambiando solo base_url. Con \"user\" la conversazione continua nella stessa chat.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "model": {
+          "type": "string",
+          "example": "ideax"
+         },
+         "user": {
+          "type": "string",
+          "example": "billpro"
+         },
+         "messages": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "role": {
+             "type": "string"
+            },
+            "content": {
+             "type": "string"
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Formato OpenAI, più il campo ideax con chat_id, jobs e remembered"
+     }
+    }
+   }
+  },
+  "/v1/chats": {
+   "get": {
+    "tags": [
+     "Cervello"
+    ],
+    "summary": "Elenco delle chat",
+    "responses": {
+     "200": {
+      "description": "Chat"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "Cervello"
+    ],
+    "summary": "Nuova chat (mode: \"intervista\" per farsi conoscere)",
+    "responses": {
+     "200": {
+      "description": "Chat"
+     }
+    }
+   }
+  },
+  "/v1/chats/{id}": {
+   "parameters": [
+    {
+     "name": "id",
+     "in": "path",
+     "required": true,
+     "schema": {
+      "type": "string"
+     }
+    }
+   ],
+   "get": {
+    "tags": [
+     "Cervello"
+    ],
+    "summary": "Una chat con tutti i messaggi",
+    "responses": {
+     "200": {
+      "description": "Chat"
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "Cervello"
+    ],
+    "summary": "Elimina una chat",
+    "responses": {
+     "200": {
+      "description": "OK"
+     }
+    }
+   }
+  },
+  "/v1/memory": {
+   "get": {
+    "tags": [
+     "Cervello"
+    ],
+    "summary": "Quello che ideax sa (ricordi)",
+    "responses": {
+     "200": {
+      "description": "Ricordi per categoria"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "Cervello"
+    ],
+    "summary": "Aggiunge ricordi",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "text": {
+          "type": "string"
+         },
+         "category": {
+          "type": "string",
+          "enum": [
+           "identita",
+           "lavoro",
+           "progetti",
+           "persone",
+           "preferenze",
+           "stile",
+           "regole",
+           "altro"
+          ]
+         },
+         "facts": {
+          "type": "array",
+          "items": {
+           "type": "object"
+          }
+         },
+         "source": {
+          "type": "string"
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Salvati"
+     }
+    }
+   }
+  },
+  "/v1/memory/{id}": {
+   "parameters": [
+    {
+     "name": "id",
+     "in": "path",
+     "required": true,
+     "schema": {
+      "type": "string"
+     }
+    }
+   ],
+   "patch": {
+    "tags": [
+     "Cervello"
+    ],
+    "summary": "Corregge un ricordo",
+    "responses": {
+     "200": {
+      "description": "OK"
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "Cervello"
+    ],
+    "summary": "Dimentica un ricordo",
+    "responses": {
+     "200": {
+      "description": "OK"
+     }
+    }
+   }
+  },
+  "/v1/memory/import": {
+   "post": {
+    "tags": [
+     "Cervello"
+    ],
+    "summary": "Insegna un testo: il cervello ne estrae i ricordi",
+    "description": "Utile per passare a ideax quello che sa già un altro sistema (es. Axel o billpro). Accetta JSON {text} o multipart con file .txt/.md.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "text": {
+          "type": "string"
+         },
+         "source": {
+          "type": "string",
+          "example": "axel"
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Ricordi nuovi"
+     }
+    }
+   }
   }
  },
  "components": {
