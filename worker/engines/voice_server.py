@@ -44,7 +44,17 @@ def load_model():
     if state["model"] is not None or DEMO:
         return state["model"]
     import torch
+    import perth
     from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+
+    if perth.PerthImplicitWatermarker is None:
+        # La libreria della filigrana nasconde il motivo per cui non si carica: lo mostriamo nel registro.
+        # Per non bloccare la voce usiamo la filigrana "vuota"; reinstallando il motore si torna a quella vera.
+        try:
+            from perth.perth_net.perth_net_implicit.perth_watermarker import PerthImplicitWatermarker  # noqa: F401
+        except Exception as err:  # noqa: BLE001
+            print(f"[voce] filigrana audio non disponibile ({type(err).__name__}: {err}): continuo senza", flush=True)
+        perth.PerthImplicitWatermarker = perth.DummyWatermarker
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"[voce] carico Chatterbox Multilingual su {device}", flush=True)

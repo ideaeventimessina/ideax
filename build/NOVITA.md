@@ -1,7 +1,7 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.3.2.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.3.3.exe** e aprilo.
 
 ## Correzioni
-- **Installazione del motore voce su Windows**: si fermava con "Failed to build pkuseg". pkuseg serve solo per il cinese e su Windows va compilato; ora non viene installato (Chatterbox funziona senza, in tutte le altre lingue), e nemmeno gradio, che non serve
-- Il motore voce usa solo pacchetti già pronti per Windows: nessuna compilazione
-- Dopo l'aggiornamento premi di nuovo **Installa** nella pagina Voce: i file già scaricati vengono riutilizzati
+- **Motore voce**: si fermava al caricamento con "PerthImplicitWatermarker … not callable". La libreria della filigrana audio usa due librerie (pyyaml e pkg_resources) senza dichiararle: ora vengono installate
+- Se la filigrana non si carica comunque, il motore lo scrive nel registro e prosegue invece di bloccarsi
+- Dopo l'aggiornamento premi **Riprova l'installazione** nella pagina Voce: i file già scaricati vengono riutilizzati
