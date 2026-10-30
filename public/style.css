@@ -386,3 +386,20 @@ pre.code { max-width: 100%; }
 .seg label:has(input:checked) { border-color: var(--accent); background: rgba(112, 85, 221, .12); }
 .seg input { width: auto; min-height: 0; accent-color: var(--btn); }
 #music-ideas { grid-template-columns: 1fr; }
+
+/* ---------- Reel ---------- */
+.reel-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 28px; align-items: start; }
+.reel-preview { display: grid; gap: 14px; justify-items: center; }
+.phone { width: 100%; max-width: 360px; aspect-ratio: 9 / 16; border-radius: 28px; overflow: hidden; background: #000; border: 6px solid var(--card); box-shadow: var(--shadow); display: grid; place-items: center; position: relative; }
+.phone video { width: 100%; height: 100%; object-fit: cover; }
+.phone-empty { color: var(--muted); font-size: 14px; padding: 24px; text-align: center; }
+.phases { list-style: none; margin: 0; padding: 24px; display: grid; gap: 12px; width: 100%; }
+.phases li { display: flex; gap: 10px; align-items: center; color: rgba(255,255,255,.55); font-size: 14px; }
+.phases li::before { content: ""; width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); flex: none; }
+.phases li.now { color: #fff; }
+.phases li.now::before { border-color: var(--accent); border-top-color: transparent; animation: spin 1s linear infinite; }
+.phases li.ok { color: var(--green); }
+.phases li.ok::before { content: "✓"; border: 0; display: grid; place-items: center; font-size: 13px; }
+.reel-meta { width: 100%; max-width: 360px; display: grid; gap: 10px; }
+.reel-meta .caption-box { font-size: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; white-space: pre-wrap; }
+@media (max-width: 1100px) { .reel-grid { grid-template-columns: 1fr; } }

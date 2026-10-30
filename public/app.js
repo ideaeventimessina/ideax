@@ -33,7 +33,7 @@ async function api(path, options = {}) {
 }
 
 const fmtSize = (b) => (b == null ? '' : b >= 1e9 ? `${(b / 1e9).toFixed(1).replace('.', ',')} GB` : `${Math.max(1, Math.round(b / 1e6))} MB`);
-const kindOf = (task) => (['speech', 'music'].includes(task) ? 'audio' : task === 'animation' ? 'animation' : VIDEO_TASKS.includes(task) ? 'video' : 'image');
+const kindOf = (task) => (task === 'reel' ? 'video' : ['speech', 'music'].includes(task) ? 'audio' : task === 'animation' ? 'animation' : VIDEO_TASKS.includes(task) ? 'video' : 'image');
 const KIND_NAME = { image: 'Immagine', video: 'Video', animation: 'Animazione', audio: 'Audio' };
 const MIC = '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
 // Barre decorative "a onda", sempre uguali per lo stesso id
@@ -81,6 +81,7 @@ function showPage() {
   if (page === 'impostazioni') { renderEngine($('#engine-card')); loadNetwork(); loadEngines(); loadHfToken(); }
   if (page === 'voce') { loadEngines(); loadVoices(); }
   if (page === 'musica') loadEngines();
+  if (page === 'reel') loadReelForm();
   window.scrollTo({ top: 0 });
 }
 window.addEventListener('hashchange', showPage);
@@ -1664,3 +1665,101 @@ $('#music-form').addEventListener('submit', async (e) => {
 });
 
 if (location.hash === '#musica') loadEngines();
+
+
+// ======================= Reel =======================
+
+const PHASES = ['Scrivo il testo', 'Registro la voce', 'Creo le immagini', 'Compongo la musica', 'Monto il reel'];
+
+async function loadReelForm() {
+  const f = $('#reel-form');
+  const [v, models, settings, eng] = await Promise.all([
+    api('/v1/voices').catch(() => ({ voices: [] })),
+    api('/api/models').catch(() => ({ generators: [], brain: '' })),
+    api('/api/settings').catch(() => ({})),
+    api('/api/engines').catch(() => []),
+  ]);
+  const cur = f.voice.value;
+  f.voice.innerHTML = v.voices.map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('') + '<option value="none">Senza voce (solo sottotitoli)</option>';
+  if (cur) f.voice.value = cur;
+  const mcur = f.model.value;
+  f.model.innerHTML = '<option value="">Lo sceglie ideax</option>' + models.generators.filter((m) => m.capabilities.includes('image_generate')).map((m) => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
+  f.model.value = mcur;
+  // Cosa manca per un reel completo
+  const needs = [];
+  if (/regole/.test(models.brain || '')) needs.push('Senza cervello attivo serve il testo ("Ho già il testo"); con Ollama o un .gguf lo scrive ideax.');
+  if (!v.voices.length) needs.push('Nessuna voce: creala nella pagina Voce, oppure il reel sarà solo con sottotitoli.');
+  if (!eng.find((e) => e.id === 'music' && e.status === 'installed')) needs.push('Motore musica non installato: il reel sarà senza musica.');
+  if (!models.generators.some((m) => m.capabilities.includes('image_generate'))) needs.push('Serve un modello di immagini (pagina Modelli).');
+  $('#reel-needs').textContent = needs.join(' ');
+  if (/regole/.test(models.brain || '')) $('#reel-script-box').open = true;
+}
+
+$('#reel-form').addEventListener('input', (e) => {
+  if (e.target.name === 'music') $$('[data-reel="music-desc"]').forEach((el) => { el.hidden = e.target.value !== 'custom'; });
+});
+
+function renderReelProgress(j) {
+  const cur = j.progress?.phase;
+  const idx = PHASES.indexOf(cur);
+  return `<div class="phone"><ul class="phases">${PHASES.map((p, i) => {
+    const cls = i < idx ? 'ok' : i === idx ? 'now' : '';
+    const n = i === idx && j.progress?.total ? ` ${j.progress.step}/${j.progress.total}` : '';
+    return `<li class="${cls}">${esc(p)}${n}</li>`;
+  }).join('')}</ul></div>
+  <div class="reel-meta"><span class="muted small">${j.waiting ? 'In fila: la GPU sta finendo un altro lavoro…' : 'Un reel richiede qualche minuto: puoi continuare a usare ideax.'}</span>
+    <div class="row"><button type="button" class="btn small" data-cancel-job="${j.id}">Annulla</button></div></div>`;
+}
+
+function renderReelResult(j) {
+  const v = j.results.find((r) => r.type === 'video/mp4');
+  const cover = j.results.find((r) => r.role === 'cover');
+  const srt = j.results.find((r) => r.role === 'subtitles');
+  const caption = [j.reel?.caption, (j.reel?.hashtags || []).map((h) => `#${String(h).replace(/^#/, '')}`).join(' ')].filter(Boolean).join('\n\n');
+  return `<div class="phone"><video src="${esc(v.url)}" ${cover ? `poster="${esc(cover.url)}"` : ''} controls autoplay playsinline></video></div>
+    <div class="reel-meta"><strong>${esc(j.title || 'Reel')}</strong><span class="muted small">${esc(j.reason || '')}</span>
+      <div class="row"><a class="btn small primary" href="${esc(v.url)}" download>↓ Scarica MP4</a>
+        ${cover ? `<a class="btn small" href="${esc(cover.url)}" download>Copertina</a>` : ''}
+        ${srt ? `<a class="btn small" href="${esc(srt.url)}" download>Sottotitoli .srt</a>` : ''}</div>
+      ${caption ? `<div class="caption-box">${esc(caption)}</div><button type="button" class="btn small" data-copy-text="${esc(caption)}">Copia didascalia e hashtag</button>` : ''}</div>`;
+}
+
+$('#reel-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  if (!f.prompt.value.trim() && !f.script.value.trim()) { f.prompt.focus(); return; }
+  const out = $('#reel-result');
+  const btn = $('button.primary', f);
+  btn.disabled = true;
+  try {
+    const { id } = await api('/v1/reels', {
+      method: 'POST',
+      body: {
+        prompt: f.prompt.value.trim(),
+        ...(f.script.value.trim() ? { script: f.script.value.trim() } : {}),
+        duration: Number(f.duration.value),
+        voice: f.voice.value === 'none' ? false : f.voice.value || undefined,
+        style: f.style.value.trim() || undefined,
+        music: f.music.value === 'none' ? false : f.music.value === 'custom' ? f.musicDesc.value.trim() || true : true,
+        captions: f.captions.checked,
+        model: f.model.value || undefined,
+      },
+    });
+    for (;;) {
+      const j = await api(`/api/jobs/${id}`);
+      if (j.status === 'done') { out.innerHTML = renderReelResult(j); loadHistory(); break; }
+      if (j.status === 'error' || j.status === 'cancelled') {
+        out.innerHTML = `<div class="phone"><div class="phone-empty">${j.status === 'cancelled' ? 'Annullato' : 'Il reel non è riuscito'}</div></div><p class="error-text">${esc(j.error || '')}</p>`;
+        break;
+      }
+      out.innerHTML = renderReelProgress(j);
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+  } catch (err) {
+    out.innerHTML = `<p class="error-text">${esc(err.message)}</p>`;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+if (location.hash === '#reel') loadReelForm();

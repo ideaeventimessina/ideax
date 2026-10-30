@@ -265,6 +265,15 @@ Campi di `POST /v1/music`: `prompt`, `duration` (10–600 s), `instrumental`, `l
 
 Richiede il driver NVIDIA 570 o più recente (CUDA 12.8).
 
+### Reel
+
+Pagina **Reel**: scrivi l'argomento (o il testo completo) e ideax crea un reel verticale 1080×1920 con la tua voce
+clonata, un'immagine per scena con movimento lento, musica di sottofondo sotto la voce e sottotitoli grandi
+sincronizzati. In più: copertina, sottotitoli `.srt`, didascalia e hashtag. Dallo Studio: "fammi un reel su…".
+
+Da un altro sistema (es. billpro) si manda il **piano** già pronto, con le scene e anche foto vere:
+vedi [docs/integrazione-reel.md](docs/integrazione-reel.md).
+
 ### Motori
 
 In **Impostazioni → Motori** ogni funzione pesante (voce, e in arrivo musica, gemello foto e video) si installa con un

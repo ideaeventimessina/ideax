@@ -14,6 +14,7 @@ import { runModel, cancelOnWorker, inGpuQueue } from './lib/backends.js';
 import * as engines from './lib/engines.js';
 import * as voices from './lib/voices.js';
 import * as music from './lib/music.js';
+import { runReel } from './lib/reels.js';
 import { fallbackTitle } from './lib/router.js';
 import * as runtime from './lib/runtime.js';
 import * as updater from './lib/updater.js';
@@ -158,6 +159,7 @@ async function createJob(body, ctx = {}) {
     kind: body.kind || 'media',
     speech: body.speech,
     music: body.music,
+    reel: body.reel,
     client: ctx.client || 'ideax',
     origin: ctx.origin || '',
     callbackUrl: callback,
@@ -254,6 +256,10 @@ async function processJob(job) {
       await runMusic(job, log);
       return;
     }
+    if (job.kind === 'reel') {
+      await runReel(job, log);
+      return;
+    }
     job.status = 'routing';
     log('Analizzo il prompt…');
     const d = await route(job.prompt, job.attachments, { forceModelId: job.forceModelId, forceTask: job.forceTask });
@@ -283,6 +289,7 @@ async function processJob(job) {
         reason: job.reason, brain: job.brain, status: job.status, error: job.error, results: job.results,
         createdAt: job.createdAt, seconds: job.startedAt ? Math.round((job.finishedAt - job.startedAt) / 1000) : null,
         client: job.client, metadata: job.metadata,
+        ...(job.reelPlan ? { reel: { caption: job.reelPlan.caption, hashtags: job.reelPlan.hashtags, scenes: job.reelPlan.scenes.map(({ text }) => text) } } : {}),
       });
     }
     job.attachments = job.attachments.map(({ name, type }) => ({ name, type }));
@@ -308,9 +315,9 @@ function withData(results) {
 
 function publicCreation(h, origin) {
   return {
-    id: h.id, title: h.title, prompt: h.prompt, task: h.task, type: ['speech', 'music'].includes(h.task) ? 'audio' : h.task === 'animation' ? 'animation' : /video/.test(h.task || '') ? 'video' : 'image',
+    id: h.id, title: h.title, prompt: h.prompt, task: h.task, type: h.task === 'reel' ? 'reel' : ['speech', 'music'].includes(h.task) ? 'audio' : h.task === 'animation' ? 'animation' : /video/.test(h.task || '') ? 'video' : 'image',
     model: h.modelName, routedPrompt: h.routedPrompt, negativePrompt: h.negativePrompt, loras: h.loras || [], status: h.status,
-    error: h.error, client: h.client, metadata: h.metadata, createdAt: h.createdAt, seconds: h.seconds,
+    error: h.error, client: h.client, metadata: h.metadata, createdAt: h.createdAt, seconds: h.seconds, reel: h.reel,
     results: (h.results || []).map((r) => ({ ...r, url: origin + r.url })),
   };
 }
@@ -334,6 +341,7 @@ function publicJob(job, origin = '') {
     client: job.client,
     metadata: job.metadata,
     webhook: job.webhook,
+    ...(job.reelPlan ? { reel: { title: job.reelPlan.title, caption: job.reelPlan.caption, hashtags: job.reelPlan.hashtags, scenes: job.reelPlan.scenes.map(({ text, visual }) => ({ text, visual })), music: job.reelPlan.music } } : {}),
     results: job.results.map((r) => ({ ...r, url: origin + r.url })),
     log: job.log,
     createdAt: job.createdAt,
@@ -445,6 +453,21 @@ const server = http.createServer(async (req, res) => {
       const out = publicJob(job, origin);
       if (body.inline) out.results = withData(out.results);
       return send(res, job.status === 'done' ? 200 : 500, out);
+    }
+    if (p === '/v1/reels' && req.method === 'POST') {
+      const body = await readBody(req);
+      const { plan, script, voice, duration, style, music: mus, captions, model, language, seed, musicVolume } = body;
+      if (!body.prompt && !plan && !script) return send(res, 400, { error: 'Serve "prompt" (l\'argomento), "script" (il testo) oppure "plan" (scene già pronte)' });
+      const job = await createJob({
+        ...body,
+        prompt: body.prompt || plan?.title || (plan?.scenes?.[0]?.text) || String(script).slice(0, 200),
+        kind: 'reel',
+        reel: { plan, script, voice, duration, style, music: mus, captions, model, language, seed, musicVolume },
+      }, ctx);
+      // Un reel richiede minuti: risposta immediata, salvo wait=true
+      if (body.wait !== true) return send(res, 202, { id: job.id, status: job.status, status_url: `${origin}/v1/jobs/${job.id}` });
+      await job.done;
+      return send(res, job.status === 'done' ? 200 : 500, publicJob(job, origin));
     }
     if (p === '/v1/music' && req.method === 'POST') {
       const body = await readBody(req);
@@ -633,7 +656,12 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/api/generate' && req.method === 'POST') {
       const body = await readJson(req);
-      if ((!body.task || body.task === 'music') && !body.attachments?.length && engines.isInstalled('music')) {
+      // "fammi un reel su…" dallo Studio
+      if (!body.task && !body.attachments?.length && /\b(reel|reels|tiktok|short|shorts)\b/i.test(body.prompt || '')) {
+        const sec = (body.prompt || '').match(/(\d+)\s*(s\b|sec|secondi)/i);
+        Object.assign(body, { kind: 'reel', reel: { duration: sec ? Number(sec[1]) : 30 } });
+      }
+      if (!body.kind && (!body.task || body.task === 'music') && !body.attachments?.length && engines.isInstalled('music')) {
         const m = body.task === 'music' ? (musicFromPrompt(body.prompt || '') || { duration: 30, instrumental: true }) : musicFromPrompt(body.prompt || '');
         if (m) Object.assign(body, { kind: 'music', music: m, task: undefined });
       }

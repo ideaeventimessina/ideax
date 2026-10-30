@@ -16,6 +16,7 @@ import base64
 import gc
 import inspect
 import io
+import subprocess
 import os
 import tempfile
 import threading
@@ -536,6 +537,166 @@ def translate(req: TranslateRequest):
             out = model.generate(**batch, max_new_tokens=256, num_beams=4)
         text = ". ".join(tok.decode(o, skip_special_tokens=True).rstrip(".") for o in out)
     return {"text": text}
+
+
+# ---------------------------------------------------------------- montaggio dei reel
+
+compose_lock = threading.Lock()
+COMPOSE: dict[str, Any] = {"frame": 0, "frames": 0}
+
+FONT_CANDIDATES = [
+    "C:/Windows/Fonts/segoeuib.ttf", "C:/Windows/Fonts/arialbd.ttf", "C:/Windows/Fonts/arial.ttf",
+    "/System/Library/Fonts/Supplemental/Arial Bold.ttf", "/Library/Fonts/Arial Bold.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+]
+
+
+class ComposeScene(BaseModel):
+    image: str
+    start: float
+    duration: float
+
+
+class ComposeCaption(BaseModel):
+    text: str
+    start: float
+    end: float
+
+
+class ComposeRequest(BaseModel):
+    scenes: list[ComposeScene]
+    captions: list[ComposeCaption] = []
+    voice: Optional[str] = None
+    music: Optional[str] = None
+    output: str
+    width: int = 1080
+    height: int = 1920
+    fps: int = 30
+    music_volume: float = 0.18
+    caption_position: float = 0.70  # altezza del centro dei sottotitoli, da 0 (alto) a 1 (basso)
+
+
+def load_font(size: int):
+    from PIL import ImageFont
+
+    for f in FONT_CANDIDATES:
+        if os.path.exists(f):
+            return ImageFont.truetype(f, size)
+    try:
+        return ImageFont.load_default(size=size)  # Pillow 10.1+: carattere scalabile incluso
+    except TypeError:
+        return ImageFont.load_default()
+
+
+def cover(img: Image.Image, w: int, h: int) -> Image.Image:
+    """Ridimensiona e ritaglia l'immagine per riempire w×h senza bande nere."""
+    img = img.convert("RGB")
+    scale = max(w / img.width, h / img.height)
+    img = img.resize((max(w, round(img.width * scale)), max(h, round(img.height * scale))), Image.LANCZOS)
+    left, top = (img.width - w) // 2, (img.height - h) // 2
+    return img.crop((left, top, left + w, top + h))
+
+
+def caption_overlay(text: str, w: int, h: int, pos: float) -> Image.Image:
+    """Sottotitolo grande, bianco con contorno nero, centrato e su più righe se serve."""
+    size = round(w * 0.068)
+    font = load_font(size)
+    layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    words, lines, cur = text.split(), [], ""
+    for word in words:
+        test = f"{cur} {word}".strip()
+        if d.textlength(test, font=font) <= w * 0.84 or not cur:
+            cur = test
+        else:
+            lines.append(cur)
+            cur = word
+    if cur:
+        lines.append(cur)
+    line_h = round(size * 1.22)
+    y = round(h * pos - line_h * len(lines) / 2)
+    for line in lines:
+        tw = d.textlength(line, font=font)
+        d.text(((w - tw) / 2, y), line, font=font, fill=(255, 255, 255, 255),
+               stroke_width=max(4, size // 11), stroke_fill=(0, 0, 0, 255))
+        y += line_h
+    return layer
+
+
+@app.get("/compose/progress")
+def compose_progress():
+    return dict(COMPOSE)
+
+
+@app.post("/compose")
+def compose(req: ComposeRequest):
+    """Monta il reel: immagini con zoom lento (effetto Ken Burns), sottotitoli, voce e musica sotto la voce."""
+    import imageio.v2 as imageio
+    import imageio_ffmpeg
+    import numpy as np
+
+    W, H, fps = req.width, req.height, req.fps
+    total = max(s.start + s.duration for s in req.scenes)
+    frames = int(round(total * fps))
+    with compose_lock:
+        COMPOSE.update(frame=0, frames=frames)
+        # Ogni scena: immagine un po' più grande dell'inquadratura, per poter zoomare e spostarsi
+        bases = [cover(Image.open(s.image), round(W * 1.12), round(H * 1.12)) for s in req.scenes]
+        overlays = [(c, caption_overlay(c.text, W, H, req.caption_position)) for c in req.captions]
+        silent = req.output + ".video.mp4"
+        writer = imageio.get_writer(silent, fps=fps, codec="libx264", quality=8, macro_block_size=8,
+                                    ffmpeg_params=["-pix_fmt", "yuv420p", "-preset", "veryfast"])
+        try:
+            for i in range(frames):
+                t = i / fps
+                k = next((j for j, s in enumerate(req.scenes) if s.start <= t < s.start + s.duration), len(req.scenes) - 1)
+                s, base = req.scenes[k], bases[k]
+                p = min(1.0, max(0.0, (t - s.start) / max(s.duration, 0.01)))
+                p = p * p * (3 - 2 * p)  # movimento morbido all'inizio e alla fine
+                # Scene alterne: zoom in e zoom out, con un leggero spostamento laterale
+                zoom = 1.0 + 0.10 * (p if k % 2 == 0 else 1 - p)
+                cw, ch = round(base.width / zoom / 1.0), round(base.height / zoom / 1.0)
+                cw, ch = min(cw, base.width), min(ch, base.height)
+                pan = (p - 0.5) * (base.width - cw) * (0.6 if k % 3 == 1 else -0.6 if k % 3 == 2 else 0)
+                left = max(0, min(base.width - cw, round((base.width - cw) / 2 + pan)))
+                top = (base.height - ch) // 2
+                frame = base.crop((left, top, left + cw, top + ch)).resize((W, H), Image.BILINEAR)
+                for c, ov in overlays:
+                    if c.start <= t < c.end:
+                        frame.paste(ov, (0, 0), ov)
+                        break
+                writer.append_data(np.asarray(frame))
+                COMPOSE["frame"] = i + 1
+        finally:
+            writer.close()
+
+        # Audio: voce in primo piano, musica bassa con dissolvenze
+        ff = imageio_ffmpeg.get_ffmpeg_exe()
+        cmd = [ff, "-y", "-i", silent]
+        filters, labels = [], []
+        if req.voice:
+            cmd += ["-i", req.voice]
+            labels.append(f"[{len(labels) + 1}:a]")
+        if req.music:
+            cmd += ["-stream_loop", "-1", "-i", req.music]
+            idx = len(labels) + 1
+            fade_out = max(0.0, total - 2.0)
+            filters.append(f"[{idx}:a]volume={req.music_volume},afade=t=in:d=1,afade=t=out:st={fade_out:.2f}:d=2[m]")
+            labels.append("[m]")
+        if labels:
+            if len(labels) > 1:
+                filters.append(f"{''.join(labels)}amix=inputs={len(labels)}:duration=longest:normalize=0[a]")
+            else:
+                filters.append(f"{labels[0]}anull[a]")
+            cmd += ["-filter_complex", ";".join(filters), "-map", "0:v", "-map", "[a]", "-c:a", "aac", "-b:a", "192k"]
+        cmd += ["-c:v", "copy", "-t", f"{total:.2f}", "-movflags", "+faststart", req.output]
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        os.remove(silent)
+        if proc.returncode != 0:
+            raise HTTPException(500, f"Montaggio non riuscito: {proc.stderr[-600:]}")
+        # Copertina: il primo fotogramma con il titolo, utile per l'anteprima
+        COMPOSE.update(frame=0, frames=0)
+    return {"output": req.output, "seconds": round(total, 2), "frames": frames}
 
 
 @app.post("/unload")

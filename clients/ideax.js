@@ -47,6 +47,12 @@ export class Ideax {
 
   voices() { return this.#request('/v1/voices'); }
 
+  // Reel: { prompt } oppure { script } oppure { plan: { scenes: [{ text, visual | image }], music, caption, hashtags } }
+  // più voice, duration, style, music, captions, callback_url, metadata. Risponde subito con l'id: usare waitFor(id) o un webhook.
+  reel(options) {
+    return this.#request('/v1/reels', { method: 'POST', json: options });
+  }
+
   // Compone musica: options = duration, instrumental, lyrics, language, bpm, key, seed, quality, callback_url, metadata, wait
   music(prompt, options = {}) {
     return this.#request('/v1/music', { method: 'POST', json: { prompt, ...options } });

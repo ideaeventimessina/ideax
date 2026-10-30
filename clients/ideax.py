@@ -72,6 +72,11 @@ class Ideax:
         """Compone musica. options: duration, instrumental, lyrics, language, bpm, key, seed, quality, callback_url, metadata, wait."""
         return self._request("/v1/music", "POST", {"prompt": prompt, **options})
 
+    def reel(self, **options):
+        """Reel: prompt=…, oppure script=…, oppure plan={"scenes": [{"text": …, "visual": … | "image": …}], …}.
+        Altre opzioni: voice, duration, style, music, captions, callback_url, metadata. Risponde subito: usa wait_for(id)."""
+        return self._request("/v1/reels", "POST", options)
+
     def voices(self):
         return self._request("/v1/voices")
 

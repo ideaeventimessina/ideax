@@ -173,7 +173,8 @@
         "image",
         "video",
         "animation",
-        "audio"
+        "audio",
+        "reel"
        ]
       }
      },
@@ -834,6 +835,127 @@
      }
     }
    }
+  },
+  "/v1/reels": {
+   "post": {
+    "summary": "Crea un reel verticale 1080×1920: voce clonata, immagini, musica, sottotitoli",
+    "description": "Tre modi, in ordine di priorità: 1) plan = scene già pronte (es. da billpro), eseguite così come sono; 2) script = testo completo, diviso in scene da ideax; 3) prompt = argomento, il cervello di ideax scrive testo e scene. Risponde subito (202) con l'id; usare callback_url o GET /v1/jobs/{id}. Il risultato contiene il video (results[0]), la copertina (role=cover), i sottotitoli .srt (role=subtitles) e in reel: titolo, didascalia, hashtag e scene.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "prompt": {
+          "type": "string",
+          "example": "3 errori che fanno perdere clienti a un ristorante"
+         },
+         "script": {
+          "type": "string"
+         },
+         "plan": {
+          "$ref": "#/components/schemas/ReelPlan"
+         },
+         "voice": {
+          "description": "Id o nome della voce clonata; false = senza voce (solo sottotitoli)",
+          "oneOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "boolean"
+           }
+          ]
+         },
+         "duration": {
+          "type": "integer",
+          "default": 30,
+          "description": "Durata indicativa in secondi (con prompt): il cervello dimensiona il testo"
+         },
+         "style": {
+          "type": "string",
+          "description": "Stile visivo comune a tutte le immagini"
+         },
+         "music": {
+          "description": "true = adatta al testo, false = nessuna, stringa = descrizione",
+          "oneOf": [
+           {
+            "type": "boolean"
+           },
+           {
+            "type": "string"
+           }
+          ]
+         },
+         "musicVolume": {
+          "type": "number",
+          "default": 0.18
+         },
+         "captions": {
+          "type": "boolean",
+          "default": true
+         },
+         "model": {
+          "type": "string",
+          "description": "Modello di immagini da usare"
+         },
+         "language": {
+          "type": "string",
+          "default": "it"
+         },
+         "seed": {
+          "type": "integer"
+         },
+         "wait": {
+          "type": "boolean",
+          "default": false
+         },
+         "callback_url": {
+          "type": "string"
+         },
+         "metadata": {
+          "type": "object"
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "description": "Accettato",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "id": {
+           "type": "string"
+          },
+          "status": {
+           "type": "string"
+          },
+          "status_url": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     },
+     "200": {
+      "description": "Con wait=true: reel pronto",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Job"
+        }
+       }
+      }
+     }
+    }
+   }
   }
  },
  "components": {
@@ -993,6 +1115,41 @@
      "seconds": {
       "type": "integer",
       "nullable": true
+     },
+     "reel": {
+      "type": "object",
+      "description": "Solo per i reel",
+      "properties": {
+       "title": {
+        "type": "string"
+       },
+       "caption": {
+        "type": "string"
+       },
+       "hashtags": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "music": {
+        "type": "string"
+       },
+       "scenes": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "text": {
+           "type": "string"
+          },
+          "visual": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
      }
     }
    },
@@ -1173,6 +1330,56 @@
        "at": {
         "type": "string"
        }
+      }
+     }
+    }
+   },
+   "ReelPlan": {
+    "type": "object",
+    "required": [
+     "scenes"
+    ],
+    "properties": {
+     "title": {
+      "type": "string"
+     },
+     "scenes": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+       "type": "object",
+       "properties": {
+        "text": {
+         "type": "string",
+         "description": "Frase letta dalla voce in questa scena (vuota = scena muta)"
+        },
+        "visual": {
+         "type": "string",
+         "description": "Cosa si vede, meglio in inglese: ideax genera l'immagine verticale"
+        },
+        "image": {
+         "type": "string",
+         "description": "In alternativa a visual: immagine già pronta (URL, data URI o base64), es. foto del prodotto"
+        },
+        "duration": {
+         "type": "number",
+         "description": "Durata minima della scena in secondi (utile per le scene mute)"
+        }
+       }
+      }
+     },
+     "music": {
+      "type": "string",
+      "description": "Musica di sottofondo (strumentale), es. 'warm acoustic guitar, upbeat, 105 BPM'"
+     },
+     "caption": {
+      "type": "string",
+      "description": "Didascalia del post"
+     },
+     "hashtags": {
+      "type": "array",
+      "items": {
+       "type": "string"
       }
      }
     }

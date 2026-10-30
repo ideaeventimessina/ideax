@@ -1,12 +1,14 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.4.0.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.5.0.exe** e aprilo.
 
-## Novità: musica
-- Nuova pagina **Musica**: basi, sottofondi, jingle e canzoni, composti sul tuo PC con **ACE-Step 1.5** (licenza MIT, uso commerciale consentito)
-- Strumentale, canzone con il tuo testo, oppure canzone con testo scritto dal motore. Durata da 10 secondi a 10 minuti, BPM e tonalità facoltativi
-- Dallo **Studio** basta scrivere, per esempio, "fammi una base lo-fi di 30 secondi"
-- API `/v1/music` per i tuoi sistemi, con webhook e metadata
-- Prima di comporre ideax libera la scheda video; gli altri motori si riaccendono da soli quando servono
+## Novità: reel
+- Nuova pagina **Reel**: scrivi l'argomento (o il testo completo) e ideax crea un reel verticale 1080×1920 per Instagram e TikTok
+- Testo e scene scritti dal cervello (con aggancio iniziale e invito finale), oppure il tuo testo diviso in scene
+- Ogni scena letta con la **tua voce clonata**, un'immagine verticale per scena con movimento lento, **musica** di sottofondo sotto la voce, **sottotitoli** grandi sincronizzati
+- In più: copertina, sottotitoli .srt, didascalia e hashtag pronti da copiare
+- Dallo **Studio**: "fammi un reel su…"
 
-## Come installare il motore musica
-Pagina **Musica** → **Installa**. ideax scarica la versione ufficiale di ACE-Step 1.5, le sue librerie e i modelli (circa 18 GB in tutto, la prima volta). Serve il driver NVIDIA 570 o più recente.
+## Per i tuoi sistemi (es. billpro)
+- API `/v1/reels`: si può mandare il **piano già pronto** (scene con testo, immagine da generare o foto vera, musica, didascalia, hashtag) ed ideax lo esegue così com'è
+- Webhook a reel finito, con video, copertina, sottotitoli e didascalia
+- Documento d'integrazione: docs/integrazione-reel.md nel repository
