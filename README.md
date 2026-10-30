@@ -81,18 +81,11 @@ Serve [Node.js](https://nodejs.org) 18+ e [Python](https://python.org) 3.10–3.
 ## Pubblicare una nuova versione
 
 1. Aumenta `version` in `package.json` (es. `1.2.0`) e scrivi le novità in `build/NOVITA.md`.
-2. Fai il commit e crea il tag con lo stesso numero:
+2. Fai il commit e il push su `main`.
 
-```bash
-git tag v1.2.0
-```
-
-```bash
-git push origin main --tags
-```
-
-GitHub Actions costruisce `ideax-setup-1.2.0.exe` e la versione portatile e li pubblica nel rilascio
-([.github/workflows/release.yml](.github/workflows/release.yml)). Gli ideax installati lo vedono e propongono l'aggiornamento.
+GitHub Actions vede la nuova versione, costruisce `ideax-setup-1.2.0.exe` e la versione portatile e li pubblica
+in un nuovo rilascio `v1.2.0` ([.github/workflows/release.yml](.github/workflows/release.yml)).
+Gli ideax installati lo vedono e propongono "Aggiorna ora". Si può avviare anche a mano dalla scheda Actions.
 
 Gli aggiornamenti leggono i rilasci di GitHub senza password, quindi **il repository deve essere pubblico**
 (oppure i rilasci vanno pubblicati in un repository pubblico separato, da indicare in

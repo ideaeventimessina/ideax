@@ -1,15 +1,21 @@
 # Pubblica una nuova versione di ideax.
-# Basta creare un tag (es. "v1.2.0", uguale alla versione in package.json):
-# GitHub costruisce ideax-setup-X.exe e la versione portatile e li allega al rilascio.
+# Basta aumentare "version" in package.json e fare push su main: se il rilascio vX.Y.Z non esiste ancora,
+# GitHub costruisce ideax-setup-X.Y.Z.exe e la versione portatile e li pubblica.
 # ideax installato sui PC vede il rilascio e propone "Aggiorna ora".
 name: Rilascio
 
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+    paths: ['package.json', 'build/NOVITA.md', '.github/workflows/release.yml']
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: rilascio
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -17,32 +23,43 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Strumenti per l'installatore Windows
-        run: sudo apt-get update && sudo apt-get install -y nsis zip
-
-      - name: Controlla che tag e versione coincidano
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
-            echo "Il tag $GITHUB_REF_NAME non coincide con la versione $VERSION in package.json"; exit 1
-          fi
-
-      - run: npm ci
-
-      - name: Costruisci ideax.exe e l'installatore
-        run: npm run build:exe
-
-      - name: Pubblica il rilascio
+      - name: Versione da pubblicare
+        id: v
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          gh release create "$GITHUB_REF_NAME" \
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            echo "Il rilascio v$VERSION esiste già: niente da fare."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.v.outputs.skip != 'true'
+        with:
+          node-version: 22
+
+      - name: Strumenti per l'installatore Windows
+        if: steps.v.outputs.skip != 'true'
+        run: sudo apt-get update && sudo apt-get install -y nsis zip
+
+      - if: steps.v.outputs.skip != 'true'
+        run: npm ci
+
+      - name: Costruisci ideax.exe e l'installatore
+        if: steps.v.outputs.skip != 'true'
+        run: npm run build:exe
+
+      - name: Pubblica il rilascio
+        if: steps.v.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          gh release create "v$VERSION" \
             "dist/ideax-setup-$VERSION.exe" \
             "dist/ideax-windows.zip#ideax-portatile-windows.zip" \
+            --target "$GITHUB_SHA" \
             --title "ideax $VERSION" \
             --notes-file build/NOVITA.md
