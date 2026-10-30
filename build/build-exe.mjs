@@ -40,7 +40,7 @@ await esbuild.build({
   format: 'cjs',
   target: 'node22',
   outfile: bundle,
-  define: { __IDEAX_SEA__: 'true' },
+  define: { __IDEAX_SEA__: 'true', __IDEAX_VERSION__: JSON.stringify(VERSION) },
   logLevel: 'warning',
   logOverride: { 'empty-import-meta': 'silent' },
 });
@@ -112,11 +112,24 @@ fs.writeFileSync(path.join(OUT, 'models', 'METTI-QUI-I-MODELLI.txt'),
 
 for (const f of [bundle, blob, seaConfig]) fs.rmSync(f, { force: true });
 
+// Nelle note del rilascio il nome dell'installatore deve avere la versione giusta
+const notes = path.join(ROOT, 'build', 'NOVITA.md');
+fs.writeFileSync(notes, fs.readFileSync(notes, 'utf8').replace(/ideax-setup-[\d.]+\.exe/g, `ideax-setup-${VERSION}.exe`));
+
 if (target === 'win') {
   const zip = path.join(DIST, 'ideax-windows.zip');
   fs.rmSync(zip, { force: true });
   execFileSync('zip', ['-r', '-q', '-9', zip, 'ideax'], { cwd: DIST });
-  console.log(`\nPronto: ${zip} (${(fs.statSync(zip).size / 1e6).toFixed(0)} MB)`);
+  console.log(`\nVersione portatile: ${zip} (${(fs.statSync(zip).size / 1e6).toFixed(0)} MB)`);
+
+  // Installatore (serve NSIS: "apt install nsis" su Linux, oppure NSIS per Windows)
+  const setup = path.join(DIST, `ideax-setup-${VERSION}.exe`);
+  try {
+    execFileSync('makensis', ['-V2', `-DVERSION=${VERSION}`, `-DSRC=${OUT}`, `-DOUTFILE=${setup}`, path.join(ROOT, 'build', 'installer.nsi')], { stdio: 'inherit' });
+    console.log(`Installatore: ${setup} (${(fs.statSync(setup).size / 1e6).toFixed(0)} MB)`);
+  } catch (err) {
+    console.log(`Installatore non creato (${err.code === 'ENOENT' ? 'NSIS non installato' : err.message})`);
+  }
 } else {
   console.log(`\nPronto: ${exe}`);
 }

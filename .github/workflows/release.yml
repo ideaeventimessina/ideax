@@ -1,0 +1,48 @@
+# Pubblica una nuova versione di ideax.
+# Basta creare un tag (es. "v1.2.0", uguale alla versione in package.json):
+# GitHub costruisce ideax-setup-X.exe e la versione portatile e li allega al rilascio.
+# ideax installato sui PC vede il rilascio e propone "Aggiorna ora".
+name: Rilascio
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Strumenti per l'installatore Windows
+        run: sudo apt-get update && sudo apt-get install -y nsis zip
+
+      - name: Controlla che tag e versione coincidano
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "Il tag $GITHUB_REF_NAME non coincide con la versione $VERSION in package.json"; exit 1
+          fi
+
+      - run: npm ci
+
+      - name: Costruisci ideax.exe e l'installatore
+        run: npm run build:exe
+
+      - name: Pubblica il rilascio
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/ideax-setup-$VERSION.exe" \
+            "dist/ideax-windows.zip#ideax-portatile-windows.zip" \
+            --title "ideax $VERSION" \
+            --notes-file build/NOVITA.md

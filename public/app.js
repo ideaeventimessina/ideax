@@ -1018,3 +1018,130 @@ document.addEventListener('click', (e) => {
   setInterval(refreshStatus, 5000);
   setInterval(() => { if (!state.models.local.length) loadModels(); }, 15000);
 })();
+
+// ======================= Programma e aggiornamenti =======================
+
+let about = null;
+let updatePoll = null;
+
+async function loadUpdate() {
+  const u = await api('/api/update').catch(() => null);
+  if (!u) return;
+  state.update = u;
+  renderUpdateBanner();
+  if ($('#page-impostazioni').classList.contains('active')) renderAbout();
+  const busy = u.status === 'downloading' || u.status === 'installing' || u.status === 'checking';
+  if (busy && !updatePoll) updatePoll = setInterval(loadUpdate, 1000);
+  if (!busy && updatePoll) { clearInterval(updatePoll); updatePoll = null; }
+  if (u.status === 'installing') waitForRestart();
+}
+
+// Durante l'aggiornamento ideax si chiude e si riapre: ricarichiamo la pagina quando torna con la nuova versione
+let waiting = false;
+function waitForRestart() {
+  if (waiting) return;
+  waiting = true;
+  const old = about?.version;
+  const t = setInterval(async () => {
+    const a = await api('/api/about').catch(() => null);
+    if (a && a.version !== old) { clearInterval(t); location.reload(); }
+  }, 2000);
+}
+
+function renderUpdateBanner() {
+  const u = state.update;
+  const el = $('#update-banner');
+  let dismissed = '';
+  try { dismissed = localStorage.getItem('ideax-update-dismissed') || ''; } catch {}
+  if (u.status === 'available' && dismissed !== u.latest) {
+    el.innerHTML = `<span>✦</span><span class="grow"><strong>È disponibile ideax ${esc(u.latest)}</strong> · ora hai la ${esc(u.current)}</span>
+      <a class="btn small" href="#impostazioni">Novità</a>
+      ${u.canInstall && u.assetUrl ? '<button class="btn primary small" data-update-install>Aggiorna ora</button>' : `<a class="btn primary small" href="${esc(u.pageUrl)}" target="_blank" rel="noopener">Scarica</a>`}
+      <button class="btn small" data-update-later>Più tardi</button>`;
+  } else if (u.status === 'downloading') {
+    const d = u.download;
+    const pct = d?.total ? Math.round((d.done / d.total) * 100) : 0;
+    el.innerHTML = `<span class="grow"><strong>Scarico ideax ${esc(u.latest)}…</strong> ${pct}%</span><div class="progress"><div style="width:${pct}%"></div></div>`;
+  } else if (u.status === 'installing') {
+    el.innerHTML = '<span class="grow"><strong>Installo l\'aggiornamento…</strong> ideax si chiude e si riapre da solo tra pochi secondi. I tuoi modelli e le tue creazioni restano dove sono.</span>';
+  } else {
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+}
+
+function renderAbout() {
+  const el = $('#about-card');
+  if (!about || !state.update) { el.innerHTML = '<p class="muted">…</p>'; return; }
+  const u = state.update;
+  const s = state.settings?.update || {};
+  const statusText = {
+    idle: 'Non ancora controllato.',
+    checking: 'Controllo in corso…',
+    none: u.error ? esc(u.error) : 'Hai l\'ultima versione.',
+    available: `Disponibile la versione ${esc(u.latest)}.`,
+    downloading: 'Scarico l\'aggiornamento…',
+    installing: 'Installazione in corso…',
+    error: `Controllo non riuscito: ${esc(u.error)}`,
+  }[u.status];
+  const win = about.platform === 'win32';
+  el.innerHTML = `<div class="section-head"><div><h2>Programma e aggiornamenti</h2>
+      <p class="muted">ideax ${esc(about.version)} · ${about.installed ? 'installato' : 'versione portatile'}</p></div>
+      <div class="row">
+        <button class="btn" data-update-check ${u.status === 'checking' ? 'disabled' : ''}>Controlla aggiornamenti</button>
+        ${u.status === 'available' && u.canInstall && u.assetUrl ? '<button class="btn primary" data-update-install>Aggiorna ora</button>' : ''}
+      </div></div>
+    <p>${statusText}${u.checkedAt ? ` <span class="muted small">· controllato ${esc(when(u.checkedAt))}</span>` : ''}</p>
+    ${u.status === 'available' && u.notes ? `<div class="release-notes">${esc(u.notes)}</div>` : ''}
+    <div class="facts">
+      <span class="chip">I tuoi dati: ${esc(about.home)}</span>
+      <button class="btn small" data-open-folder="home">Apri la cartella dei dati</button>
+      <button class="btn small" data-open-folder="outputs">Apri le creazioni</button>
+    </div>
+    <label class="check"><input type="checkbox" data-update-auto ${s.auto !== false ? 'checked' : ''}> Controlla gli aggiornamenti da solo</label>
+    <details><summary class="muted small">Opzioni avanzate</summary>
+      <label style="margin-top:12px">Repository GitHub degli aggiornamenti <span class="row"><input class="grow" data-update-repo value="${esc(s.repo || '')}" placeholder="utente/ideax"><button class="btn small" data-update-save>Salva</button></span></label>
+    </details>
+    <p class="muted small" style="margin-top:14px">${about.installed
+      ? 'Per disinstallare: Impostazioni di Windows → App → App installate → ideax → Disinstalla.'
+      : win ? 'Stai usando la versione portatile. Con "Aggiorna ora" ideax si installa come un normale programma e continua a usare questa cartella per i tuoi dati.' : ''}</p>`;
+}
+
+document.addEventListener('click', async (e) => {
+  if (e.target.closest('[data-update-install]')) {
+    e.target.disabled = true;
+    await api('/api/update/install', { method: 'POST' }).catch((err) => alert(err.message));
+    loadUpdate();
+  }
+  if (e.target.closest('[data-update-later]')) {
+    try { localStorage.setItem('ideax-update-dismissed', state.update.latest); } catch {}
+    renderUpdateBanner();
+  }
+  if (e.target.closest('[data-update-check]')) {
+    e.target.disabled = true;
+    await api('/api/update/check', { method: 'POST' }).catch(() => {});
+    loadUpdate();
+  }
+  if (e.target.closest('[data-update-save]')) {
+    await api('/api/settings', { method: 'POST', body: { update: { repo: $('[data-update-repo]').value.trim() } } });
+    await loadSettings();
+    await api('/api/update/check', { method: 'POST' }).catch(() => {});
+    loadUpdate();
+  }
+  const f = e.target.closest('[data-open-folder]');
+  if (f) api('/api/open-folder', { method: 'POST', body: { which: f.dataset.openFolder } });
+});
+document.addEventListener('change', async (e) => {
+  if (e.target.matches('[data-update-auto]')) {
+    await api('/api/settings', { method: 'POST', body: { update: { auto: e.target.checked } } });
+    loadSettings();
+  }
+});
+window.addEventListener('hashchange', () => { if (location.hash === '#impostazioni') renderAbout(); });
+
+(async () => {
+  about = await api('/api/about').catch(() => null);
+  await loadUpdate();
+  setInterval(loadUpdate, 60000);
+})();

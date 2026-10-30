@@ -12,6 +12,7 @@ import { route, buildCatalog, PROMPT_STYLES, styleFor } from './lib/router.js';
 import { resolveBrain } from './lib/brain.js';
 import { runModel, cancelOnWorker } from './lib/backends.js';
 import * as runtime from './lib/runtime.js';
+import * as updater from './lib/updater.js';
 
 process.title = 'ideax';
 const startup = store.getSettings();
@@ -312,6 +313,24 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/api/setup' && req.method === 'POST') return send(res, 200, await runtime.startSetup());
     if (p === '/api/setup/llm' && req.method === 'POST') return send(res, 200, await runtime.installLlmSupport());
+    if (p === '/api/about' && req.method === 'GET') {
+      return send(res, 200, { version: store.VERSION, installed: store.INSTALLED, home: store.ROOT, appRoot: store.APP_ROOT, platform: process.platform });
+    }
+    if (p === '/api/update' && req.method === 'GET') return send(res, 200, updater.update);
+    if (p === '/api/update/check' && req.method === 'POST') return send(res, 200, await updater.checkForUpdate());
+    if (p === '/api/update/install' && req.method === 'POST') {
+      const blocker = updater.installBlocker();
+      if (blocker) return send(res, 400, { error: blocker });
+      updater.installUpdate();
+      return send(res, 200, updater.update);
+    }
+    if (p === '/api/open-folder' && req.method === 'POST') {
+      const { which } = await readJson(req);
+      const dir = { home: store.ROOT, models: store.MODELS_DIR, outputs: store.OUTPUT_DIR }[which] || store.ROOT;
+      const cmd = process.platform === 'win32' ? 'explorer' : process.platform === 'darwin' ? 'open' : 'xdg-open';
+      exec(`${cmd} "${dir}"`, () => {});
+      return send(res, 200, { ok: true, dir });
+    }
     if (p === '/api/network' && req.method === 'GET') {
       const addrs = Object.values(os.networkInterfaces()).flat().filter((a) => a && a.family === 'IPv4' && !a.internal).map((a) => a.address);
       return send(res, 200, { host: HOST, port: PORT, lan: HOST === '0.0.0.0', addresses: addrs, tokenActive: !!TOKEN });
@@ -328,7 +347,7 @@ const server = http.createServer(async (req, res) => {
 
     if (p.startsWith('/outputs/')) return serveFile(res, store.OUTPUT_DIR, p.slice('/outputs/'.length));
     if (p.startsWith('/api/') || p.startsWith('/v1/')) return send(res, 404, { error: 'Percorso sconosciuto' });
-    return serveFile(res, path.join(store.ROOT, 'public'), p === '/' ? 'index.html' : p.slice(1));
+    return serveFile(res, path.join(store.APP_ROOT, 'public'), p === '/' ? 'index.html' : p.slice(1));
   } catch (err) {
     return send(res, 400, { error: err.message });
   }
@@ -359,7 +378,7 @@ server.on('error', (err) => {
 
 server.listen(PORT, HOST, () => {
   console.log('');
-  console.log('  ideax è attivo');
+  console.log(`  ideax ${store.VERSION} è attivo`);
   console.log(`  Apri: ${localUrl}`);
   if (HOST === '0.0.0.0') {
     for (const a of Object.values(os.networkInterfaces()).flat().filter((x) => x?.family === 'IPv4' && !x.internal)) {
@@ -367,10 +386,11 @@ server.listen(PORT, HOST, () => {
     }
     if (!TOKEN) console.log('  Attenzione: accesso dalla rete senza token.');
   }
-  console.log(`  Modelli: ${store.MODELS_DIR}`);
+  console.log(`  I tuoi dati: ${store.ROOT}`);
   if (store.IS_SEA) console.log('\n  Lascia aperta questa finestra: chiudendola ideax si ferma.');
   console.log('');
   runtime.startWorker();
+  updater.scheduleChecks();
   if (shouldOpen) openBrowser(localUrl);
 });
 

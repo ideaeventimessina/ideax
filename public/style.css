@@ -335,3 +335,13 @@ dialog.lightbox > .btn { position: absolute; top: 18px; right: 18px; z-index: 2;
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 dialog.sheet [data-for] { display: grid; gap: 16px; }
+
+/* ---------- Aggiornamenti ---------- */
+.update-banner { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 28px; padding: 14px 18px; border-radius: 14px;
+  background: linear-gradient(90deg, rgba(112, 85, 221, .22), rgba(112, 85, 221, .06)); border: 1px solid rgba(182, 165, 255, .35); }
+.update-banner strong { color: var(--text); }
+.update-banner .grow { color: var(--muted); font-size: 14px; }
+.update-banner .progress { flex-basis: 100%; }
+#about-card { margin-bottom: 22px; }
+#about-card .facts { margin: 14px 0; }
+.release-notes { white-space: pre-wrap; font-size: 13px; color: var(--muted); max-height: 220px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-top: 10px; }

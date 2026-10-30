@@ -27,18 +27,44 @@ Niente API a pagamento: niente costi a chiamata, niente attese di servizi estern
 
 ## Installazione su Windows
 
-1. Scarica `ideax-windows.zip` ed estrailo dove vuoi (es. `D:\ideax`).
-2. Doppio clic su **`ideax.exe`**. Si apre il browser su http://localhost:7800.
+1. Scarica **`ideax-setup-X.Y.Z.exe`** dall'ultimo [rilascio](https://github.com/ideaeventimessina/ideax/releases/latest) e aprilo.
+   Avanti → Installa. Non servono permessi di amministratore.
+2. Apri ideax dal menu Start o dal desktop. Si apre il browser su http://localhost:7800.
 3. Nella guida **Primi passi** premi **Installa il motore**: ideax scarica da solo un Python portatile e
    PyTorch nella versione adatta alla tua scheda video (CUDA 12.8 per i driver recenti e le RTX 50, 12.4 o 12.1
-   per i driver più vecchi). Una volta sola, dentro la cartella `runtime`, senza toccare il resto del PC.
+   per i driver più vecchi). Una volta sola.
 4. Trascina un modello di Civitai nella pagina e crea.
 
-Non serve installare Node.js né Python: `ideax.exe` li contiene o li scarica.
-Per disinstallare basta cancellare la cartella.
+Non serve installare Node.js né Python.
 
 > Windows SmartScreen può avvisare che il programma non è firmato: "Ulteriori informazioni" → "Esegui comunque".
-> La finestra nera che si apre con `ideax.exe` va lasciata aperta: chiudendola ideax si ferma.
+> La finestra nera che si apre con ideax va lasciata aperta: chiudendola ideax si ferma.
+
+### Aggiornamenti
+
+ideax controlla da solo se c'è una versione nuova. Quando c'è, compare **"Aggiorna ora"**: un clic e ideax si chiude,
+si aggiorna e si riapre. Puoi controllare anche da **Impostazioni → Programma e aggiornamenti**.
+
+### Dove stanno i file
+
+| Cosa | Dove | Aggiornamenti |
+|---|---|---|
+| Il programma | `C:\Users\<tu>\AppData\Local\Programs\ideax` | sostituito a ogni aggiornamento |
+| I tuoi dati: modelli, creazioni, impostazioni, motore Python | `C:\Users\<tu>\ideax` | mai toccati |
+
+In Impostazioni c'è il pulsante **Apri la cartella dei dati**.
+Se usavi la versione portatile, al primo "Aggiorna ora" ideax si installa e continua a usare la vecchia cartella
+per i tuoi dati, senza spostare niente.
+
+### Disinstallare
+
+Impostazioni di Windows → **App** → **App installate** → ideax → **Disinstalla**.
+Ti chiede se eliminare anche i tuoi dati (modelli e creazioni): scegli No per tenerli.
+
+### Versione portatile
+
+C'è anche `ideax-portatile-windows.zip`: si estrae e si avvia `ideax.exe`, senza installazione.
+I dati restano nella stessa cartella.
 
 ## Installazione su Linux / macOS (dal codice)
 
@@ -52,7 +78,27 @@ Serve [Node.js](https://nodejs.org) 18+ e [Python](https://python.org) 3.10–3.
 ./start.sh
 ```
 
-## Creare `ideax.exe` dal codice
+## Pubblicare una nuova versione
+
+1. Aumenta `version` in `package.json` (es. `1.2.0`) e scrivi le novità in `build/NOVITA.md`.
+2. Fai il commit e crea il tag con lo stesso numero:
+
+```bash
+git tag v1.2.0
+```
+
+```bash
+git push origin main --tags
+```
+
+GitHub Actions costruisce `ideax-setup-1.2.0.exe` e la versione portatile e li pubblica nel rilascio
+([.github/workflows/release.yml](.github/workflows/release.yml)). Gli ideax installati lo vedono e propongono l'aggiornamento.
+
+Gli aggiornamenti leggono i rilasci di GitHub senza password, quindi **il repository deve essere pubblico**
+(oppure i rilasci vanno pubblicati in un repository pubblico separato, da indicare in
+Impostazioni → Programma e aggiornamenti → Opzioni avanzate).
+
+Per costruire tutto in locale (serve NSIS, `apt install nsis` su Linux):
 
 ```bash
 npm install
@@ -61,9 +107,6 @@ npm install
 ```bash
 npm run build:exe
 ```
-
-Il risultato è in `dist/ideax-windows.zip`. L'eseguibile è una "single executable application" di Node.js
-con dentro il server, l'icona di ideax e i dati di versione.
 
 > La prima volta che usi un checkpoint singolo, diffusers scarica una sola volta i file di configurazione
 > (pochi MB, gratuiti) da Hugging Face. Per i checkpoint Flux che contengono solo il "transformer" scarica una volta
