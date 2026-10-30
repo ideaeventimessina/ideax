@@ -13,12 +13,16 @@ import { resolveBrain } from './lib/brain.js';
 import { runModel, cancelOnWorker } from './lib/backends.js';
 import * as runtime from './lib/runtime.js';
 import * as updater from './lib/updater.js';
+import * as apikeys from './lib/apikeys.js';
+import { deliver } from './lib/webhooks.js';
+import { Readable } from 'node:stream';
 
 process.title = 'ideax';
 const startup = store.getSettings();
 const PORT = Number(process.env.PORT) || 7800;
 const HOST = process.env.HOST || (startup.network.lan ? '0.0.0.0' : '127.0.0.1');
-const TOKEN = process.env.IDEAX_TOKEN || (startup.network.lan ? startup.network.token : '');
+// Token unico delle versioni precedenti: resta valido accanto alle chiavi API
+const LEGACY_TOKEN = process.env.IDEAX_TOKEN || (startup.network.lan ? startup.network.token : '');
 const MAX_JSON = 300 * 1024 * 1024;
 const jobs = new Map();
 
@@ -46,6 +50,26 @@ function readJson(req) {
     });
     req.on('error', reject);
   });
+}
+
+// Corpo della richiesta: JSON oppure multipart/form-data (file veri, come li inviano quasi tutti i sistemi)
+async function readBody(req) {
+  const type = req.headers['content-type'] || '';
+  if (!type.startsWith('multipart/form-data')) return readJson(req);
+  const form = await new Request('http://ideax.local/', { method: 'POST', headers: { 'content-type': type }, body: Readable.toWeb(req), duplex: 'half' }).formData();
+  const body = { attachments: [] };
+  for (const [key, value] of form.entries()) {
+    if (typeof value === 'object' && value !== null && 'arrayBuffer' in value) {
+      const buf = Buffer.from(await value.arrayBuffer());
+      const ftype = value.type || 'application/octet-stream';
+      body.attachments.push({ name: value.name, type: ftype, dataUrl: `data:${ftype};base64,${buf.toString('base64')}` });
+    } else if (['params', 'metadata'].includes(key)) {
+      try { body[key] = JSON.parse(value); } catch { throw new Error(`Il campo ${key} deve essere JSON`); }
+    } else if (['wait', 'inline'].includes(key)) {
+      body[key] = !['false', '0', 'no'].includes(String(value).toLowerCase());
+    } else body[key] = value;
+  }
+  return body;
 }
 
 function serveFile(res, root, rel) {
@@ -111,9 +135,11 @@ async function normalizeAttachments(list = []) {
   return out;
 }
 
-async function createJob(body) {
+async function createJob(body, ctx = {}) {
   if (!body.prompt?.trim()) throw new Error('Scrivi un prompt');
   if (body.task && !(body.task in store.TASKS)) throw new Error(`Compito sconosciuto: ${body.task}`);
+  const callback = body.callback_url || body.callbackUrl || null;
+  if (callback && !/^https?:\/\/.+/i.test(callback)) throw new Error('callback_url deve essere un indirizzo http(s)');
   const job = {
     id: crypto.randomUUID().slice(0, 8),
     prompt: body.prompt.trim(),
@@ -121,6 +147,10 @@ async function createJob(body) {
     forceModelId: body.model || body.modelId || null,
     forceTask: body.task || null,
     params: body.params && typeof body.params === 'object' ? body.params : {},
+    client: ctx.client || 'ideax',
+    origin: ctx.origin || '',
+    callbackUrl: callback,
+    metadata: body.metadata && typeof body.metadata === 'object' ? body.metadata : undefined,
     status: 'queued',
     log: [],
     results: [],
@@ -162,10 +192,37 @@ async function processJob(job) {
         routedPrompt: job.routedPrompt, negativePrompt: job.negativePrompt, loras: (job.loras || []).map((l) => l.name),
         reason: job.reason, brain: job.brain, status: job.status, error: job.error, results: job.results,
         createdAt: job.createdAt, seconds: job.startedAt ? Math.round((job.finishedAt - job.startedAt) / 1000) : null,
+        client: job.client, metadata: job.metadata,
       });
     }
     job.attachments = job.attachments.map(({ name, type }) => ({ name, type }));
+    if (job.callbackUrl) {
+      const event = { done: 'job.completed', cancelled: 'job.cancelled' }[job.status] || 'job.failed';
+      job.webhook = {};
+      deliver(job.callbackUrl, event, publicJob(job, job.origin), job.webhook)
+        .then((r) => job.log.push({ t: Date.now(), msg: r.status === 'delivered' ? `Webhook consegnato a ${job.callbackUrl}` : `Webhook non consegnato dopo ${r.attempts} tentativi` }));
+    }
   }
+}
+
+// Con "inline" i file viaggiano dentro la risposta, in base64: utile ai sistemi che non possono fare una seconda richiesta
+function withData(results) {
+  return results.map((r) => {
+    try {
+      return { ...r, data: fs.readFileSync(path.join(store.OUTPUT_DIR, path.basename(r.url))).toString('base64') };
+    } catch {
+      return r;
+    }
+  });
+}
+
+function publicCreation(h, origin) {
+  return {
+    id: h.id, title: h.title, prompt: h.prompt, task: h.task, type: h.task === 'animation' ? 'animation' : /video/.test(h.task || '') ? 'video' : 'image',
+    model: h.modelName, routedPrompt: h.routedPrompt, negativePrompt: h.negativePrompt, loras: h.loras || [], status: h.status,
+    error: h.error, client: h.client, metadata: h.metadata, createdAt: h.createdAt, seconds: h.seconds,
+    results: (h.results || []).map((r) => ({ ...r, url: origin + r.url })),
+  };
 }
 
 function publicJob(job, origin = '') {
@@ -184,6 +241,9 @@ function publicJob(job, origin = '') {
     reason: job.reason,
     brain: job.brain,
     error: job.error,
+    client: job.client,
+    metadata: job.metadata,
+    webhook: job.webhook,
     results: job.results.map((r) => ({ ...r, url: origin + r.url })),
     log: job.log,
     createdAt: job.createdAt,
@@ -211,13 +271,24 @@ const server = http.createServer(async (req, res) => {
   const origin = `http://${req.headers.host}`;
 
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
 
-  if (TOKEN && !isLoopback(req) && (p.startsWith('/api/') || p.startsWith('/v1/'))) {
-    if (req.headers.authorization !== `Bearer ${TOKEN}`) return send(res, 401, { error: 'Token mancante o errato' });
+  // Autenticazione: da questo PC non serve; dagli altri dispositivi serve una chiave API.
+  // Una chiave sbagliata viene rifiutata sempre, così gli errori di configurazione si notano subito.
+  const PUBLIC = ['/v1/health', '/v1/openapi.json'];
+  const protectedPath = /^\/(api|v1|outputs)\//.test(p) && !PUBLIC.includes(p);
+  const key = apikeys.keyFromRequest(req, url);
+  let client = null;
+  if (key) {
+    client = apikeys.verifyKey(key) || (LEGACY_TOKEN && key === LEGACY_TOKEN ? { id: 'token', name: 'Token di rete' } : null);
+    if (!client && protectedPath) return send(res, 401, { error: 'Chiave API non valida o revocata' });
   }
+  if (protectedPath && !client && !isLoopback(req)) {
+    return send(res, 401, { error: 'Serve una chiave API: intestazione "Authorization: Bearer <chiave>" (si crea in ideax → Collega app)' });
+  }
+  const ctx = { client: client?.name || (p.startsWith('/v1/') ? 'App su questo PC' : 'ideax'), origin };
 
   try {
     // ----- API pubblica per le applicazioni -----
@@ -225,11 +296,50 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { models: modelsPayload().generators, tasks: store.TASKS });
     }
     if (p === '/v1/generate' && req.method === 'POST') {
-      const body = await readJson(req);
-      const job = await createJob(body);
-      if (body.wait === false) return send(res, 202, { id: job.id, status: job.status });
+      const body = await readBody(req);
+      const job = await createJob(body, ctx);
+      // Con un webhook la risposta è immediata (a meno che si chieda esplicitamente di aspettare)
+      if (body.wait === false || (job.callbackUrl && body.wait !== true)) {
+        return send(res, 202, { id: job.id, status: job.status, status_url: `${origin}/v1/jobs/${job.id}` });
+      }
       await job.done;
-      return send(res, job.status === 'done' ? 200 : 500, publicJob(job, origin));
+      const out = publicJob(job, origin);
+      if (body.inline) out.results = withData(out.results);
+      return send(res, job.status === 'done' ? 200 : 500, out);
+    }
+    if (p === '/v1/health' && req.method === 'GET') {
+      const w = await runtime.workerResponds();
+      const active = [...jobs.values()].filter((j) => !['done', 'error', 'cancelled'].includes(j.status));
+      return send(res, 200, {
+        status: w ? 'ok' : 'degraded', version: store.VERSION, worker: w ? 'online' : 'offline',
+        queue: { active: active.length, waiting: active.filter((j) => j.waiting).length },
+        models: buildCatalog().generators.length,
+      });
+    }
+    if (p === '/v1/openapi.json' && req.method === 'GET') {
+      const spec = JSON.parse(fs.readFileSync(path.join(store.APP_ROOT, 'public', 'openapi.json'), 'utf8'));
+      spec.info.version = store.VERSION;
+      spec.servers = [{ url: origin, description: 'Questo ideax' }];
+      return send(res, 200, spec);
+    }
+    if (p === '/v1/creations' && req.method === 'GET') {
+      const limit = Math.min(Number(url.searchParams.get('limit')) || 50, 200);
+      const offset = Number(url.searchParams.get('offset')) || 0;
+      const type = url.searchParams.get('type');
+      const q = (url.searchParams.get('q') || '').toLowerCase();
+      const all = store.listHistory().map((h) => publicCreation(h, origin)).filter((c) => c.status === 'done'
+        && (!type || c.type === type) && (!q || `${c.title} ${c.prompt}`.toLowerCase().includes(q)));
+      return send(res, 200, { total: all.length, limit, offset, items: all.slice(offset, offset + limit) });
+    }
+    if (/^\/(v1\/creations|api\/history)\/[\w-]+$/.test(p) && req.method === 'GET') {
+      const h = store.getHistory(p.split('/').pop());
+      if (!h) return send(res, 404, { error: 'Creazione non trovata' });
+      const c = publicCreation(h, origin);
+      if (url.searchParams.get('inline') === 'true') c.results = withData(c.results);
+      return send(res, 200, c);
+    }
+    if (/^\/(v1\/creations|api\/history)\/[\w-]+$/.test(p) && req.method === 'DELETE') {
+      return store.deleteHistory(p.split('/').pop()) ? send(res, 200, { ok: true }) : send(res, 404, { error: 'Creazione non trovata' });
     }
     if (/^\/(v1|api)\/jobs\/[\w-]+\/cancel$/.test(p) && req.method === 'POST') {
       const job = jobs.get(p.split('/')[3]);
@@ -251,7 +361,7 @@ const server = http.createServer(async (req, res) => {
       if (body.size && /^\d+x\d+$/.test(body.size)) [params.width, params.height] = body.size.split('x').map(Number);
       if (body.n) params.num_images_per_prompt = body.n;
       const isAuto = !body.model || /^(auto|ideax|dall-e|gpt-image)/.test(body.model);
-      const job = await createJob({ prompt: body.prompt, task: 'image_generate', model: isAuto ? null : body.model, params });
+      const job = await createJob({ prompt: body.prompt, task: 'image_generate', model: isAuto ? null : body.model, params }, ctx);
       await job.done;
       if (job.status !== 'done') return send(res, 500, { error: { message: job.error } });
       const data = job.results.map((r) => body.response_format === 'b64_json'
@@ -333,10 +443,24 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/api/network' && req.method === 'GET') {
       const addrs = Object.values(os.networkInterfaces()).flat().filter((a) => a && a.family === 'IPv4' && !a.internal).map((a) => a.address);
-      return send(res, 200, { host: HOST, port: PORT, lan: HOST === '0.0.0.0', addresses: addrs, tokenActive: !!TOKEN });
+      return send(res, 200, { host: HOST, port: PORT, lan: HOST === '0.0.0.0', addresses: addrs, keys: apikeys.listKeys().length, legacyToken: !!LEGACY_TOKEN });
+    }
+    if (p === '/api/keys' && req.method === 'GET') return send(res, 200, apikeys.listKeys());
+    if (p === '/api/keys' && req.method === 'POST') return send(res, 200, apikeys.createKey((await readJson(req)).name));
+    if (p.startsWith('/api/keys/') && req.method === 'DELETE') {
+      apikeys.revokeKey(p.split('/').pop());
+      return send(res, 200, { ok: true });
+    }
+    if (p === '/api/webhook' && req.method === 'GET') return send(res, 200, { secret: apikeys.webhookSecret() });
+    if (p === '/api/webhook/rotate' && req.method === 'POST') return send(res, 200, { secret: apikeys.rotateWebhookSecret() });
+    if (p === '/api/webhook/test' && req.method === 'POST') {
+      const { url: target } = await readJson(req);
+      if (!/^https?:\/\//i.test(target || '')) return send(res, 400, { error: 'Indirizzo non valido' });
+      const r = await deliver(target, 'ping', { message: 'Prova del webhook di ideax', version: store.VERSION }, {});
+      return send(res, 200, r);
     }
     if (p === '/api/generate' && req.method === 'POST') {
-      const job = await createJob(await readJson(req));
+      const job = await createJob(await readJson(req), ctx);
       return send(res, 202, { id: job.id });
     }
     if (p.startsWith('/api/jobs/') && req.method === 'GET') {
@@ -382,9 +506,8 @@ server.listen(PORT, HOST, () => {
   console.log(`  Apri: ${localUrl}`);
   if (HOST === '0.0.0.0') {
     for (const a of Object.values(os.networkInterfaces()).flat().filter((x) => x?.family === 'IPv4' && !x.internal)) {
-      console.log(`  Dalla rete: http://${a.address}:${PORT}${TOKEN ? '  (con token)' : ''}`);
+      console.log(`  Dalla rete: http://${a.address}:${PORT}  (con chiave API)`);
     }
-    if (!TOKEN) console.log('  Attenzione: accesso dalla rete senza token.');
   }
   console.log(`  I tuoi dati: ${store.ROOT}`);
   if (store.IS_SEA) console.log('\n  Lascia aperta questa finestra: chiudendola ideax si ferma.');
@@ -397,4 +520,4 @@ server.listen(PORT, HOST, () => {
 for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) {
   process.on(sig, () => { runtime.stopWorker(); process.exit(0); });
 }
-process.on('exit', () => runtime.stopWorker());
+process.on('exit', () => { runtime.stopWorker(); apikeys.flushKeys(); });

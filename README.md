@@ -143,46 +143,93 @@ Ci sono due modi per tenerlo in locale:
 
 Se il cervello non c'è o non risponde, ideax usa le regole integrate (parole chiave in italiano e inglese + allegati).
 
-## Collegare le app
+## Collegare le app e i vostri sistemi
 
-Tutte le app usano lo stesso indirizzo. La pagina **Collega app** mostra gli esempi con l'indirizzo giusto.
+Tutti i sistemi usano lo stesso indirizzo. La pagina **Collega app** mostra l'indirizzo giusto, gli esempi pronti
+e la gestione di chiavi e webhook. La specifica completa è in `/v1/openapi.json` (si importa in Postman, Insomnia, Swagger).
+
+### Autenticazione
+
+- **Dallo stesso PC** non serve nulla.
+- **Da altri computer o server**: attiva *Impostazioni → Accesso dalla rete locale*, riavvia ideax e crea una
+  **chiave API** per ogni sistema in *Collega app* (la chiave si vede una volta sola; si può revocare quando vuoi).
+  Va inviata come `Authorization: Bearer <chiave>`, oppure `X-API-Key: <chiave>`, oppure `?key=<chiave>` (comodo per scaricare i file).
+
+### Generare
 
 ```bash
-curl http://localhost:7800/v1/generate \
+curl http://192.168.1.10:7800/v1/generate \
+  -H "Authorization: Bearer ideax_sk_..." \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "logo minimal di una volpe arancione"}'
+  -d '{"prompt": "Logo minimal di una volpe arancione", "params": {"aspect": "1:1", "seed": 42}}'
 ```
 
-Risposta (quando `wait` non è `false` aspetta il risultato):
+Con un file da modificare o animare (multipart, come la maggior parte dei sistemi):
+
+```bash
+curl http://192.168.1.10:7800/v1/generate \
+  -H "Authorization: Bearer ideax_sk_..." \
+  -F prompt="Metti questa foto su una spiaggia al tramonto" \
+  -F files=@foto.jpg \
+  -F 'metadata={"ordine": "A-17"}'
+```
+
+Campi di `POST /v1/generate`:
+
+| Campo | Significato |
+|---|---|
+| `prompt` | cosa vuoi, in italiano o inglese (obbligatorio) |
+| `task` | `image_generate`, `image_edit`, `image_to_video`, `video_generate`, `video_edit`, `animation`. Se manca lo decide ideax |
+| `model` | id o nome di un modello (`GET /v1/models`). Se manca lo sceglie ideax |
+| `params` | parametri per il modello: `aspect` (es. `"16:9"`), `seed`, `num_inference_steps`, `width`, `height`, `num_frames`, `fps`… |
+| `attachments` | in JSON: `[{"url": …}]`, `[{"dataUrl": …}]` o `[{"base64": …, "type": "image/png"}]`. In multipart: i file |
+| `metadata` | dati vostri (es. id ordine): tornano nel lavoro, nel webhook e nell'archivio |
+| `callback_url` | webhook da chiamare a lavoro finito; con il webhook la risposta è immediata |
+| `wait` | `true` (predefinito): la risposta arriva a lavoro finito. `false`: risposta subito con l'`id` |
+| `inline` | `true`: i file arrivano dentro la risposta, in base64 |
+
+### Webhook
+
+Con `callback_url` ideax risponde subito (`202` con `id` e `status_url`) e, a lavoro finito, invia un `POST` JSON:
 
 ```json
-{
-  "id": "a1b2c3d4", "status": "done", "task": "image_generate", "model": "ponyDiffusionV6XL",
-  "results": [{ "url": "http://localhost:7800/outputs/a1b2c3d4-1-9f3e.png", "type": "image/png" }]
-}
+{ "event": "job.completed", "created": 1793360000, "data": { "id": "…", "status": "done", "results": [{ "url": "…", "type": "image/png" }], "metadata": { "ordine": "A-17" } } }
 ```
+
+Eventi: `job.completed`, `job.failed`, `job.cancelled` (e `ping` per le prove). Ogni chiamata ha l'intestazione
+`X-Ideax-Signature: sha256=<HMAC-SHA256 del corpo>` calcolata con il *segreto dei webhook* (in Collega app):
+verificatela per essere sicuri che arrivi da ideax. Se il vostro server non risponde, ideax riprova 3 volte.
+
+### Tutti gli endpoint
 
 | Endpoint | Cosa fa |
 |---|---|
-| `POST /v1/generate` | `prompt` (obbligatorio); facoltativi: `task`, `model` (id o nome), `params` (steps, width, height, seed, num_frames, fps…), `attachments` (`[{url}]`, `[{dataUrl}]` o `[{base64, type}]`), `wait` |
-| `GET /v1/jobs/:id` | stato e risultati di un lavoro avviato con `"wait": false` |
+| `POST /v1/generate` | crea un lavoro |
+| `GET /v1/jobs/:id` | stato, avanzamento e risultati |
+| `POST /v1/jobs/:id/cancel` | annulla |
+| `GET /v1/creations` | archivio: `type` (image, video, animation), `q` (ricerca), `limit`, `offset` |
+| `GET /v1/creations/:id` | una creazione (`?inline=true` per i file in base64) |
+| `DELETE /v1/creations/:id` | elimina una creazione e i suoi file |
 | `GET /v1/models` | modelli disponibili e compiti |
-| `POST /v1/images/generations` | formato OpenAI: le app che usano la libreria OpenAI funzionano cambiando solo `base_url` |
+| `GET /v1/health` | stato del servizio per il monitoraggio (senza chiave) |
+| `GET /v1/openapi.json` | specifica OpenAPI 3 |
+| `POST /v1/images/generations` | compatibile OpenAI: le app che usano la libreria OpenAI funzionano cambiando solo `base_url` |
 
-Client pronti: [`clients/ideax.js`](clients/ideax.js) e [`clients/ideax.py`](clients/ideax.py).
+Client pronti: [`clients/ideax.js`](clients/ideax.js) e [`clients/ideax.py`](clients/ideax.py), con invio di file,
+archivio e verifica della firma dei webhook.
 
 ```python
 from ideax import Ideax
-ai = Ideax("http://192.168.1.10:7800")
-job = ai.generate("anima questa foto, le foglie si muovono", files=["foto.jpg"])
+ai = Ideax("http://192.168.1.10:7800", "ideax_sk_...")
+job = ai.generate("Anima questa foto, le foglie si muovono", files=["foto.jpg"], metadata={"prodotto": 123})
 ai.download(job, "risultati/")
 ```
 
-### Usarlo da altri computer della rete
+### Dai server su internet
 
-Di default ideax ascolta solo sul tuo PC. In **Impostazioni → Accesso dalla rete locale** attiva l'accesso,
-genera un token e riavvia ideax: gli indirizzi da usare compaiono nelle impostazioni e nella finestra di ideax.
-Le app degli altri dispositivi inviano `Authorization: Bearer <token>`; dal tuo PC il token non serve.
+ideax gira sul tuo PC. Se un vostro sistema sta su un server in internet, il modo più semplice e sicuro è una rete
+privata come [Tailscale](https://tailscale.com) (installata sul PC e sul server: il server vede ideax come se fosse
+nella stessa rete) oppure un tunnel come Cloudflare Tunnel. Non aprite la porta 7800 sul router.
 
 ## Compiti
 

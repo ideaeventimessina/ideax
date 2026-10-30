@@ -345,3 +345,14 @@ dialog.sheet [data-for] { display: grid; gap: 16px; }
 #about-card { margin-bottom: 22px; }
 #about-card .facts { margin: 14px 0; }
 .release-notes { white-space: pre-wrap; font-size: 13px; color: var(--muted); max-height: 220px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-top: 10px; }
+
+/* ---------- Chiavi API ---------- */
+#key-form { margin: 16px 0; }
+.key-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 0; border-top: 1px solid var(--line); }
+.key-row strong { display: block; }
+.new-key { margin: 6px 0 16px; padding: 16px; border-radius: 12px; background: rgba(121, 223, 179, .08); border: 1px solid rgba(121, 223, 179, .35); display: grid; gap: 10px; }
+.new-key code { font-size: 14px; overflow-wrap: anywhere; padding: 8px 10px; }
+.stack > *, .code-card, .card { min-width: 0; }
+pre.code { max-width: 100%; }
+.key-row > div { min-width: 0; overflow-wrap: anywhere; }
+.new-key code { display: block; }

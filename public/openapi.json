@@ -1,0 +1,754 @@
+{
+ "openapi": "3.0.3",
+ "info": {
+  "title": "ideax API",
+  "version": "0.0.0",
+  "description": "API locale di ideax: genera e modifica immagini, video e animazioni con i modelli sul tuo PC.\n\nAutenticazione: dallo stesso PC non serve. Dagli altri dispositivi serve una chiave API (ideax → Collega app) in `Authorization: Bearer <chiave>`, oppure `X-API-Key`, oppure `?key=` per scaricare i file.\n\nWebhook: ideax invia POST JSON `{event, created, data}` con `X-Ideax-Signature: sha256=<HMAC-SHA256 del corpo con il segreto dei webhook>`. Eventi: job.completed, job.failed, job.cancelled, ping."
+ },
+ "security": [
+  {
+   "bearer": []
+  },
+  {
+   "apiKey": []
+  }
+ ],
+ "paths": {
+  "/v1/generate": {
+   "post": {
+    "summary": "Crea un lavoro",
+    "description": "JSON oppure multipart/form-data (campi come nel JSON, file in qualsiasi campo; params e metadata come stringhe JSON).",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/GenerateRequest"
+       }
+      },
+      "multipart/form-data": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "prompt": {
+          "type": "string"
+         },
+         "task": {
+          "type": "string"
+         },
+         "model": {
+          "type": "string"
+         },
+         "params": {
+          "type": "string"
+         },
+         "metadata": {
+          "type": "string"
+         },
+         "callback_url": {
+          "type": "string"
+         },
+         "wait": {
+          "type": "string"
+         },
+         "inline": {
+          "type": "string"
+         },
+         "files": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "format": "binary"
+          }
+         }
+        },
+        "required": [
+         "prompt"
+        ]
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Lavoro finito",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Job"
+        }
+       }
+      }
+     },
+     "202": {
+      "description": "Lavoro accettato (wait=false o webhook)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "id": {
+           "type": "string"
+          },
+          "status": {
+           "type": "string"
+          },
+          "status_url": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     },
+     "400": {
+      "$ref": "#/components/responses/Error"
+     },
+     "401": {
+      "$ref": "#/components/responses/Error"
+     },
+     "500": {
+      "description": "Lavoro fallito",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Job"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/jobs/{id}": {
+   "get": {
+    "summary": "Stato e risultati di un lavoro",
+    "parameters": [
+     {
+      "$ref": "#/components/parameters/Id"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Lavoro",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Job"
+        }
+       }
+      }
+     },
+     "404": {
+      "$ref": "#/components/responses/Error"
+     }
+    }
+   }
+  },
+  "/v1/jobs/{id}/cancel": {
+   "post": {
+    "summary": "Annulla un lavoro",
+    "parameters": [
+     {
+      "$ref": "#/components/parameters/Id"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Richiesta di annullamento inviata"
+     }
+    }
+   }
+  },
+  "/v1/creations": {
+   "get": {
+    "summary": "Archivio delle creazioni",
+    "parameters": [
+     {
+      "name": "type",
+      "in": "query",
+      "schema": {
+       "type": "string",
+       "enum": [
+        "image",
+        "video",
+        "animation"
+       ]
+      }
+     },
+     {
+      "name": "q",
+      "in": "query",
+      "schema": {
+       "type": "string"
+      },
+      "description": "Cerca nel titolo e nel prompt"
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "schema": {
+       "type": "integer",
+       "default": 50,
+       "maximum": 200
+      }
+     },
+     {
+      "name": "offset",
+      "in": "query",
+      "schema": {
+       "type": "integer",
+       "default": 0
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Elenco",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "total": {
+           "type": "integer"
+          },
+          "limit": {
+           "type": "integer"
+          },
+          "offset": {
+           "type": "integer"
+          },
+          "items": {
+           "type": "array",
+           "items": {
+            "$ref": "#/components/schemas/Creation"
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/creations/{id}": {
+   "get": {
+    "summary": "Una creazione",
+    "parameters": [
+     {
+      "$ref": "#/components/parameters/Id"
+     },
+     {
+      "name": "inline",
+      "in": "query",
+      "schema": {
+       "type": "boolean"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Creazione",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Creation"
+        }
+       }
+      }
+     },
+     "404": {
+      "$ref": "#/components/responses/Error"
+     }
+    }
+   },
+   "delete": {
+    "summary": "Elimina una creazione e i suoi file",
+    "parameters": [
+     {
+      "$ref": "#/components/parameters/Id"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Eliminata"
+     },
+     "404": {
+      "$ref": "#/components/responses/Error"
+     }
+    }
+   }
+  },
+  "/v1/models": {
+   "get": {
+    "summary": "Modelli disponibili e compiti",
+    "responses": {
+     "200": {
+      "description": "Modelli",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "models": {
+           "type": "array",
+           "items": {
+            "type": "object",
+            "properties": {
+             "id": {
+              "type": "string"
+             },
+             "name": {
+              "type": "string"
+             },
+             "arch": {
+              "type": "string"
+             },
+             "capabilities": {
+              "type": "array",
+              "items": {
+               "type": "string",
+               "enum": [
+                "image_generate",
+                "image_edit",
+                "image_to_video",
+                "video_generate",
+                "video_edit",
+                "animation"
+               ]
+              }
+             },
+             "description": {
+              "type": "string"
+             },
+             "priority": {
+              "type": "integer"
+             }
+            }
+           }
+          },
+          "tasks": {
+           "type": "object"
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/health": {
+   "get": {
+    "summary": "Stato del servizio (senza autenticazione)",
+    "security": [],
+    "responses": {
+     "200": {
+      "description": "Stato",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "status": {
+           "type": "string",
+           "enum": [
+            "ok",
+            "degraded"
+           ]
+          },
+          "version": {
+           "type": "string"
+          },
+          "worker": {
+           "type": "string",
+           "enum": [
+            "online",
+            "offline"
+           ]
+          },
+          "queue": {
+           "type": "object",
+           "properties": {
+            "active": {
+             "type": "integer"
+            },
+            "waiting": {
+             "type": "integer"
+            }
+           }
+          },
+          "models": {
+           "type": "integer"
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/images/generations": {
+   "post": {
+    "summary": "Compatibile OpenAI: genera immagini",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "prompt"
+        ],
+        "properties": {
+         "prompt": {
+          "type": "string"
+         },
+         "model": {
+          "type": "string"
+         },
+         "n": {
+          "type": "integer"
+         },
+         "size": {
+          "type": "string",
+          "example": "1024x1024"
+         },
+         "response_format": {
+          "type": "string",
+          "enum": [
+           "url",
+           "b64_json"
+          ]
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Formato OpenAI"
+     }
+    }
+   }
+  },
+  "/v1/openapi.json": {
+   "get": {
+    "summary": "Questa specifica",
+    "security": [],
+    "responses": {
+     "200": {
+      "description": "OpenAPI 3"
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "securitySchemes": {
+   "bearer": {
+    "type": "http",
+    "scheme": "bearer",
+    "description": "Chiave API ideax_sk_…"
+   },
+   "apiKey": {
+    "type": "apiKey",
+    "in": "header",
+    "name": "X-API-Key"
+   }
+  },
+  "parameters": {
+   "Id": {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+     "type": "string"
+    }
+   }
+  },
+  "responses": {
+   "Error": {
+    "description": "Errore",
+    "content": {
+     "application/json": {
+      "schema": {
+       "type": "object",
+       "properties": {
+        "error": {
+         "type": "string"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "schemas": {
+   "Result": {
+    "type": "object",
+    "properties": {
+     "url": {
+      "type": "string",
+      "description": "Indirizzo del file"
+     },
+     "type": {
+      "type": "string",
+      "example": "image/png"
+     },
+     "data": {
+      "type": "string",
+      "description": "Contenuto in base64, solo con inline"
+     }
+    }
+   },
+   "Job": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string",
+      "example": "a1b2c3d4"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "queued",
+       "routing",
+       "running",
+       "done",
+       "error",
+       "cancelled"
+      ]
+     },
+     "waiting": {
+      "type": "boolean",
+      "description": "In fila: la GPU sta finendo un altro lavoro"
+     },
+     "progress": {
+      "type": "object",
+      "nullable": true,
+      "properties": {
+       "step": {
+        "type": "integer"
+       },
+       "total": {
+        "type": "integer"
+       },
+       "phase": {
+        "type": "string"
+       }
+      }
+     },
+     "title": {
+      "type": "string"
+     },
+     "prompt": {
+      "type": "string"
+     },
+     "task": {
+      "type": "string",
+      "enum": [
+       "image_generate",
+       "image_edit",
+       "image_to_video",
+       "video_generate",
+       "video_edit",
+       "animation"
+      ]
+     },
+     "model": {
+      "type": "string"
+     },
+     "routedPrompt": {
+      "type": "string",
+      "description": "Prompt effettivamente inviato al modello"
+     },
+     "negativePrompt": {
+      "type": "string"
+     },
+     "loras": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "reason": {
+      "type": "string"
+     },
+     "error": {
+      "type": "string"
+     },
+     "client": {
+      "type": "string",
+      "description": "Nome della chiave API che ha creato il lavoro"
+     },
+     "metadata": {
+      "type": "object",
+      "description": "Restituito tale e quale: utile per collegare il lavoro ai vostri dati"
+     },
+     "results": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/Result"
+      }
+     },
+     "createdAt": {
+      "type": "integer"
+     },
+     "finishedAt": {
+      "type": "integer"
+     },
+     "seconds": {
+      "type": "integer",
+      "nullable": true
+     }
+    }
+   },
+   "GenerateRequest": {
+    "type": "object",
+    "required": [
+     "prompt"
+    ],
+    "properties": {
+     "prompt": {
+      "type": "string",
+      "example": "Un faro sulla scogliera al tramonto, stile acquerello"
+     },
+     "task": {
+      "type": "string",
+      "enum": [
+       "image_generate",
+       "image_edit",
+       "image_to_video",
+       "video_generate",
+       "video_edit",
+       "animation"
+      ],
+      "description": "Facoltativo: se manca lo decide ideax dal prompt e dagli allegati"
+     },
+     "model": {
+      "type": "string",
+      "description": "Id o nome di un modello (GET /v1/models). Se manca lo sceglie ideax"
+     },
+     "params": {
+      "type": "object",
+      "description": "Parametri per il modello",
+      "example": {
+       "aspect": "16:9",
+       "seed": 42,
+       "num_inference_steps": 30
+      }
+     },
+     "attachments": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "url": {
+         "type": "string"
+        },
+        "dataUrl": {
+         "type": "string"
+        },
+        "base64": {
+         "type": "string"
+        },
+        "type": {
+         "type": "string"
+        },
+        "name": {
+         "type": "string"
+        }
+       }
+      },
+      "description": "Immagini o video da modificare/animare"
+     },
+     "wait": {
+      "type": "boolean",
+      "default": true,
+      "description": "true: la risposta arriva a lavoro finito. false: risposta subito (202) con l'id"
+     },
+     "callback_url": {
+      "type": "string",
+      "description": "Webhook chiamato a lavoro finito. Con il webhook la risposta è immediata, salvo wait=true"
+     },
+     "inline": {
+      "type": "boolean",
+      "default": false,
+      "description": "Include i file in base64 nella risposta"
+     },
+     "metadata": {
+      "type": "object",
+      "description": "Dati vostri, restituiti nel lavoro, nel webhook e nell'archivio"
+     }
+    }
+   },
+   "Creation": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "title": {
+      "type": "string"
+     },
+     "prompt": {
+      "type": "string"
+     },
+     "task": {
+      "type": "string",
+      "enum": [
+       "image_generate",
+       "image_edit",
+       "image_to_video",
+       "video_generate",
+       "video_edit",
+       "animation"
+      ]
+     },
+     "type": {
+      "type": "string",
+      "enum": [
+       "image",
+       "video",
+       "animation"
+      ]
+     },
+     "model": {
+      "type": "string"
+     },
+     "routedPrompt": {
+      "type": "string"
+     },
+     "loras": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "client": {
+      "type": "string"
+     },
+     "metadata": {
+      "type": "object"
+     },
+     "createdAt": {
+      "type": "integer"
+     },
+     "seconds": {
+      "type": "integer"
+     },
+     "results": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/Result"
+      }
+     }
+    }
+   }
+  }
+ }
+}

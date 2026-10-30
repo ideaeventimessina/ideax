@@ -181,9 +181,7 @@
         <div class="card">
           <h2>Accesso dalla rete locale</h2>
           <label class="check"><input type="checkbox" name="lan"> Consenti alle app degli altri dispositivi della rete di collegarsi</label>
-          <label>Token di accesso
-            <span class="row"><input name="token" class="mono grow" autocomplete="off"><button type="button" class="btn" id="gen-token">Genera</button></span></label>
-          <p class="muted small">Le app degli altri dispositivi lo inviano come <code>Authorization: Bearer …</code>. Trattalo come una password. Vale dal prossimo avvio di ideax.</p>
+          <p class="muted small">I sistemi degli altri computer si autenticano con una <strong>chiave API</strong>: creala in <a href="#collega">Collega app</a>, una per ogni sistema. Vale dal prossimo avvio di ideax.</p>
           <p class="muted small" id="net-info"></p>
         </div>
         <div class="row"><button class="btn primary">Salva impostazioni</button><span id="settings-ok" class="ok-text"></span></div>
@@ -192,32 +190,59 @@
 
     <!-- ================= COLLEGA APP ================= -->
     <section class="page" id="page-collega">
-      <header class="page-head"><div><h1>Collega app</h1><p>Una sola porta d'ingresso per tutti i tuoi modelli.</p></div></header>
+      <header class="page-head"><div><h1>Collega app</h1><p>Una sola porta d'ingresso per tutti i tuoi modelli e i tuoi sistemi.</p></div>
+        <a class="btn" href="/v1/openapi.json" target="_blank" rel="noopener">Specifica OpenAPI ↗</a></header>
       <div class="card base-card">
         <div><p class="eyebrow">Indirizzo base</p><p class="base-url" id="base-url"></p>
-          <p class="muted" id="base-help">Usalo nelle app sullo stesso PC. Per altri dispositivi, abilita l'accesso dalla rete nelle impostazioni.</p></div>
+          <p class="muted" id="base-help">Dalle app su questo PC non serve la chiave. Per altri computer e server attiva l'accesso dalla rete nelle impostazioni e usa una chiave API.</p></div>
         <button class="btn" data-copy-text="">Copia indirizzo</button>
       </div>
-      <h2>La tua prima richiesta</h2>
-      <p class="muted">ideax sceglie il modello, lo esegue sul tuo PC e risponde con i file pronti.</p>
+
+      <div class="card">
+        <div class="section-head"><div><h2>Chiavi API</h2>
+          <p class="muted">Una per ogni sistema che usa ideax: vedi chi lo usa e puoi bloccarne uno senza toccare gli altri.</p></div></div>
+        <form id="key-form" class="row">
+          <input name="name" class="grow" placeholder="Nome del sistema, es. Gestionale, Sito web, App mobile" maxlength="60" required>
+          <button class="btn primary">Crea chiave</button>
+        </form>
+        <div id="new-key" hidden></div>
+        <div id="key-list"></div>
+      </div>
+
+      <div class="card">
+        <h2>Webhook</h2>
+        <p class="muted">Aggiungi <code>callback_url</code> alla richiesta: ideax risponde subito e, quando il lavoro è finito, chiama quell'indirizzo con il risultato.
+          Ogni chiamata è firmata in <code>X-Ideax-Signature</code> (HMAC-SHA256 del corpo con il segreto qui sotto), così il vostro sistema sa che arriva davvero da ideax.</p>
+        <label>Segreto dei webhook
+          <span class="row"><input id="wh-secret" class="mono grow" readonly><button type="button" class="btn" data-wh-show>Mostra</button><button type="button" class="btn" data-wh-copy>Copia</button><button type="button" class="btn" data-wh-rotate>Rigenera</button></span></label>
+        <label>Prova un indirizzo
+          <span class="row"><input id="wh-test-url" class="grow mono" placeholder="https://il-tuo-server.it/ideax-webhook"><button type="button" class="btn" data-wh-test>Invia una prova</button></span></label>
+        <p class="small" id="wh-test-result"></p>
+      </div>
+
+      <h2>Esempi pronti</h2>
+      <p class="muted">Copiali nei vostri sistemi: l'indirizzo è già quello giusto.</p>
       <div id="code-samples" class="stack"></div>
       <div class="card">
         <h2>Endpoint disponibili</h2>
         <table class="ref">
           <thead><tr><th>Metodo</th><th>Percorso</th><th>A cosa serve</th></tr></thead>
           <tbody>
-            <tr><td>POST</td><td><code>/v1/generate</code></td><td>Crea un lavoro e aspetta il risultato. Campi: <code>prompt</code>, e facoltativi <code>task</code>, <code>model</code>, <code>params</code>, <code>attachments</code>, <code>wait</code></td></tr>
-            <tr><td>GET</td><td><code>/v1/jobs/:id</code></td><td>Stato, avanzamento e risultati di un lavoro avviato con <code>"wait": false</code></td></tr>
+            <tr><td>POST</td><td><code>/v1/generate</code></td><td>Crea un lavoro. JSON o multipart con file. Campi: <code>prompt</code>, e facoltativi <code>task</code>, <code>model</code>, <code>params</code>, <code>attachments</code>, <code>callback_url</code>, <code>metadata</code>, <code>wait</code>, <code>inline</code></td></tr>
+            <tr><td>GET</td><td><code>/v1/jobs/:id</code></td><td>Stato, avanzamento e risultati di un lavoro</td></tr>
             <tr><td>POST</td><td><code>/v1/jobs/:id/cancel</code></td><td>Annulla un lavoro</td></tr>
-            <tr><td>GET</td><td><code>/v1/models</code></td><td>Elenca i modelli e i compiti</td></tr>
-            <tr><td>POST</td><td><code>/v1/images/generations</code></td><td>Genera immagini in formato compatibile OpenAI</td></tr>
+            <tr><td>GET</td><td><code>/v1/creations</code></td><td>Archivio delle creazioni, con <code>type</code>, <code>q</code> (ricerca), <code>limit</code>, <code>offset</code></td></tr>
+            <tr><td>GET / DELETE</td><td><code>/v1/creations/:id</code></td><td>Una creazione (con <code>?inline=true</code> i file in base64) o la sua eliminazione</td></tr>
+            <tr><td>GET</td><td><code>/v1/models</code></td><td>Modelli disponibili e compiti</td></tr>
+            <tr><td>GET</td><td><code>/v1/health</code></td><td>Stato del servizio, per il monitoraggio (senza chiave)</td></tr>
+            <tr><td>POST</td><td><code>/v1/images/generations</code></td><td>Formato compatibile OpenAI</td></tr>
           </tbody>
         </table>
       </div>
       <div class="note">
         <h3>Hai un'app compatibile OpenAI?</h3>
-        <p>Imposta l'indirizzo del provider su <code id="base-v1"></code> e una chiave qualsiasi. Le immagini vengono generate dai modelli sul tuo PC: non serve un'API a pagamento.</p>
-        <p class="muted">Client pronti nella cartella <code>clients</code>: <code>ideax.js</code> e <code>ideax.py</code>.</p>
+        <p>Imposta l'indirizzo del provider su <code id="base-v1"></code> e come chiave una chiave API di ideax. Le immagini vengono generate dai modelli sul tuo PC: non serve un'API a pagamento.</p>
+        <p class="muted">Client pronti nella cartella <code>clients</code> del repository: <code>ideax.js</code> e <code>ideax.py</code>.</p>
       </div>
     </section>
 

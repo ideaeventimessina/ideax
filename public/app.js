@@ -312,6 +312,7 @@ function renderStage() {
         <a class="btn light small" href="${esc(main.url)}" download>↓ Scarica${main.type.startsWith('video/') ? ' MP4' : ''}</a>
         ${gif && gif !== main ? `<a class="btn glass small" href="${esc(gif.url)}" download>↓ GIF</a>` : ''}
         ${/^image\/(png|jpeg|webp)/.test(main.type) ? `<button class="btn glass small" data-act="reuse" data-url="${esc(main.url)}">Modifica ancora ↗</button>` : ''}
+        <button class="btn glass small" data-act="delete" data-id="${esc(item.id)}" aria-label="Elimina questa creazione">Elimina</button>
       </div>
     </div>`;
   const el = $('.media', stage);
@@ -354,6 +355,12 @@ $('#stage').addEventListener('click', async (e) => {
     btn.textContent = 'Riavvio…';
     await api('/api/worker/restart', { method: 'POST' }).catch(() => {});
     setTimeout(refreshStatus, 3000);
+  }
+  if (act === 'delete' && confirm('Eliminare questa creazione e i suoi file?')) {
+    await api(`/api/history/${btn.dataset.id}`, { method: 'DELETE' }).catch((err) => alert(err.message));
+    state.shown = null;
+    await loadHistory();
+    renderStage();
   }
   if (act === 'expand') {
     const m = $('.media', $('#stage'));
@@ -853,18 +860,12 @@ async function loadSettings() {
   setForm.manageWorker.checked = s.manageWorker !== false;
   setForm.extraModelDirs.value = (s.extraModelDirs || []).join('\n');
   setForm.lan.checked = !!s.network.lan;
-  setForm.token.value = s.network.token || '';
   syncBrainFields();
 }
 
-$('#gen-token').addEventListener('click', () => {
-  const bytes = crypto.getRandomValues(new Uint8Array(18));
-  setForm.token.value = 'ideax_' + [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
-});
 
 setForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (setForm.lan.checked && !setForm.token.value.trim()) $('#gen-token').click();
   await api('/api/settings', {
     method: 'POST',
     body: {
@@ -872,7 +873,7 @@ setForm.addEventListener('submit', async (e) => {
       manageWorker: setForm.manageWorker.checked,
       extraModelDirs: setForm.extraModelDirs.value.split('\n'),
       brain: { mode: setForm.mode.value, gguf: setForm.gguf.value, serverUrl: setForm.serverUrl.value.trim(), serverModel: setForm.serverModel.value.trim() },
-      network: { lan: setForm.lan.checked, token: setForm.token.value.trim() },
+      network: { lan: setForm.lan.checked },
     },
   });
   $('#settings-ok').textContent = 'Salvato ✓';
@@ -887,7 +888,7 @@ async function loadNetwork() {
   if (!n) return;
   const wanted = state.settings?.network.lan;
   $('#net-info').textContent = n.lan
-    ? `Raggiungibile dalla rete su ${n.addresses.map((a) => `http://${a}:${n.port}`).join(', ')}${n.tokenActive ? ' · token attivo' : ''}.`
+    ? `Raggiungibile dalla rete su ${n.addresses.map((a) => `http://${a}:${n.port}`).join(', ')}${n.keys ? ` · ${n.keys} chiavi API attive` : ' · crea una chiave API in Collega app'}.`
     : wanted ? 'Riavvia ideax per attivare l\'accesso dalla rete.' : 'Ora ideax è raggiungibile solo da questo PC.';
   renderApiDocs(n);
 }
@@ -895,19 +896,144 @@ async function loadNetwork() {
 // ======================= Collega app =======================
 
 function renderApiDocs(net) {
+  const lan = net?.lan && net.addresses?.length ? `http://${net.addresses[0]}:${net.port}` : null;
   const base = location.origin;
-  $('#base-url').textContent = base;
-  $('#base-v1').textContent = `${base}/v1`;
-  $('.base-card [data-copy-text]').dataset.copyText = base;
-  if (net?.lan && net.addresses.length) $('#base-help').textContent = `Dagli altri dispositivi della rete: ${net.addresses.map((a) => `http://${a}:${net.port}`).join(', ')}${net.tokenActive ? ', con il token delle impostazioni' : ''}.`;
+  const api = lan || base;
+  $('#base-url').textContent = api;
+  $('#base-v1').textContent = `${api}/v1`;
+  $('.base-card [data-copy-text]').dataset.copyText = api;
+  $('#base-help').textContent = lan
+    ? `Dagli altri computer e server della rete usa ${net.addresses.map((a) => `http://${a}:${net.port}`).join(' oppure ')} con una chiave API. Da questo PC va bene anche ${base}, senza chiave.`
+    : 'Dalle app su questo PC non serve la chiave. Per altri computer e server attiva l\'accesso dalla rete nelle impostazioni e usa una chiave API.';
+  const K = 'LA_TUA_CHIAVE';
   const samples = [
-    ['curl', `curl -X POST ${base}/v1/generate \\\n  -H "Content-Type: application/json" \\\n  -d '{"prompt": "Un lago alpino all\\u0027alba"}'`],
-    ['JavaScript', `const res = await fetch('${base}/v1/generate', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    prompt: 'Anima questa foto, le foglie si muovono col vento',\n    attachments: [{ url: 'https://esempio.it/foto.jpg' }],\n  }),\n});\nconst job = await res.json();\nconsole.log(job.results[0].url); // il file è pronto`],
-    ['Python', `import requests\n\njob = requests.post("${base}/v1/generate", json={\n    "prompt": "Banner per un negozio di bici, stile flat",\n    "params": {"aspect": "16:9", "seed": 42},\n}).json()\nprint(job["results"][0]["url"])`],
+    ['curl · testo', `curl ${api}/v1/generate \\
+  -H "Authorization: Bearer ${K}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"prompt": "Un lago alpino all\\u0027alba", "params": {"aspect": "16:9"}}'`],
+    ['curl · con un file da modificare', `curl ${api}/v1/generate \\
+  -H "Authorization: Bearer ${K}" \\
+  -F prompt="Metti questa foto su una spiaggia al tramonto" \\
+  -F files=@foto.jpg \\
+  -F 'metadata={"ordine": "A-17"}'`],
+    ['JavaScript · con webhook', `const res = await fetch('${api}/v1/generate', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ${K}' },
+  body: JSON.stringify({
+    prompt: 'Anima questa foto, le foglie si muovono col vento',
+    attachments: [{ url: 'https://esempio.it/foto.jpg' }],
+    callback_url: 'https://il-tuo-server.it/ideax-webhook', // ideax chiama qui a lavoro finito
+    metadata: { prodotto: 123 },
+  }),
+});
+const { id, status_url } = await res.json(); // risposta immediata`],
+    ['Python · aspetta il risultato', `import requests
+
+job = requests.post("${api}/v1/generate",
+    headers={"Authorization": "Bearer ${K}"},
+    json={"prompt": "Banner per un negozio di bici, stile flat", "params": {"aspect": "16:9", "seed": 42}},
+    timeout=600,
+).json()
+
+immagine = requests.get(job["results"][0]["url"], headers={"Authorization": "Bearer ${K}"}).content
+open("banner.png", "wb").write(immagine)`],
+    ['Verifica del webhook · Node.js', `import crypto from 'node:crypto';
+
+// corpo = il testo grezzo della richiesta, segreto = "Segreto dei webhook" di ideax
+function firmaValida(corpo, intestazione, segreto) {
+  const attesa = 'sha256=' + crypto.createHmac('sha256', segreto).update(corpo).digest('hex');
+  return intestazione?.length === attesa.length
+    && crypto.timingSafeEqual(Buffer.from(intestazione), Buffer.from(attesa));
+}
+// Evento: req.headers['x-ideax-event'] → job.completed, job.failed, job.cancelled, ping
+// Dati: JSON.parse(corpo).data → lavoro con results[] e i vostri metadata`],
+    ['Verifica del webhook · PHP', `<?php
+$corpo = file_get_contents('php://input');
+$firma = $_SERVER['HTTP_X_IDEAX_SIGNATURE'] ?? '';
+$attesa = 'sha256=' . hash_hmac('sha256', $corpo, 'SEGRETO_DEI_WEBHOOK');
+if (!hash_equals($attesa, $firma)) { http_response_code(401); exit; }
+
+$evento = json_decode($corpo, true);
+if ($evento['event'] === 'job.completed') {
+    $url = $evento['data']['results'][0]['url'];
+    $ordine = $evento['data']['metadata']['ordine'] ?? null;
+    // ... salva il file nel vostro sistema
+}`],
   ];
   $('#code-samples').innerHTML = samples.map(([name, code]) => `
-    <div class="card code-card"><div class="head"><h3>${name}</h3><button class="btn small" data-copy-code>Copia</button></div><pre class="code">${esc(code)}</pre></div>`).join('');
+    <div class="card code-card"><div class="head"><h3>${esc(name)}</h3><button class="btn small" data-copy-code>Copia</button></div><pre class="code">${esc(code)}</pre></div>`).join('');
 }
+
+// ----- Chiavi API -----
+async function loadKeys() {
+  const keys = await api('/api/keys').catch(() => []);
+  $('#key-list').innerHTML = keys.length ? keys.map((k) => `
+    <div class="key-row"><div><strong>${esc(k.name)}</strong>
+      <span class="muted small mono">${esc(k.prefix)}…</span>
+      <span class="muted small"> · creata ${esc(when(k.createdAt))} · ${k.uses ? `${k.uses} richieste, ultima ${esc(when(k.lastUsedAt))}` : 'mai usata'}</span></div>
+      <button class="btn small danger" data-key-revoke="${k.id}" data-name="${esc(k.name)}">Revoca</button></div>`).join('')
+    : '<p class="muted small">Nessuna chiave. Le app su questo PC funzionano anche senza.</p>';
+}
+$('#key-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const k = await api('/api/keys', { method: 'POST', body: { name: e.target.name.value } });
+    e.target.reset();
+    const box = $('#new-key');
+    box.hidden = false;
+    box.innerHTML = `<div class="new-key"><strong>Chiave per "${esc(k.name)}"</strong>
+      <code id="new-key-value">${esc(k.key)}</code>
+      <span class="small">Copiala adesso e mettila nel sistema: per sicurezza non verrà più mostrata.</span>
+      <div class="row"><button class="btn small primary" data-copy-text="${esc(k.key)}">Copia la chiave</button><button class="btn small" data-hide-key>Fatto</button></div></div>`;
+    loadKeys();
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+// ----- Webhook -----
+let whSecret = '';
+async function loadWebhook() {
+  whSecret = (await api('/api/webhook').catch(() => ({}))).secret || '';
+  $('#wh-secret').value = whSecret ? `${whSecret.slice(0, 10)}${'•'.repeat(20)}` : '';
+}
+
+document.addEventListener('click', async (e) => {
+  const rv = e.target.closest('[data-key-revoke]');
+  if (rv && confirm(`Revocare la chiave "${rv.dataset.name}"? Il sistema che la usa smetterà subito di funzionare.`)) {
+    await api(`/api/keys/${rv.dataset.keyRevoke}`, { method: 'DELETE' });
+    loadKeys();
+  }
+  if (e.target.closest('[data-hide-key]')) { $('#new-key').hidden = true; $('#new-key').innerHTML = ''; }
+  if (e.target.closest('[data-wh-show]')) {
+    const shown = $('#wh-secret').value === whSecret;
+    $('#wh-secret').value = shown ? `${whSecret.slice(0, 10)}${'•'.repeat(20)}` : whSecret;
+    e.target.textContent = shown ? 'Mostra' : 'Nascondi';
+  }
+  if (e.target.closest('[data-wh-copy]')) copy(whSecret, e.target);
+  if (e.target.closest('[data-wh-rotate]') && confirm('Rigenerare il segreto? I sistemi che verificano la firma andranno aggiornati con quello nuovo.')) {
+    whSecret = (await api('/api/webhook/rotate', { method: 'POST' })).secret;
+    $('#wh-secret').value = whSecret;
+  }
+  if (e.target.closest('[data-wh-test]')) {
+    const out = $('#wh-test-result');
+    out.className = 'small muted';
+    out.textContent = 'Invio in corso…';
+    try {
+      const r = await api('/api/webhook/test', { method: 'POST', body: { url: $('#wh-test-url').value.trim() } });
+      out.className = `small ${r.status === 'delivered' ? 'ok-text' : 'error-text'}`;
+      out.textContent = r.status === 'delivered'
+        ? `✓ Consegnato (risposta ${r.lastStatus}).`
+        : `Non consegnato dopo ${r.attempts} tentativi${r.lastStatus ? ` (risposta ${r.lastStatus})` : r.lastError ? ` (${r.lastError})` : ''}.`;
+    } catch (err) {
+      out.className = 'small error-text';
+      out.textContent = err.message;
+    }
+  }
+});
+window.addEventListener('hashchange', () => { if (location.hash === '#collega') { loadKeys(); loadWebhook(); loadNetwork(); } });
+if (location.hash === '#collega') { loadKeys(); loadWebhook(); }
+
 document.addEventListener('click', (e) => {
   const c = e.target.closest('[data-copy-code]');
   if (c) copy(c.closest('.code-card').querySelector('pre').textContent, c);
