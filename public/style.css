@@ -493,3 +493,6 @@ pre.code { max-width: 100%; }
   .mem-item { flex-wrap: wrap; }
   .topline { gap: 10px; flex-wrap: wrap; }
 }
+
+.mcard .fix { display: grid; gap: 8px; margin: 4px 0 8px; }
+.mcard .fix .btn { justify-self: start; }

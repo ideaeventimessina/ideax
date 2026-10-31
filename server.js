@@ -30,6 +30,7 @@ import * as systems from './lib/systems.js';
 import * as laser from './lib/laser.js';
 import * as llama from './lib/llamaserver.js';
 import * as twin from './lib/twin.js';
+import * as fixes from './lib/fixes.js';
 
 process.title = 'ideax';
 const startup = store.getSettings();
@@ -797,6 +798,8 @@ const server = http.createServer(async (req, res) => {
       else store.saveOverride(m.id, { enabled: false });
       return send(res, 200, { ok: true });
     }
+    if (p === '/api/fixes' && req.method === 'GET') return send(res, 200, fixes.fixes);
+    if (p === '/api/fixes/svd' && req.method === 'POST') return send(res, 200, await fixes.fixSvd());
     if (p === '/api/upload' && req.method === 'PUT') return uploadModel(req, res, url.searchParams.get('name'));
     if (p === '/api/meta' && req.method === 'GET') {
       const styles = Object.fromEntries(Object.entries(PROMPT_STYLES).map(([k, v]) => [k, v.label]));
@@ -812,6 +815,7 @@ const server = http.createServer(async (req, res) => {
       // Token GitHub e maestri hanno le loro pagine: qui non si toccano
       const { github: _g, teachers: _t, systems: _s, ...patch } = await readJson(req);
       store.saveSettings(patch);
+      if (patch.hfToken) fixes.autoFix();
       return send(res, 200, publicSettings());
     }
     if (p === '/api/worker' && req.method === 'GET') {
@@ -944,6 +948,7 @@ server.listen(PORT, HOST, () => {
   runtime.startWorker();
   updater.scheduleChecks();
   systems.startAll();
+  fixes.autoFix();
   if (shouldOpen) openBrowser(localUrl);
 });
 

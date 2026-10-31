@@ -84,6 +84,7 @@ function showPage() {
   if (page === 'reel') loadReelForm();
   if (page === 'cervello') loadBrainPage();
   if (page === 'collega') loadSystems();
+  if (page === 'modelli') { loadEngines(); loadFixes(); refreshSetup().then(() => { renderLlmSupport(); if (state.engines) renderEngines(); }); }
   if (page === 'gemello') { loadEngines(); loadTwin(); }
   window.scrollTo({ top: 0 });
 }
@@ -547,7 +548,8 @@ function modelCard(m) {
   const style = m.kind === 'checkpoint' && m.styleAuto !== undefined ? (m.promptStyle && m.promptStyle !== 'auto' ? m.promptStyle : m.styleAuto) : null;
   const meta = [fmtSize(m.size), m.kind === 'checkpoint' ? `Priorità ${m.priority}` : '', style && style !== 'plain' ? `Stile ${state.meta.styles[style]}` : '', m.kind === 'lora' ? `peso ${m.loraWeight}${m.loraAlways ? ' · sempre attiva' : ''}` : ''].filter(Boolean).join(' · ');
   // Avvisi (gialli): qualcosa impedisce di usare il modello. Note (grigie): solo informazioni.
-  const warn = m.error || m.warn || m.note || (m.kind === 'checkpoint' && m.arch === 'unknown' ? 'Indica l\'architettura per usarlo.' : '');
+  const fixed = m.fix && state.fixes?.[m.fix]?.status === 'done';
+  const warn = fixed ? '' : m.error || m.warn || m.note || (m.kind === 'checkpoint' && m.arch === 'unknown' ? 'Indica l\'architettura per usarlo.' : '');
   const info = !warn && m.arch === 'flux'
     ? `Flux ${m.flags?.fluxVariant || ''}${m.flags?.fp8 ? ' · FP8' : m.flags?.gguf ? ' · GGUF' : ''} · solo immagini. VAE ed encoder di testo arrivano dal modello base: la prima volta vengono scaricati (circa 10 GB).`
     : '';
@@ -559,6 +561,8 @@ function modelCard(m) {
     ${m.description ? `<p class="desc">${esc(m.description)}</p>` : ''}
     ${tags.length ? `<div class="tags">${tags.map((t) => `<span class="chip">${esc(t)}</span>`).join('')}</div>` : ''}
     ${warn ? `<p class="warn">${esc(warn)}</p>` : ''}
+    ${m.fix ? fixBlock(m.fix) : ''}
+    ${m.kind === 'llm' && m.size > 10e9 ? '<p class="warn">Questo cervello è molto grande per una scheda da 16 GB: rallenta e non lascia spazio a immagini e video. Scarica la stessa versione in formato Q4_K_M o Q8_0 (circa 3–8 GB): stessa intelligenza, molto più veloce.</p>' : ''}
     ${info ? `<p class="desc">${esc(info)}</p>` : ''}
     <p class="path">${esc(m.path)}</p>
     <div class="row">
@@ -568,6 +572,35 @@ function modelCard(m) {
     </div>
   </article>`;
 }
+
+// Riparazioni automatiche (es. Stable Video Diffusion): stato e pulsante dentro la scheda del modello
+let fixTimer = null;
+function fixBlock(kind) {
+  const f = state.fixes?.[kind] || { status: 'idle' };
+  if (f.status === 'done') return '<p class="desc">✓ Sistemato: al suo posto lavora la versione completa scaricata da Hugging Face, che trovi tra i modelli attivi.</p>';
+  if (f.status === 'running') {
+    const pct = f.total ? Math.round((f.done / f.total) * 100) : null;
+    return `<div class="fix"><p class="small">Scarico i file che mancano… ${f.done ? `${fmtSize(f.done)}` : ''}${f.file ? ` · ${esc(f.file)}` : ''}</p>
+      <div class="progress ${pct == null ? 'indeterminate' : ''}"><div style="width:${pct ?? 0}%"></div></div></div>`;
+  }
+  return `<div class="fix">${f.status === 'error' ? `<p class="error-text small">${esc(f.error)}</p>` : ''}
+    <button class="btn small primary" data-fix="${kind}">${f.status === 'error' ? 'Riprova' : 'Sistemalo ora'}</button></div>`;
+}
+async function loadFixes() {
+  state.fixes = await api('/api/fixes').catch(() => ({}));
+  clearTimeout(fixTimer);
+  if (Object.values(state.fixes).some((f) => f.status === 'running')) fixTimer = setTimeout(loadFixes, 2500);
+  // Le schede dei modelli mostrano lo stato della riparazione: si ridisegnano
+  if (state.models.local?.some((m) => m.fix)) loadModels();
+}
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-fix]');
+  if (!b) return;
+  b.disabled = true;
+  await api(`/api/fixes/${b.dataset.fix}`, { method: 'POST' }).catch((err) => alert(err.message));
+  await loadFixes();
+  loadModels();
+});
 
 async function loadModels() {
   state.models = await api('/api/models');
@@ -1382,6 +1415,15 @@ function renderEngines() {
     mbox.hidden = mu.status === 'installed';
     mbox.innerHTML = mu.status === 'installed' ? '' : `<h2>Installa il motore musica</h2>${engineBlock(mu, true)}`;
     $$('#music-form button').forEach((b) => { if (!b.type || b.type === 'submit') b.disabled = mu.status !== 'installed'; });
+  }
+  const me = $('#models-engines');
+  if (me) {
+    const llm = state.setup?.llm;
+    me.innerHTML = `<h2>Motori</h2><p class="muted">I programmi che fanno lavorare i modelli: si installano con un clic, si accendono quando servono e si spengono da soli per liberare la scheda video.</p>
+      <div class="engine-row"><div><strong>Cervello</strong> <span class="muted small">· llama.cpp ufficiale · MIT</span>
+        <p class="desc">Fa girare il cervello .gguf (chat, memoria, scelta dei modelli). Si scarica da solo al primo messaggio in chat.</p></div>
+        <div class="row">${llm?.installed ? `<span class="chip">${llm.status === 'running' ? '<i class="dot on"></i> acceso' : 'pronto'} · ${esc(llm.version || '')}</span>` : llm?.status === 'installing' ? `<span class="chip">${esc(llm.step || 'Scarico…')}</span>` : '<button class="btn small" data-install-llm>Prepara adesso</button>'}</div></div>
+      ${(state.engines || []).map((e) => engineBlock(e)).join('')}`;
   }
   for (const id of ['twin', 'lipsync']) {
     const en = state.engines.find((e) => e.id === id);

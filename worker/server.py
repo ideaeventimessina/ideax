@@ -369,6 +369,10 @@ def run_real(req: RunRequest) -> list[dict]:
     place(pipe)
 
     params = dict(ARCH_DEFAULTS.get(req.model.arch, {}))
+    is_svd = type(base).__name__ == "StableVideoDiffusionPipeline"
+    if is_svd:
+        # 25 fotogrammi; la decodifica a gruppi di 4 tiene la memoria della scheda sotto i 16 GB
+        params.update(num_frames=25, decode_chunk_size=4, motion_bucket_id=127, noise_aug_strength=0.02, num_inference_steps=25, fps=7)
     if req.model.arch == "flux" and _loaded.get("variant") == "schnell":
         params.update(num_inference_steps=4, guidance_scale=0.0)
     if req.task == "animation" and req.motion:
@@ -397,6 +401,10 @@ def run_real(req: RunRequest) -> list[dict]:
         kwargs.pop("height", None)
         if req.task == "image_edit":
             kwargs.setdefault("strength", 0.6)
+        if is_svd:
+            # SVD lavora a 1024×576: si segue l'orientamento della foto (verticale per i reel)
+            w, h = img.size
+            kwargs["width"], kwargs["height"] = (1024, 576) if w > h * 1.15 else (576, 1024) if h > w * 1.15 else (768, 768)
     if req.video:
         kwargs["video"] = load_video_frames(req.video)
 
