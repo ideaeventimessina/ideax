@@ -31,6 +31,8 @@ import * as laser from './lib/laser.js';
 import * as llama from './lib/llamaserver.js';
 import * as twin from './lib/twin.js';
 import * as fixes from './lib/fixes.js';
+import * as brains from './lib/brains.js';
+import { brainPair } from './lib/brain.js';
 
 process.title = 'ideax';
 const startup = store.getSettings();
@@ -798,6 +800,32 @@ const server = http.createServer(async (req, res) => {
       else store.saveOverride(m.id, { enabled: false });
       return send(res, 200, { ok: true });
     }
+    // ----- Cervelli: principale veloce + riserva grande -----
+    if (p === '/api/brains' && req.method === 'GET') {
+      const all = scanModels();
+      const pair = brainPair(all);
+      const slim = (m) => m && { id: m.id, name: m.name, size: m.size, file: m.file };
+      return send(res, 200, {
+        primary: slim(pair.primary), reserve: slim(pair.reserve), mode: store.getSettings().brain.mode,
+        llms: all.filter((m) => m.kind === 'llm' && m.enabled).map(slim),
+        recommended: brains.RECOMMENDED, job: brains.job, engine: { ...llama.llm, log: undefined, installed: llama.isInstalled() },
+      });
+    }
+    if (p === '/api/brains/select' && req.method === 'POST') {
+      const b = await readJson(req);
+      const patch = {};
+      if (b.gguf != null) patch.gguf = String(b.gguf);
+      if (b.reserve != null) patch.reserve = String(b.reserve);
+      if (store.getSettings().brain.mode === 'rules') patch.mode = 'auto';
+      store.saveSettings({ brain: patch });
+      llama.stop();
+      return send(res, 200, { ok: true });
+    }
+    if (p === '/api/brains/lighten' && req.method === 'POST') {
+      const b = await readJson(req);
+      return send(res, 200, brains.lighten(b.id, b.type || 'Q4_K_M'));
+    }
+    if (p === '/api/brains/download' && req.method === 'POST') return send(res, 200, brains.download((await readJson(req)).key));
     if (p === '/api/fixes' && req.method === 'GET') return send(res, 200, fixes.fixes);
     if (p === '/api/fixes/svd' && req.method === 'POST') return send(res, 200, await fixes.fixSvd());
     if (p === '/api/upload' && req.method === 'PUT') return uploadModel(req, res, url.searchParams.get('name'));

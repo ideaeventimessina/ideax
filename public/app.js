@@ -1399,7 +1399,7 @@ function engineBlock(e, compact = false) {
       ${e.status === 'installing' ? `<div class="progress indeterminate" style="margin-top:10px"><div></div></div><p class="muted small">${esc(e.step || '')} · ${esc(e.log.at(-1) || '')}</p>
         <p class="muted small">La prima volta scarica qualche GB: possono servire 10–30 minuti. Puoi continuare a usare ideax.</p>` : ''}
       ${e.status === 'error' ? `<p class="error-text small">${esc(e.error)}</p>` : ''}
-      ${!compact && e.log?.length && e.status !== 'missing' ? `<details><summary class="muted small">Registro</summary><div class="log">${e.log.map(esc).join('\n')}</div></details>` : ''}</div>
+      ${(!compact || e.status === 'error') && e.log?.length && e.status !== 'missing' ? `<details><summary class="muted small">Registro</summary><div class="log">${e.log.map(esc).join('\n')}</div></details>` : ''}</div>
     <div class="row">${actions}</div></div>`;
 }
 
@@ -2148,21 +2148,60 @@ async function loadBrainPage() {
   if (learn) renderLearn(learn);
 }
 
-function renderBrainStatus() {
-  const label = state.models.brain || '';
-  const none = !label || /regole/.test(label);
-  $('#brain-status').innerHTML = none ? `
-    <h2>Dagli un cervello per conversare</h2>
-    <p class="muted">Adesso ideax capisce le richieste di creazione, ma per parlare, ragionare e imparare serve un modello linguistico che gira sul tuo PC.</p>
-    <ol class="small" style="display:grid;gap:8px;padding-left:20px;margin:0">
-      <li>Scarica <strong>Qwen3 14B</strong> in formato .gguf (file <code>Qwen3-14B-Q4_K_M.gguf</code>, circa 9 GB) da <a href="https://huggingface.co/Qwen/Qwen3-14B-GGUF/tree/main" target="_blank" rel="noopener">Hugging Face</a>. Se vuoi lasciare più memoria alla grafica scegli <a href="https://huggingface.co/Qwen/Qwen3-8B-GGUF/tree/main" target="_blank" rel="noopener">Qwen3 8B</a> (circa 5 GB).</li>
-      <li>Trascinalo nella pagina <a href="#modelli">Modelli</a>.</li>
-      <li>In <a href="#impostazioni">Impostazioni → Il cervello di ideax</a> installa il supporto per i file .gguf se te lo chiede.</li>
-    </ol>
-    <p class="muted small" style="margin-top:12px">Hai già Ollama o LM Studio? Collegali da Impostazioni → Il cervello di ideax → Server locale.</p>`
-    : `<div class="row"><span class="dot on"></span><div class="grow"><h2>Il cervello è attivo</h2><p class="muted small">${esc(label)} · gira sul tuo PC. Con 16 GB di scheda video, quando crei immagini o video il cervello si scarica e si ricarica alla chat successiva (qualche secondo).</p></div>
-      <a class="btn" href="#studio">Parla con ideax</a></div>`;
+let brainsTimer = null;
+async function renderBrainStatus() {
+  clearTimeout(brainsTimer);
+  const b = await api('/api/brains').catch(() => null);
+  const el = $('#brain-status');
+  if (!b) { el.innerHTML = ''; return; }
+  const gb = (x) => (x?.size ? fmtSize(x.size) : '');
+  const big = b.primary && b.primary.size > 8e9;
+  const opts = (sel, none) => (none ? `<option value="none" ${!sel ? 'selected' : ''}>Nessuno</option>` : '') + b.llms.map((m) => `<option value="${esc(m.id)}" ${sel?.id === m.id ? 'selected' : ''}>${esc(m.name)} · ${gb(m)}</option>`).join('');
+  const job = b.job;
+  const jobHtml = job.status === 'running'
+    ? `<div class="note"><h3>${job.kind === 'lighten' ? 'Alleggerisco' : 'Scarico'} ${esc(job.name)}</h3><p class="small">${esc(job.step || '')}${job.total ? ` · ${job.kind === 'download' ? `${fmtSize(job.done)} di ${fmtSize(job.total)}` : `${job.done} di ${job.total}`}` : ''}</p>
+        <div class="progress ${job.total ? '' : 'indeterminate'}"><div style="width:${job.total ? Math.round((job.done / job.total) * 100) : 0}%"></div></div></div>`
+    : job.status === 'error' ? `<div class="note error"><h3>Non è andata</h3><p class="small">${esc(job.error)}</p></div>`
+      : job.status === 'done' ? `<div class="note"><h3>Fatto ✓</h3><p class="small">${esc(job.name)} è pronto: ora è il cervello per parlare.</p></div>` : '';
+  el.innerHTML = `
+    <h2>I cervelli</h2>
+    <p class="muted">Uno <strong>veloce</strong> per parlare con te, e uno <strong>grande di riserva</strong> per i lavori pesanti (bozze di Mathis, ricordi da testi lunghi, "pensaci a fondo"). Girano sul tuo PC, senza censure se scegli modelli senza censure.</p>
+    ${b.llms.length ? `<div class="grid2">
+      <label>Per parlare (veloce)<select data-brain-primary>${opts(b.primary)}</select></label>
+      <label>Di riserva (lavori pesanti)<select data-brain-reserve>${opts(b.reserve, true)}</select></label>
+    </div>` : '<p class="small">Non hai ancora un cervello: scaricane uno qui sotto.</p>'}
+    ${big ? `<div class="note warn"><h3>Il cervello per parlare è troppo grande</h3>
+      <p class="small">${esc(b.primary.name)} pesa ${gb(b.primary)}: su una scheda da 16 GB è lento e lascia poco spazio a immagini e video. Posso crearne una versione leggera (stesso modello, stesse risposte senza censure, circa un terzo della dimensione) e usare l'originale come riserva.</p>
+      <div class="row"><button class="btn primary small" type="button" data-brain-lighten="${esc(b.primary.id)}" data-type="Q4_K_M">Alleggerisci · Q4_K_M (più veloce)</button>
+        <button class="btn small" type="button" data-brain-lighten="${esc(b.primary.id)}" data-type="Q8_0">Q8_0 (più fedele)</button></div></div>` : ''}
+    ${jobHtml}
+    <h3 style="margin-top:18px">Cervelli veloci senza censure</h3>
+    <div class="stack-sm">${b.recommended.map((r) => `<div class="teacher"><div class="grow"><strong>${esc(r.name)}</strong><p class="muted small">${esc(r.note)}</p></div>
+      <button class="btn small" type="button" data-brain-download="${esc(r.key)}" ${job.status === 'running' ? 'disabled' : ''}>Scarica e usa</button></div>`).join('')}</div>
+    <p class="muted small" style="margin-top:12px">Motore: llama.cpp ${b.engine.installed ? esc(b.engine.version || '') : '(si scarica da solo al primo messaggio)'}${b.engine.status === 'running' ? ' · acceso' : ''}${b.engine.error ? ` · <span class="error-text">${esc(b.engine.error)}</span>` : ''}</p>`;
+  if (job.status === 'running') brainsTimer = setTimeout(() => { if ($('#page-cervello').classList.contains('active')) renderBrainStatus(); }, 2000);
+  if (job.status === 'done') loadModels();
 }
+
+$('#brain-status').addEventListener('change', async (e) => {
+  const prim = e.target.closest('[data-brain-primary]');
+  const res = e.target.closest('[data-brain-reserve]');
+  if (!prim && !res) return;
+  await api('/api/brains/select', { method: 'POST', body: prim ? { gguf: prim.value } : { reserve: res.value } });
+  await loadModels();
+  renderBrainStatus();
+});
+$('#brain-status').addEventListener('click', async (e) => {
+  const l = e.target.closest('[data-brain-lighten]');
+  const d = e.target.closest('[data-brain-download]');
+  if (!l && !d) return;
+  e.target.disabled = true;
+  try {
+    if (l) await api('/api/brains/lighten', { method: 'POST', body: { id: l.dataset.brainLighten, type: l.dataset.type } });
+    else await api('/api/brains/download', { method: 'POST', body: { key: d.dataset.brainDownload } });
+  } catch (err) { alert(err.message); }
+  renderBrainStatus();
+});
 
 function renderMemory() {
   const m = brainPage.memory;
