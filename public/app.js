@@ -2582,3 +2582,19 @@ $('#talk-form').addEventListener('submit', async (e) => {
     btn.disabled = false;
   }
 });
+
+$('#hf-check').addEventListener('click', async (e) => {
+  const out = $('#hf-result');
+  e.target.disabled = true;
+  out.innerHTML = '<p class="muted small">Controllo il token e i modelli protetti…</p>';
+  try {
+    const r = await api('/api/hf/check', { method: 'POST' });
+    out.innerHTML = r.problem ? `<div class="note error"><p class="small">${esc(r.problem)}</p></div>`
+      : `<div class="note ${r.ok ? '' : 'warn'}"><p class="small">Token di <strong>${esc(r.user)}</strong> · tipo ${esc(r.role === 'fineGrained' ? 'fine-grained' : r.role)}</p>
+        ${r.repos.map((x) => `<p class="small">${x.access ? '<span class="ok-text">✓</span>' : '<span class="error-text">✕</span>'} <strong>${esc(x.repo)}</strong> · ${esc(x.usedBy)}${x.fix ? `<br><span class="muted">${esc(x.fix)}</span>` : ''}</p>`).join('')}</div>`;
+  } catch (err) {
+    out.innerHTML = `<p class="error-text small">${esc(err.message)}</p>`;
+  } finally {
+    e.target.disabled = false;
+  }
+});

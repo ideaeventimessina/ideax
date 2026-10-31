@@ -826,6 +826,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, brains.lighten(b.id, b.type || 'Q4_K_M'));
     }
     if (p === '/api/brains/download' && req.method === 'POST') return send(res, 200, brains.download((await readJson(req)).key));
+    if (p === '/api/hf/check' && req.method === 'POST') return send(res, 200, await (await import('./lib/hfcheck.js')).check());
     if (p === '/api/fixes' && req.method === 'GET') return send(res, 200, fixes.fixes);
     if (p === '/api/fixes/svd' && req.method === 'POST') return send(res, 200, await fixes.fixSvd());
     if (p === '/api/upload' && req.method === 'PUT') return uploadModel(req, res, url.searchParams.get('name'));

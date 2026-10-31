@@ -425,7 +425,8 @@
       <div class="card">
         <h2>Hugging Face</h2>
         <p class="muted">Alcuni modelli (es. Flux dev, Stable Video Diffusion) richiedono di accettare la licenza sul sito. Con il tuo token ideax li scarica da solo.</p>
-        <label>Token di accesso <span class="row"><input id="hf-token" class="mono grow" type="password" autocomplete="off" placeholder="hf_…"><button type="button" class="btn" id="hf-save">Salva</button></span></label>
+        <label>Token di accesso <span class="row"><input id="hf-token" class="mono grow" type="password" autocomplete="off" placeholder="hf_…"><button type="button" class="btn" id="hf-save">Salva</button><button type="button" class="btn" id="hf-check">Verifica</button></span></label>
+        <div id="hf-result"></div>
         <p class="muted small">Crealo su <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">huggingface.co/settings/tokens</a> (tipo "Read"). Poi accetta la licenza sulla pagina di ciascun modello protetto. <span id="hf-ok" class="ok-text"></span></p>
       </div>
       <form id="settings-form" class="stack">
