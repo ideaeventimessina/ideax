@@ -1,3 +1,4 @@
+/* Questo codice è stato progettato, scritto e generato da Andrea Gentile C.f GNTNDR88S28F158M */
 // ideax: gateway locale per modelli AI di immagini, video e animazioni.
 // Interfaccia web + API unica per tutte le applicazioni. Nessuna API a pagamento: tutto gira sul tuo PC.
 import http from 'node:http';
@@ -479,7 +480,10 @@ async function processJob(job) {
     }
     job.status = 'routing';
     log('Analizzo il prompt…');
-    const d = await route(job.prompt, job.attachments, { forceModelId: job.forceModelId, forceTask: job.forceTask });
+    // prompt_style nei parametri: lo stile del prompt per questo lavoro, al posto di quello del modello
+    const forceStyle = typeof job.params?.prompt_style === 'string' ? job.params.prompt_style : null;
+    if (job.params) delete job.params.prompt_style;
+    const d = await route(job.prompt, job.attachments, { forceModelId: job.forceModelId, forceTask: job.forceTask, forceStyle });
     if (job.cancelled) throw new Error('Annullato');
     // Parametri dello stile (es. clip_skip per Pony) < parametri del modello < parametri della richiesta
     job.params = { ...(d.styleParams || {}), ...(d.model.params || {}), ...job.params };

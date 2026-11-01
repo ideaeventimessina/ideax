@@ -1,5 +1,12 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.7.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.8.exe** e aprilo.
+
+## Decorazioni laser: sagome piene e nere, non cuori di linee storte
+- Il tema ora si traduce sempre in inglese prima di disegnare: "cuore sagoma semplice nero" arrivava al modello in italiano, che SDXL non capisce
+- Le decorazioni non prendono più lo stile "fotoreale" del modello (con realityvision aggiungeva "raw photo, DSLR, pelle" e vietava "illustration"): usano lo stile normale. Nuovo parametro `prompt_style` per imporre lo stile a un singolo lavoro
+- Il prompt chiede una sagoma nera piena tipo stencil, e vieta contorni, legno e foto
+- Se il disegno esce fatto di sole linee (meno della metà pieno), ideax ne genera un altro una volta e tiene il migliore
+- Una sagoma piena non ha più un livello "da incidere" grande quanto tutto il pezzo (avrebbe bruciato tutto l'interno); i dettagli veri restano
 
 ## Decorazioni laser: l'anteprima arriva sempre a IDEAlab
 - Con le decorazioni fatte da SDXL l'editor di IDEAlab riceveva il taglio giusto ma l'immagine vuota: l'anteprima era il PNG intero e IDEAlab la scartava

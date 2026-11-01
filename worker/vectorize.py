@@ -112,6 +112,10 @@ def _background(rgb: Image.Image, limit: int, margin: int = 24) -> tuple[int, in
     return tuple(min(limit, v - margin) for v in levels)
 
 
+def _area(mask: Image.Image) -> int:
+    return mask.histogram()[255]
+
+
 def _binary(img: Image.Image) -> Image.Image:
     return img.point(lambda v: 255 if v >= 128 else 0)
 
@@ -218,6 +222,9 @@ def decorate(data: bytes, width_mm: float, height_mm: float, min_mm: float = 3.0
     size = fg.size
     w_mm, h_mm = size[0] / ppm, size[1] / ppm
     sil = _fill_holes(fg)
+    # Quanto del pezzo è disegno pieno: una sagoma vera sta vicino a 1, un disegno fatto di sole linee (il contorno di
+    # un cuore) sta sotto 0,5. Il taglio si ricava comunque dalla forma riempita, ma chi chiama può volerne un'altra.
+    pieno = _area(fg) / max(1, _area(sil))
     sil = _fill_holes(_cleanup_cut(sil, ppm, min_mm, gap_mm))
     cut = _trace(sil, ppm, max(4, round(min_mm * ppm)))
     if not cut:
@@ -230,10 +237,13 @@ def decorate(data: bytes, width_mm: float, height_mm: float, min_mm: float = 3.0
     lines = ImageChops.multiply(lines, inner)
     ro = max(1, round(line_mm * ppm / 2))
     lines = _morph(_morph(lines, ImageFilter.MinFilter, ro), ImageFilter.MaxFilter, ro)
+    # Su una sagoma piena i "tratti scuri" sono tutto l'interno: inciderli brucerebbe il pezzo intero, non dei dettagli
+    if _area(lines) > 0.6 * max(1, _area(inner)):
+        lines = Image.new("L", lines.size, 0)
     engrave = _trace(lines, ppm, max(3, round(1.5 * ppm))) if lines.getbbox() else []
     d_cut, d_eng = " ".join(cut), " ".join(engrave)
     return {
-        "w": round(w_mm, 2), "h": round(h_mm, 2),
+        "w": round(w_mm, 2), "h": round(h_mm, 2), "pieno": round(pieno, 2),
         "livelli": [
             {"nome": "Sagoma", "operazione": "taglio", "d": d_cut},
             *([{"nome": "Dettagli incisi", "operazione": "incisione", "d": d_eng, "pieno": True}] if d_eng else []),
