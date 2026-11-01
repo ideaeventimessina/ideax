@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.22.0.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.22.1.exe** e aprilo.
+
+## Correzione: VAE di Video Wan 2.2 14B
+- Il file del VAE si scaricava col nome sbagliato (`wan2.1_vae` invece di `wan_2.1_vae`), così l'installazione del motore 14B finiva con "Dopo il download manca wan2.1_vae.safetensors". Ora il nome è giusto: reinstalla **Video Wan 2.2 14B** da Modelli → Motori e scarica solo il VAE mancante (~250 MB, i modelli grossi già scaricati non si riscaricano)
 
 ## Più PC che lavorano insieme (farm)
 - Hai altri PC con la stessa scheda video? Falli lavorare insieme. In **Collega app → Più PC** rendi un PC il **capofila**: tiene la coda e, quando è occupato, manda i lavori in più agli altri PC (gli **operai**)
