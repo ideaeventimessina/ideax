@@ -382,6 +382,7 @@ def run_real(req: RunRequest) -> list[dict]:
     fps = int(params.pop("fps", 8))
     seed = params.pop("seed", None)
     face_fix = str(params.pop("face_fix", True)).lower() not in ("false", "0", "no")
+    skin_fix = str(params.pop("skin_fix", True)).lower() not in ("false", "0", "no")
     aspect = params.pop("aspect", None)
     if aspect and "width" in params and "height" in params:
         # Stessa quantità di pixel del formato nativo, con le proporzioni richieste (multipli di 64)
@@ -439,12 +440,81 @@ def run_real(req: RunRequest) -> list[dict]:
         with t.inference_mode():
             result = pipe(**kwargs)
             # Secondo passaggio sui volti, con le stesse LoRA ancora caricate (il gemello resta riconoscibile)
-            if face_fix and req.task in ("image_generate", "image_edit") and getattr(result, "frames", None) is None and not is_svd:
-                result.images = [refine_faces(img, base, req, params, seed) for img in result.images]
+            if req.task in ("image_generate", "image_edit") and getattr(result, "frames", None) is None and not is_svd:
+                # Prima la pelle (ingrandimento + dettagli fini), poi i volti sull'immagine già ingrandita
+                if skin_fix:
+                    result.images = [refine_skin(img, base, req, params, seed) for img in result.images]
+                if face_fix:
+                    result.images = [refine_faces(img, base, req, params, seed) for img in result.images]
     finally:
         if adapters:
             pipe.unload_lora_weights()
     return encode_result(result, req.task, fps)
+
+
+def _img2img(base):
+    key = ("img2img",)
+    if key not in _loaded["derived"]:
+        import diffusers as d
+
+        _loaded["derived"][key] = d.AutoPipelineForImage2Image.from_pipe(base)
+    return _loaded["derived"][key]
+
+
+SKIN_PROMPT = "natural skin texture, visible pores, fine details, realistic lighting, sharp focus, photographic, film photo"
+SKIN_NEGATIVE = "plastic skin, airbrushed, smooth skin, waxy, cgi, 3d render, cartoon, blurry, oversaturated, deformed"
+
+
+def refine_skin(img, base, req: RunRequest, params: dict, seed):
+    """Rifinitura della pelle ("hires fix"): ingrandisce l'immagine e la ripassa con un img2img leggero, così il modello
+    disegna pori, peli sottili e tessuti alla risoluzione più alta; poi una grana fotografica leggerissima toglie
+    l'effetto plastica. La composizione resta la stessa. Se qualcosa va storto si tiene l'immagine com'era."""
+    try:
+        import numpy as np
+
+        t = torch()
+        i2i = _img2img(base)
+        arch = req.model.arch
+        scale = 2.0 if arch == "sd15" else 1.5
+        w, h = img.size
+        limit = 2048 if arch != "sd15" else 1280
+        scale = min(scale, limit / max(w, h))
+        if scale > 1.05:
+            w, h = int(w * scale) // 64 * 64, int(h * scale) // 64 * 64
+            big = img.convert("RGB").resize((w, h), Image.LANCZOS)
+        else:
+            big = img.convert("RGB")
+        schnell = arch == "flux" and _loaded.get("variant") == "schnell"
+        steps = 8 if schnell else max(int(params.get("num_inference_steps", 30)), 24)
+        if hasattr(i2i, "vae") and hasattr(i2i.vae, "enable_tiling"):
+            i2i.vae.enable_tiling()  # decodifica a pezzi: l'immagine grande sta nei 16 GB
+        PROGRESS.update(phase="Rifinisco la pelle e i dettagli")
+        kw = {
+            "prompt": f"{req.prompt}, {SKIN_PROMPT}"[:900], "image": big, "strength": 0.45 if schnell else 0.3,
+            "num_inference_steps": steps, "width": big.width, "height": big.height,
+            "negative_prompt": ", ".join(x for x in (SKIN_NEGATIVE, req.negative_prompt) if x),
+        }
+        if "guidance_scale" in params:
+            kw["guidance_scale"] = params["guidance_scale"]
+        if seed is not None:
+            kw["generator"] = t.Generator("cpu").manual_seed(int(seed))
+        sig = inspect.signature(i2i.__call__).parameters
+        out = i2i(**{k: v for k, v in kw.items() if k in sig}).images[0].convert("RGB")
+        # Grana fotografica leggerissima (solo luminosità): niente superfici troppo lisce
+        arr = np.asarray(out).astype(np.float32)
+        rng = np.random.default_rng(int(seed) if seed is not None else None)
+        arr += rng.normal(0, 2.2, arr.shape[:2])[..., None]
+        print(f"[ideax] pelle rifinita a {out.width}×{out.height}", flush=True)
+        return Image.fromarray(np.clip(arr, 0, 255).astype("uint8"))
+    except Cancelled:
+        raise
+    except Exception as err:  # noqa: BLE001
+        if "out of memory" in str(err).lower():
+            free_cuda = torch().cuda.empty_cache if torch().cuda.is_available() else None
+            if free_cuda:
+                free_cuda()
+        print(f"[ideax] rifinitura della pelle saltata: {err}", flush=True)
+        return img
 
 
 def refine_faces(img, base, req: RunRequest, params: dict, seed):
@@ -457,10 +527,7 @@ def refine_faces(img, base, req: RunRequest, params: dict, seed):
         from faces import FACE_NEGATIVE, FACE_PROMPT, fix_faces
 
         t = torch()
-        key = ("img2img",)
-        if key not in _loaded["derived"]:
-            _loaded["derived"][key] = d.AutoPipelineForImage2Image.from_pipe(base)
-        i2i = _loaded["derived"][key]
+        i2i = _img2img(base)
         side = 512 if req.model.arch == "sd15" else 768 if req.model.arch == "sd2" else 1024
         schnell = req.model.arch == "flux" and _loaded.get("variant") == "schnell"
         steps = 8 if schnell else max(int(params.get("num_inference_steps", 30)), 24)

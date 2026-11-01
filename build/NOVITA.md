@@ -1,5 +1,11 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.13.2.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.13.3.exe** e aprilo.
+
+## Pelle e dettagli realistici
+- Ogni immagine viene ingrandita (1,5 volte, 2 volte con i modelli SD 1.5) e ripassata dallo stesso modello con un tocco leggero: pori, peli sottili, tessuti e luci diventano nitidi e naturali, la composizione resta identica
+- Una grana fotografica leggerissima toglie l'effetto "plastica" tipico delle immagini fatte con l'IA
+- Poi arriva la rifinitura dei volti, sull'immagine già ingrandita
+- Ogni immagine richiede circa il 40% di tempo in più. Le immagini escono più grandi (es. 1792×1216 invece di 1216×832)
 
 ## Volti perfetti
 - Ogni immagine con persone passa da una rifinitura automatica dei volti: ideax trova ogni viso, lo ridisegna ad alta risoluzione con lo stesso modello (e le stesse LoRA, quindi il gemello resta lui) e lo rimette al suo posto con i bordi sfumati
