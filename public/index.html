@@ -308,6 +308,25 @@
           <div class="phone"><div class="phone-empty">Il tuo reel apparirà qui</div></div>
         </div>
       </div>
+
+      <div class="card" id="catena-card">
+        <div class="section-head"><div><h2>Video montato con Impagino</h2>
+          <p class="muted">Scrivi l'idea: ideax progetta le scene, crea una clip per ognuna (foto rifinita e animata), compone la musica e passa tutto al montatore di Impagino, che monta sul ritmo con rallenty, colore e titoli e scrive anche il progetto CapCut da ritoccare.</p></div>
+          <span class="small" id="catena-montatore"></span></div>
+        <form id="catena-form" class="stack-sm">
+          <label>Idea del video <textarea name="prompt" rows="3" required placeholder="Una giornata in laboratorio: dal legno grezzo al regalo incartato, luce calda, mani al lavoro"></textarea></label>
+          <div class="grid2">
+            <label>Clip <select name="clip"><option>4</option><option selected>6</option><option>8</option><option>10</option><option>12</option></select></label>
+            <label>Formato <select name="formato"><option value="9:16">Verticale 9:16 (reel, storie)</option><option value="16:9">Orizzontale 16:9</option></select></label>
+          </div>
+          <div class="grid2">
+            <label>Stile del montaggio <select name="stile"><option value="">Lo sceglie Impagino</option></select></label>
+            <label>Musica (composta da ideax) <select name="musica_provenienza"><option value="da-dichiarare">Da dichiarare</option><option value="licenziata">Licenziata / mia</option></select></label>
+          </div>
+          <div class="row"><button class="btn primary">Crea e monta</button><span class="error-text small" data-catena-err></span></div>
+        </form>
+        <div id="catena-result"></div>
+      </div>
     </section>
 
     <!-- ================= VOCE ================= -->

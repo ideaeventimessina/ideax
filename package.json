@@ -1,6 +1,6 @@
 {
   "name": "ideax",
-  "version": "1.13.3",
+  "version": "1.14.0",
   "description": "Gateway locale per modelli AI di immagini, video e animazioni: drag & drop dei modelli, instradamento automatico dei prompt, API unica per tutte le app",
   "type": "module",
   "main": "server.js",

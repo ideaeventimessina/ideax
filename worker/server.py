@@ -465,6 +465,16 @@ SKIN_PROMPT = "natural skin texture, visible pores, fine details, realistic ligh
 SKIN_NEGATIVE = "plastic skin, airbrushed, smooth skin, waxy, cgi, 3d render, cartoon, blurry, oversaturated, deformed"
 
 
+def add_grain(img, seed=None, amount: float = 2.2):
+    """Grana fotografica leggerissima (solo luminosità): niente superfici troppo lisce, tipiche dell'IA."""
+    import numpy as np
+
+    arr = np.asarray(img.convert("RGB")).astype(np.float32)
+    rng = np.random.default_rng(int(seed) if seed is not None else None)
+    arr += rng.normal(0, amount, arr.shape[:2])[..., None]
+    return Image.fromarray(np.clip(arr, 0, 255).astype("uint8"))
+
+
 def refine_skin(img, base, req: RunRequest, params: dict, seed):
     """Rifinitura della pelle ("hires fix"): ingrandisce l'immagine e la ripassa con un img2img leggero, così il modello
     disegna pori, peli sottili e tessuti alla risoluzione più alta; poi una grana fotografica leggerissima toglie
@@ -500,12 +510,8 @@ def refine_skin(img, base, req: RunRequest, params: dict, seed):
             kw["generator"] = t.Generator("cpu").manual_seed(int(seed))
         sig = inspect.signature(i2i.__call__).parameters
         out = i2i(**{k: v for k, v in kw.items() if k in sig}).images[0].convert("RGB")
-        # Grana fotografica leggerissima (solo luminosità): niente superfici troppo lisce
-        arr = np.asarray(out).astype(np.float32)
-        rng = np.random.default_rng(int(seed) if seed is not None else None)
-        arr += rng.normal(0, 2.2, arr.shape[:2])[..., None]
         print(f"[ideax] pelle rifinita a {out.width}×{out.height}", flush=True)
-        return Image.fromarray(np.clip(arr, 0, 255).astype("uint8"))
+        return add_grain(out, seed)
     except Cancelled:
         raise
     except Exception as err:  # noqa: BLE001
@@ -887,6 +893,34 @@ def compose(req: ComposeRequest):
         # Copertina: il primo fotogramma con il titolo, utile per l'anteprima
         COMPOSE.update(frame=0, frames=0)
     return {"output": req.output, "seconds": round(total, 2), "frames": frames}
+
+
+@app.post("/refine")
+def refine(req: RunRequest):
+    """Rifinisce un'immagine fatta da un altro motore (es. MOSS-Image su ComfyUI): volti ridisegnati con questo
+    modello e grana fotografica leggera. La pelle l'ha già ripassata il motore di origine."""
+    start = time.time()
+    with gen_lock:
+        PROGRESS.update(step=0, total=0, phase="Rifinisco i volti", cancel=False)
+        try:
+            img = Image.open(io.BytesIO(decode_data_url(req.image))).convert("RGB")
+            if DEMO:
+                out = img
+            else:
+                base = load_base(req.model)
+                place(base)
+                params = dict(ARCH_DEFAULTS.get(req.model.arch, {}))
+                params.update(req.params)
+                out = refine_faces(img, base, req, params, params.get("seed"))
+            if req.params.get("grain", True):
+                out = add_grain(out, params.get("seed") if not DEMO else None)
+        except Cancelled:
+            raise HTTPException(409, "Annullato")
+        except Exception as err:  # noqa: BLE001
+            raise HTTPException(500, f"{type(err).__name__}: {err}")
+        finally:
+            PROGRESS.update(step=0, total=0, phase=None, cancel=False)
+    return {"outputs": [encode_png(out)], "seconds": time.time() - start}
 
 
 @app.post("/unload")

@@ -81,7 +81,7 @@ function showPage() {
   if (page === 'impostazioni') { renderEngine($('#engine-card')); loadNetwork(); loadEngines(); loadHfToken(); }
   if (page === 'voce') { loadEngines(); loadVoices(); loadVoiceLib(); }
   if (page === 'musica') loadEngines();
-  if (page === 'reel') loadReelForm();
+  if (page === 'reel') { loadReelForm(); loadCatena(); }
   if (page === 'cervello') loadBrainPage();
   if (page === 'collega') loadSystems();
   if (page === 'regia') loadRegia();
@@ -1848,6 +1848,43 @@ function renderReelResult(j) {
         ${srt ? `<a class="btn small" href="${esc(srt.url)}" download>Sottotitoli .srt</a>` : ''}</div>
       ${caption ? `<div class="caption-box">${esc(caption)}</div><button type="button" class="btn small" data-copy-text="${esc(caption)}">Copia didascalia e hashtag</button>` : ''}</div>`;
 }
+
+// ----- Video montato con Impagino (catena di clip) -----
+async function loadCatena() {
+  const st = await api('/api/catena/montatore').catch(() => ({ online: false }));
+  $('#catena-montatore').innerHTML = st.online ? '<span class="ok-text">● Montatore di Impagino acceso</span>' : '<span class="muted">○ Montatore di Impagino spento: le clip restano pronte in una cartella</span>';
+  const sel = $('#catena-form').stile;
+  if (st.stili?.length && sel.options.length < 2) sel.innerHTML += st.stili.map((x) => `<option value="${esc(x)}">${esc(x)}</option>`).join('');
+}
+async function watchCatena(id) {
+  const out = $('#catena-result');
+  for (;;) {
+    const j = await api(`/v1/jobs/${id}`).catch(() => null);
+    if (!j) return;
+    if (j.status === 'done' || j.status === 'error' || j.status === 'cancelled') {
+      const vids = (j.results || []).filter((r) => r.type === 'video/mp4');
+      const montato = vids.find((v) => /montato/.test(v.url));
+      out.innerHTML = j.status !== 'done' ? `<p class="error-text">${esc(j.error || 'Non riuscito')}</p>`
+        : `${montato ? `<div class="row"><video src="${esc(montato.url)}" controls style="max-height:420px;border-radius:12px"></video></div><div class="row"><a class="btn small primary" href="${esc(montato.url)}" download>↓ Scarica il montato</a></div>` : '<p class="muted">Clip pronte: il montatore di Impagino era spento, accendilo e aprile da lì (la cartella è nel registro qui sotto).</p>'}
+          <div class="vl-grid">${vids.filter((v) => v !== montato).map((v, i) => `<div><video src="${esc(v.url)}" controls muted style="width:100%;border-radius:10px"></video><a class="small" href="${esc(v.url)}" download>Clip ${i + 1}</a></div>`).join('')}</div>
+          <details class="choices"><summary>Registro</summary><pre class="small">${esc((j.log || []).map((l) => l.msg || l).join('\n'))}</pre></details>`;
+      return;
+    }
+    out.innerHTML = `<p>${esc(j.progress?.phase || 'Preparo')}${j.progress?.total ? ` · ${j.progress.step + 1}/${j.progress.total}` : ''}…</p><p class="muted small">Ogni clip richiede qualche minuto. Puoi continuare a usare ideax.</p><button type="button" class="btn small" data-cancel-job="${esc(id)}">Annulla</button>`;
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+}
+$('#catena-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  $('[data-catena-err]').textContent = '';
+  try {
+    const { id } = await api('/v1/catena', { method: 'POST', body: { prompt: f.prompt.value, clip: Number(f.clip.value), formato: f.formato.value, stile: f.stile.value || undefined, musica_provenienza: f.musica_provenienza.value } });
+    watchCatena(id);
+  } catch (err) {
+    $('[data-catena-err]').textContent = err.message;
+  }
+});
 
 $('#reel-form').addEventListener('submit', async (e) => {
   e.preventDefault();

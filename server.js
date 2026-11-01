@@ -16,6 +16,7 @@ import * as voices from './lib/voices.js';
 import * as voicelib from './lib/voicelib.js';
 import * as music from './lib/music.js';
 import { runReel } from './lib/reels.js';
+import * as catena from './lib/catena.js';
 import { fallbackTitle } from './lib/router.js';
 import * as runtime from './lib/runtime.js';
 import * as updater from './lib/updater.js';
@@ -195,6 +196,7 @@ async function createJob(body, ctx = {}) {
     music: body.music,
     reel: body.reel,
     talk: body.talk,
+    catena: body.catena,
     client: ctx.client || 'ideax',
     origin: ctx.origin || '',
     callbackUrl: callback,
@@ -300,6 +302,12 @@ async function processJob(job) {
       await twin.runTalk(job, log);
       return;
     }
+    if (job.kind === 'catena') {
+      job.results = await catena.runCatena(job, log);
+      job.status = 'done';
+      log('Completato.');
+      return;
+    }
     // "una foto di me al mare": il gemello si usa con il suo modello (Flux), se la richiesta non ne sceglie un altro
     if (!job.forceModelId && !job.attachments.length) {
       const tw = twin.twinForPrompt(job.prompt);
@@ -340,7 +348,7 @@ async function processJob(job) {
       const blockedStill = blockedReason(di.prompt);
       if (blockedStill) throw new Error(blockedStill);
       const still = { ...job, attachments: [], loras: di.loras || [], routedPrompt: di.prompt, negativePrompt: di.negativePrompt,
-        params: { ...(di.styleParams || {}), ...(di.model.params || {}), aspect: /reel|verticale|storia|stories|9:16|tiktok/i.test(job.prompt) ? '9:16' : '16:9' } };
+        params: { ...(di.styleParams || {}), ...(di.model.params || {}), aspect: job.params.aspect || (/reel|verticale|storia|stories|9:16|tiktok/i.test(job.prompt) ? '9:16' : '16:9') } };
       const [img] = await runModel(di.model, 'image_generate', still, log);
       if (job.cancelled) throw new Error('Annullato');
       if (!img) throw new Error('Non sono riuscito a creare la foto di partenza del video');
@@ -367,6 +375,7 @@ async function processJob(job) {
         reason: job.reason, brain: job.brain, status: job.status, error: job.error, results: job.results,
         createdAt: job.createdAt, seconds: job.startedAt ? Math.round((job.finishedAt - job.startedAt) / 1000) : null,
         client: job.client, metadata: job.metadata,
+        ...(job.catenaInfo ? { catena: job.catenaInfo } : {}),
         ...(job.reelPlan ? { reel: { caption: job.reelPlan.caption, hashtags: job.reelPlan.hashtags, scenes: job.reelPlan.scenes.map(({ text }) => text) } } : {}),
       });
     }
@@ -393,7 +402,7 @@ function withData(results) {
 
 function publicCreation(h, origin) {
   return {
-    id: h.id, title: h.title, prompt: h.prompt, task: h.task, type: h.task === 'reel' ? 'reel' : h.task === 'talk' ? 'video' : ['speech', 'music'].includes(h.task) ? 'audio' : h.task === 'animation' ? 'animation' : /video/.test(h.task || '') ? 'video' : 'image',
+    id: h.id, title: h.title, prompt: h.prompt, task: h.task, type: h.task === 'reel' ? 'reel' : h.task === 'talk' ? 'video' : ['speech', 'music'].includes(h.task) ? 'audio' : h.task === 'animation' ? 'animation' : /video|catena/.test(h.task || '') ? 'video' : 'image',
     model: h.modelName, routedPrompt: h.routedPrompt, negativePrompt: h.negativePrompt, loras: h.loras || [], status: h.status,
     error: h.error, client: h.client, metadata: h.metadata, createdAt: h.createdAt, seconds: h.seconds, reel: h.reel,
     results: (h.results || []).map((r) => ({ ...r, url: origin + r.url })),
@@ -419,6 +428,7 @@ function publicJob(job, origin = '') {
     client: job.client,
     metadata: job.metadata,
     webhook: job.webhook,
+    ...(job.catenaInfo ? { catena: job.catenaInfo } : {}),
     ...(job.reelPlan ? { reel: { title: job.reelPlan.title, caption: job.reelPlan.caption, hashtags: job.reelPlan.hashtags, scenes: job.reelPlan.scenes.map(({ text, visual }) => ({ text, visual })), music: job.reelPlan.music } } : {}),
     results: job.results.map((r) => ({ ...r, url: origin + r.url })),
     log: job.log,
@@ -474,6 +484,7 @@ async function chatForSystem(d, sys) {
   return out;
 }
 systems.configure({ createJob, chat: chatForSystem });
+catena.configure({ createJob });
 
 function publicSettings() {
   const s = store.getSettings();
@@ -533,6 +544,12 @@ const server = http.createServer(async (req, res) => {
       return send(res, job.status === 'done' ? 200 : 500, out);
     }
     // ----- Voce -----
+    if (p === '/api/catena/montatore' && req.method === 'GET') return send(res, 200, await catena.montatoreStato());
+    if (p === '/v1/catena' && req.method === 'POST') {
+      const b = await readJson(req);
+      const job = await createJob({ prompt: b.prompt || b.idea, kind: 'catena', catena: { clip: b.clip, formato: b.formato, stile: b.stile, musica_provenienza: b.musica_provenienza, monta: b.monta, scene: b.scene, musica_file: b.musica_file } }, ctx);
+      return send(res, 202, { id: job.id, status: job.status, status_url: `${origin}/v1/jobs/${job.id}` });
+    }
     if (p === '/api/voicelib' && req.method === 'GET') return send(res, 200, voicelib.list());
     if (p === '/api/voicelib' && req.method === 'POST') {
       const b = await readJson(req);

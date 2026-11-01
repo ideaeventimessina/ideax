@@ -1,5 +1,19 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.13.3.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.14.0.exe** e aprilo.
+
+## Video montati con Impagino
+- Nuova sezione nella pagina **Reel**: "Video montato con Impagino". Scrivi l'idea, scegli quante clip (4-12) e il formato
+- ideax progetta le scene, crea una clip per ognuna (foto rifinita con pelle e volti, poi animata), compone la musica e passa tutto al **montatore di Impagino** acceso sullo stesso PC
+- Impagino monta sul ritmo della musica con rallenty, colore e titoli, e scrive anche il **progetto CapCut** da ritoccare a mano. Il video montato torna in ideax
+- Se il montatore è spento, clip e musica restano pronte in una cartella da aprire con Impagino
+- Si può chiedere anche a voce, in Studio o tramite Jarvis: "fammi un video montato di…"
+
+## MOSS-Image: pelle e volti
+- Anche le immagini di MOSS-Image passano dalla rifinitura: la pelle la ripassa MOSS stesso (con le tue LoRA, compresa Mystic), poi i volti e la grana li rifinisce il miglior modello realistico installato
+- Se la scheda video non regge l'ingrandimento, ideax rifà l'immagine senza, invece di fermarsi
+
+## Video
+- I video partono da una foto già rifinita (pelle e volti), quindi anche le clip hanno volti e dettagli puliti
 
 ## Pelle e dettagli realistici
 - Ogni immagine viene ingrandita (1,5 volte, 2 volte con i modelli SD 1.5) e ripassata dallo stesso modello con un tocco leggero: pori, peli sottili, tessuti e luci diventano nitidi e naturali, la composizione resta identica
