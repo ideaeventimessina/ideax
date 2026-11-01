@@ -429,7 +429,27 @@ async function chatForSystem(d, sys) {
     chats.saveChat(chat);
   }
   const msg = await agent.send(chat, { text: d.messaggio || d.message, ctx: { client: sys.name } });
-  return { chat_id: chat.id, risposta: msg.content, lavori: msg.jobs || [], ricordati: msg.remembered || [] };
+  const out = { chat_id: chat.id, risposta: msg.content, lavori: msg.jobs || [], ricordati: msg.remembered || [] };
+  // Chi chiede da lontano (es. Jarvis) vuole anche i file: si aspetta che le creazioni finiscano e si rimandano
+  if (d.attendi_media && msg.jobs?.length) {
+    out.file = [];
+    out.errori = [];
+    let bytes = 0;
+    for (const id of msg.jobs) {
+      const job = jobs.get(id);
+      if (!job) continue;
+      await Promise.race([job.done, new Promise((r) => setTimeout(r, 40 * 60_000))]);
+      if (job.status !== 'done') { out.errori.push(`${job.title || 'creazione'}: ${job.error || 'non finita in tempo'}`); continue; }
+      for (const r of job.results) {
+        const file = path.join(store.OUTPUT_DIR, path.basename(r.url));
+        const size = fs.existsSync(file) ? fs.statSync(file).size : 0;
+        if (!size || bytes + size > 45e6) { out.errori.push(`${path.basename(r.url)}: troppo grande per il ponte, è in ideax`); continue; }
+        bytes += size;
+        out.file.push({ tipo: r.type, nome: path.basename(r.url), base64: fs.readFileSync(file).toString('base64') });
+      }
+    }
+  }
+  return out;
 }
 systems.configure({ createJob, chat: chatForSystem });
 
