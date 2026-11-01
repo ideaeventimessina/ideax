@@ -9,6 +9,7 @@ Usa vtracer (MIT): se manca nel worker si installa da solo la prima volta.
 """
 from __future__ import annotations
 
+import base64
 import io
 import re
 import subprocess
@@ -239,4 +240,15 @@ def decorate(data: bytes, width_mm: float, height_mm: float, min_mm: float = 3.0
         ],
         # anteprima nel legno: il pezzo color pioppo, le incisioni bruciate
         "svg": _svg(w_mm, h_mm, [(d_cut, "#d8b483"), (d_eng, "#6b4a2b")]),
+        "anteprima": _preview(rgb),
     }
+
+
+def _preview(rgb: Image.Image, side: int = 768) -> str:
+    """L'immagine da cui nasce il pezzo, leggera: un PNG da 1024 px con la grana di SDXL supera i 2 MB che
+    IDEAlab accetta per l'anteprima, un JPEG da 768 px sta in poche decine di KB."""
+    img = rgb.copy()
+    img.thumbnail((side, side), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=85, optimize=True)
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")

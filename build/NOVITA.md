@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.6.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.7.exe** e aprilo.
+
+## Decorazioni laser: l'anteprima arriva sempre a IDEAlab
+- Con le decorazioni fatte da SDXL l'editor di IDEAlab riceveva il taglio giusto ma l'immagine vuota: l'anteprima era il PNG intero e IDEAlab la scartava
+- Ora ideax manda un'anteprima JPEG leggera (768 px, qualche decina di KB), sempre nel formato che IDEAlab accetta
 
 ## Correzione: immagini SDXL (Pony, realityvision…) non escono più "a rumore"
 - Il VAE di SDXL in fp16 andava in overflow e invece dell'immagine decodificava una poltiglia di colore (rumore verde-grigio al posto del soggetto): è un difetto noto di SDXL. Ora il VAE lavora in fp32 nella decodifica e l'immagine esce giusta. Riguarda i modelli SDXL e SD3; Flux e SD 1.5 non ne soffrivano
