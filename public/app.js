@@ -79,7 +79,7 @@ function showPage() {
   $$('.nav a').forEach((a) => (a.dataset.page === page ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
   if (page === 'primi-passi') renderOnboarding();
   if (page === 'impostazioni') { renderEngine($('#engine-card')); loadNetwork(); loadEngines(); loadHfToken(); }
-  if (page === 'voce') { loadEngines(); loadVoices(); }
+  if (page === 'voce') { loadEngines(); loadVoices(); loadVoiceLib(); }
   if (page === 'musica') loadEngines();
   if (page === 'reel') loadReelForm();
   if (page === 'cervello') loadBrainPage();
@@ -1484,7 +1484,7 @@ async function loadVoices() {
   state.voices = r.voices;
   const sel = $('#speak-form').voice;
   const cur = sel.value;
-  sel.innerHTML = state.voices.length ? state.voices.map((v) => `<option value="${v.id}">${esc(v.name)}</option>`).join('') : '<option value="">Crea prima una voce</option>';
+  sel.innerHTML = state.voices.length ? state.voices.map((v) => `<option value="${v.id}">${esc(v.name)}${v.gender ? ` · ${esc(v.gender)}` : ''}</option>`).join('') : '<option value="">Crea prima una voce o aggiungila dalla libreria</option>';
   if (cur) sel.value = cur;
   syncSpeakLanguage();
   $('#voice-list').innerHTML = state.voices.length ? state.voices.map((v) => `
@@ -1492,11 +1492,65 @@ async function loadVoices() {
       <h3>${esc(v.name)}</h3>
       <p class="meta">Campione di ${String(v.seconds).replace('.', ',')} s · creata ${esc(when(v.createdAt))}</p>
       <audio src="/v1/voices/${v.id}/sample" controls preload="none"></audio>
-      <p class="path">Consenso: ${esc(v.consent?.by || '')}, ${esc(new Date(v.consent?.at).toLocaleDateString('it-IT'))}</p>
+      ${v.origin ? `<p class="path">${v.gender ? `${esc(v.gender)} · ` : ''}${esc(v.description || '')} · voce sintetica (${esc(v.origin.source || 'Kokoro')})</p>` : `<p class="path">Consenso: ${esc(v.consent?.by || '')}, ${esc(new Date(v.consent?.at).toLocaleDateString('it-IT'))}</p>`}
       <div class="row"><button class="btn small" data-voice-use="${v.id}">Usa</button>
         <button class="btn small danger" data-voice-del="${v.id}" data-name="${esc(v.name)}">Elimina</button></div></article>`).join('')
     : '<div class="empty">Nessuna voce ancora. Registra 15–30 secondi qui sopra e crea la tua.</div>';
 }
+
+// ----- Libreria voci (personaggi sintetici) -----
+const vlState = { filter: '', timer: null, data: null };
+async function loadVoiceLib() {
+  clearTimeout(vlState.timer);
+  const d = await api('/api/voicelib').catch(() => null);
+  if (!d) return;
+  const wasRunning = vlState.data?.job.status === 'running';
+  vlState.data = d;
+  const j = d.job;
+  const pct = j.total ? ` ${Math.round((j.done / j.total) * 100)}%` : '';
+  $('#voicelib-status').innerHTML = j.status === 'running' ? `${esc(j.phase || 'Preparo')}${pct}…`
+    : j.status === 'error' ? `<span class="error-text">${esc(j.error)}</span>`
+    : d.ready ? '' : 'La prima voce scarica il modello (circa 340 MB), le altre sono quasi istantanee.';
+  $('#voicelib-list').innerHTML = d.voices.filter((v) => !vlState.filter || v.gender === vlState.filter).map((v) => `
+    <div class="vl-item${v.added ? ' added' : ''}">
+      <span class="vl-icon" aria-hidden="true">${v.gender === 'donna' ? '♀' : '♂'}</span>
+      <div class="grow"><strong>${esc(v.name)}</strong><span class="small muted" title="${esc(v.desc)} · ${esc(v.language)}">${esc(v.desc)} · ${esc(v.language)}</span></div>
+      ${v.added ? `<span class="small ok-text">Nelle tue voci ✓</span>` : `<button class="btn small" type="button" data-vl-add="${esc(v.key)}" ${j.status === 'running' ? 'disabled' : ''}>${j.status === 'running' && j.key === v.key ? 'Preparo…' : 'Aggiungi'}</button>`}
+    </div>`).join('');
+  const opts = d.voices.map((v) => `<option value="${esc(v.key)}">${esc(v.name)} · ${esc(v.gender)}, ${esc(v.desc)}</option>`).join('');
+  const f = $('#voicemix-form');
+  if (!f.a.options.length) { f.a.innerHTML = opts; f.b.innerHTML = opts; f.b.selectedIndex = 1; }
+  if (wasRunning && j.status !== 'running') loadVoices();
+  if (j.status === 'running' && $('#page-voce').classList.contains('active')) vlState.timer = setTimeout(loadVoiceLib, 1500);
+}
+$('#voicelib-filter').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-vl-filter]');
+  if (!b) return;
+  vlState.filter = b.dataset.vlFilter;
+  $$('#voicelib-filter [data-vl-filter]').forEach((x) => x.classList.toggle('active', x === b));
+  loadVoiceLib();
+});
+async function startVoiceLib(body, errEl) {
+  try {
+    await api('/api/voicelib', { method: 'POST', body });
+    if (errEl) errEl.textContent = '';
+  } catch (err) {
+    if (errEl) errEl.textContent = err.message; else { $('#voicelib-status').innerHTML = `<span class="error-text">${esc(err.message)}</span>`; return; }
+  }
+  loadVoiceLib();
+}
+$('#voicelib-list').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-vl-add]');
+  if (b) startVoiceLib({ key: b.dataset.vlAdd });
+});
+$('#voicemix-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.a.value === f.b.value) { $('[data-mix-err]').textContent = 'Scegli due voci diverse'; return; }
+  const w = Number(f.w.value);
+  const lang = vlState.data?.voices.find((v) => v.key === f.a.value)?.lang;
+  startVoiceLib({ mix: `${f.a.value}:${w.toFixed(1)},${f.b.value}:${(1 - w).toFixed(1)}`, name: f.name.value, gender: f.gender.value, lang }, $('[data-mix-err]'));
+});
 
 function syncSpeakLanguage() {
   const v = state.voices.find((x) => x.id === $('#speak-form').voice.value);

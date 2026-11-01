@@ -13,6 +13,7 @@ import { resolveBrain } from './lib/brain.js';
 import { runModel, cancelOnWorker, inGpuQueue } from './lib/backends.js';
 import * as engines from './lib/engines.js';
 import * as voices from './lib/voices.js';
+import * as voicelib from './lib/voicelib.js';
 import * as music from './lib/music.js';
 import { runReel } from './lib/reels.js';
 import { fallbackTitle } from './lib/router.js';
@@ -532,6 +533,16 @@ const server = http.createServer(async (req, res) => {
       return send(res, job.status === 'done' ? 200 : 500, out);
     }
     // ----- Voce -----
+    if (p === '/api/voicelib' && req.method === 'GET') return send(res, 200, voicelib.list());
+    if (p === '/api/voicelib' && req.method === 'POST') {
+      const b = await readJson(req);
+      // Va avanti da solo (la pagina legge lo stato); gli errori immediati (nome già usato, motore mancante) si dicono subito
+      const lavoro = voicelib.add(b);
+      const subito = await Promise.race([lavoro.then(() => null, (e) => e), new Promise((r) => setTimeout(() => r(null), 300))]);
+      lavoro.catch(() => {});
+      if (subito) return send(res, 400, { error: subito.message });
+      return send(res, 202, { ok: true });
+    }
     if (p === '/v1/voices' && req.method === 'GET') {
       return send(res, 200, { voices: voices.listVoices().map((v) => ({ ...v, sample_url: `${origin}/v1/voices/${v.id}/sample` })), engine: engines.isInstalled('voice') ? 'installed' : 'missing' });
     }

@@ -355,6 +355,32 @@
           </form>
         </div>
       </div>
+      <div class="card" id="voicelib-card">
+        <div class="section-head"><div><h2>Libreria voci</h2>
+          <p class="muted">Voci di uomini e donne per i personaggi dei tuoi video, reel e letture. Sono voci sintetiche (Kokoro, licenza libera, nessuna persona reale): premi Aggiungi e ideax la prepara e la mette tra le tue voci. Parlano italiano e le altre lingue del motore voce; quelle straniere mantengono un leggero accento.</p></div></div>
+        <div class="row" id="voicelib-filter">
+          <button type="button" class="chip-btn active" data-vl-filter="">Tutte</button>
+          <button type="button" class="chip-btn" data-vl-filter="donna">Donne</button>
+          <button type="button" class="chip-btn" data-vl-filter="uomo">Uomini</button>
+          <span class="small muted grow" id="voicelib-status"></span>
+        </div>
+        <div id="voicelib-list" class="vl-grid"></div>
+        <details class="choices"><summary>✧ Crea un personaggio nuovo mescolando due voci</summary>
+          <form id="voicemix-form" class="stack-sm">
+            <div class="grid2">
+              <label>Prima voce <select name="a"></select></label>
+              <label>Seconda voce <select name="b"></select></label>
+            </div>
+            <label>Quanto della prima voce <input type="range" name="w" min="0.1" max="0.9" step="0.1" value="0.6"></label>
+            <div class="grid2">
+              <label>Nome del personaggio <input name="name" required maxlength="60" placeholder="Es. Giulia"></label>
+              <label>Genere <select name="gender"><option value="donna">Donna</option><option value="uomo">Uomo</option></select></label>
+            </div>
+            <div class="row"><button class="btn">Crea il personaggio</button><span class="error-text small" data-mix-err></span></div>
+          </form>
+        </details>
+      </div>
+
       <h2 class="section-title">Le tue voci</h2>
       <div id="voice-list" class="grid-cards"></div>
     </section>

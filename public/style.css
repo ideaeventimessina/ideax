@@ -531,3 +531,13 @@ pre.code { max-width: 100%; }
 .dev-details { margin-top: 8px; }
 .dev-details > summary { cursor: pointer; color: var(--muted, #8a8a99); padding: 10px 0; }
 .dev-details[open] > summary { margin-bottom: 8px; }
+
+/* Libreria voci */
+.chip-btn { border: 1px solid var(--line, rgba(127,127,127,.25)); background: transparent; color: inherit; border-radius: 999px; padding: 6px 14px; cursor: pointer; font: inherit; font-size: 13px; }
+.chip-btn.active { background: var(--accent, #7c5cff); border-color: transparent; color: #fff; }
+.vl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; margin: 12px 0; }
+.vl-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line, rgba(127,127,127,.2)); }
+.vl-item.added { opacity: .75; }
+.vl-item .grow { display: grid; min-width: 0; }
+.vl-item .grow .small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vl-icon { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: rgba(127,127,127,.12); font-size: 16px; flex: none; }
