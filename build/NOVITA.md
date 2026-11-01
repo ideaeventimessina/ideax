@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.1.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.2.exe** e aprilo.
+
+## Decorazioni laser: scelgono un SDXL pulito
+- Tra i modelli che hai, le decorazioni preferiscono un SDXL generico (es. realityvision) a uno specializzato in anime/espliciti (es. Pony, che senza i suoi tag rende sporco)
 
 ## Decorazioni laser: veloci (una sagoma in secondi, non minuti)
 - Una decorazione (es. un cuore) faceva tre generazioni pesanti: il disegno + due giri di rifinitura di pelle e volti (24-30 passi ciascuno) su Flux-dev che sui 16 GB sborda sulla CPU. Per una sagoma piatta è tutto sprecato: ci metteva minuti, a volte andava in timeout e all'app non arrivava nulla
