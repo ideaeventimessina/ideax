@@ -84,6 +84,7 @@ function showPage() {
   if (page === 'reel') loadReelForm();
   if (page === 'cervello') loadBrainPage();
   if (page === 'collega') loadSystems();
+  if (page === 'regia') loadRegia();
   if (page === 'modelli') { loadEngines(); loadFixes(); refreshSetup().then(() => { renderLlmSupport(); if (state.engines) renderEngines(); }); }
   if (page === 'gemello') { loadEngines(); loadTwin(); }
   window.scrollTo({ top: 0 });
@@ -2667,4 +2668,88 @@ $('#quit-ideax').addEventListener('click', async () => {
   await api('/api/quit', { method: 'POST' }).catch(() => {});
   document.body.innerHTML = '<div style="display:grid;place-items:center;height:100vh;font:16px system-ui;color:#a6a6b6;background:#0d0e12;text-align:center;padding:16px">ideax è chiuso. Puoi chiudere questa scheda.<br>Per riaprirlo usa il menu Start o l\'icona sul desktop.</div>';
   window.close();
+});
+
+// ======================= Regia =======================
+
+let regiaTimer = null;
+const STEP_STATES = ['da fare', 'in corso', 'fatto', 'bloccato'];
+
+async function loadRegia() {
+  clearTimeout(regiaTimer);
+  const r = await api('/api/regia').catch(() => null);
+  if (!r) return;
+  const st = r.study;
+  $('#regia-summary').textContent = r.projects.length
+    ? `${r.projects.length} progetti${r.studiedAt ? ` · studiati ${when(r.studiedAt)}` : ''}. Quelli "solo da conoscere" ideax non li usa nei piani.`
+    : 'ideax legge da GitHub la scheda, il README e le note di ogni progetto e scrive a cosa serve. Serve il token di GitHub (Cervello → GitHub).';
+  $('#regia-study').disabled = st.status === 'running';
+  $('#regia-study-state').innerHTML = st.status === 'running'
+    ? `<div class="note"><h3>${esc(st.step || 'Studio…')}</h3><div class="progress ${st.total ? '' : 'indeterminate'}"><div style="width:${st.total ? Math.round((st.done / st.total) * 100) : 0}%"></div></div><p class="small">${st.done} di ${st.total || '?'}</p></div>`
+    : st.status === 'error' || st.error ? `<p class="error-text small">${esc(st.error)}</p>` : '';
+  $('#regia-projects').innerHTML = r.projects.map((p) => {
+    const s = p.summary || {};
+    return `<div class="rcard ${p.knowOnly ? 'known' : ''}" data-project="${esc(p.id)}">
+      <h3><span>${esc(p.name)}</span><span class="chip">${esc(s.categoria || '—')}</span></h3>
+      ${p.url ? `<a class="small" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url.replace(/^https?:\/\//, ''))}</a>` : ''}
+      <p class="small">${esc(s.a_cosa_serve || p.description || 'Da descrivere')}</p>
+      ${(s.cosa_sa_fare || []).length ? `<ul>${s.cosa_sa_fare.slice(0, 5).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+      ${s.come_ideax_lo_usa ? `<p class="small muted">Per ideax: ${esc(s.come_ideax_lo_usa)}</p>` : ''}
+      <p class="small muted">${esc(s.stato || '')}${p.lastCommit ? ` · ultimo lavoro ${esc(p.lastCommit)}` : ''}</p>
+      ${p.note ? `<p class="small">Nota: ${esc(p.note)}</p>` : ''}
+      <div class="row"><label class="check small"><input type="checkbox" data-know ${p.knowOnly ? 'checked' : ''}> Solo da conoscere</label>
+        <button class="btn small" type="button" data-note>${p.note ? 'Modifica nota' : 'Aggiungi nota'}</button></div></div>`;
+  }).join('');
+  const th = r.thinking;
+  $('#regia-thinking').innerHTML = th.status === 'running' ? '<div class="note"><h3>Studio le idee…</h3><p class="small">Il cervello di riserva incrocia tutti i progetti: può volerci qualche minuto.</p><div class="progress indeterminate"><div></div></div></div>'
+    : th.status === 'error' ? `<p class="error-text small">${esc(th.error)}</p>` : '';
+  $('#regia-ideas').innerHTML = r.ideas.map((i) => `<div class="idea" data-idea="${esc(i.id)}">
+    <h3>${esc(i.titolo)}</h3><p>${esc(i.idea)}</p>
+    <dl><dt>Chi paga</dt><dd>${esc(i.clienti)}</dd><dt>Offerta e prezzo</dt><dd>${esc(i.offerta_e_prezzo)}</dd>
+      <dt>Ricavo stimato</dt><dd>${esc(i.ricavo_mensile_stimato)}</dd><dt>Primo incasso</dt><dd>${esc(i.tempo_al_primo_incasso)}</dd>
+      <dt>Progetti usati</dt><dd>${(i.progetti || []).map((x) => `<strong>${esc(x.progetto)}</strong>: ${esc(x.ruolo)}`).join(' · ')}</dd>
+      <dt>Rischi</dt><dd>${esc(i.rischi)}</dd></dl>
+    <ol class="steps-list">${(i.passi || []).map((p) => `<li><span class="tool">${esc(p.strumento)}</span>${esc(p.cosa)}</li>`).join('')}</ol>
+    <div class="row"><button class="btn primary small" type="button" data-mission>Fanne una missione</button><button class="btn small danger" type="button" data-idea-del>Scarta</button></div></div>`).join('')
+    || (r.projects.length ? '<p class="muted small">Premi "Proponi business" e ideax ti propone le idee più promettenti.</p>' : '');
+  $('#regia-missions').innerHTML = r.missions.map((m) => {
+    const done = m.steps.filter((x) => x.status === 'fatto').length;
+    return `<div class="idea" data-mission-id="${esc(m.id)}"><h3>${esc(m.title)} <span class="chip">${done} di ${m.steps.length} fatti</span></h3>
+      <ol class="steps-list">${m.steps.map((x) => `<li class="${x.status.replace(' ', '-')}" data-step="${esc(x.id)}"><span class="tool">${esc(x.tool)}</span><span class="grow">${esc(x.what)}</span>
+        <select data-step-status aria-label="Stato del passo">${STEP_STATES.map((v) => `<option ${v === x.status ? 'selected' : ''}>${v}</option>`).join('')}</select></li>`).join('')}</ol>
+      <div class="row"><button class="btn small danger" type="button" data-mission-del>Elimina missione</button></div></div>`;
+  }).join('') || '<p class="muted small">Nessuna missione ancora.</p>';
+  if ((st.status === 'running' || th.status === 'running') && $('#page-regia').classList.contains('active')) regiaTimer = setTimeout(loadRegia, 2500);
+}
+
+$('#regia-study').addEventListener('click', async () => {
+  await api('/api/regia/study', { method: 'POST' }).catch((err) => alert(err.message));
+  loadRegia();
+});
+$('#regia-ideas-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  await api('/api/regia/ideas', { method: 'POST', body: { focus: e.target.focus.value } }).catch((err) => alert(err.message));
+  loadRegia();
+});
+$('#page-regia').addEventListener('change', async (e) => {
+  const card = e.target.closest('[data-project]');
+  if (card && e.target.matches('[data-know]')) await api(`/api/regia/projects/${card.dataset.project}`, { method: 'PATCH', body: { knowOnly: e.target.checked } });
+  const step = e.target.closest('[data-step]');
+  if (step && e.target.matches('[data-step-status]')) {
+    const m = step.closest('[data-mission-id]').dataset.missionId;
+    await api(`/api/regia/missions/${m}/steps/${step.dataset.step}`, { method: 'PATCH', body: { status: e.target.value } });
+  }
+  loadRegia();
+});
+$('#page-regia').addEventListener('click', async (e) => {
+  const card = e.target.closest('[data-project]');
+  if (card && e.target.closest('[data-note]')) {
+    const note = prompt('Nota per ideax su questo progetto (es. "è il nostro prodotto principale", "fermo, non usarlo")');
+    if (note != null) { await api(`/api/regia/projects/${card.dataset.project}`, { method: 'PATCH', body: { note } }); loadRegia(); }
+  }
+  const idea = e.target.closest('[data-idea]');
+  if (idea && e.target.closest('[data-mission]')) { await api(`/api/regia/ideas/${idea.dataset.idea}/mission`, { method: 'POST' }); loadRegia(); }
+  if (idea && e.target.closest('[data-idea-del]')) { await api(`/api/regia/ideas/${idea.dataset.idea}`, { method: 'DELETE' }); loadRegia(); }
+  const m = e.target.closest('[data-mission-id]');
+  if (m && e.target.closest('[data-mission-del]') && confirm('Eliminare questa missione?')) { await api(`/api/regia/missions/${m.dataset.missionId}`, { method: 'DELETE' }); loadRegia(); }
 });

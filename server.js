@@ -33,6 +33,7 @@ import * as twin from './lib/twin.js';
 import * as fixes from './lib/fixes.js';
 import * as brains from './lib/brains.js';
 import { blockedReason } from './lib/safety.js';
+import * as regia from './lib/regia.js';
 import { brainPair } from './lib/brain.js';
 
 process.title = 'ideax';
@@ -665,6 +666,18 @@ const server = http.createServer(async (req, res) => {
       const saved = await agent.extractFacts(text.slice(0, 200000), body.source || 'importato');
       return send(res, 200, { saved, total: memory.stats().total });
     }
+    // ----- Regia: progetti, business, missioni -----
+    if (p === '/api/regia' && req.method === 'GET') return send(res, 200, regia.state());
+    if (p === '/api/regia/study' && req.method === 'POST') return send(res, 200, regia.studyProjects());
+    if (/^\/api\/regia\/projects\/[\w-]+$/.test(p) && req.method === 'PATCH') return send(res, 200, regia.updateProject(p.split('/').pop(), await readJson(req)));
+    if (p === '/api/regia/ideas' && req.method === 'POST') return send(res, 200, regia.proposeBusiness((await readJson(req)).focus || ''));
+    if (/^\/api\/regia\/ideas\/[\w-]+$/.test(p) && req.method === 'DELETE') { regia.deleteIdea(p.split('/').pop()); return send(res, 200, { ok: true }); }
+    if (/^\/api\/regia\/ideas\/[\w-]+\/mission$/.test(p) && req.method === 'POST') return send(res, 200, regia.startMission(p.split('/')[4]));
+    if (/^\/api\/regia\/missions\/[\w-]+\/steps\/[\w-]+$/.test(p) && req.method === 'PATCH') {
+      const [, , , , mid, , sid] = p.split('/');
+      return send(res, 200, regia.updateStep(mid, sid, await readJson(req)));
+    }
+    if (/^\/api\/regia\/missions\/[\w-]+$/.test(p) && req.method === 'DELETE') { regia.deleteMission(p.split('/').pop()); return send(res, 200, { ok: true }); }
     // ----- Gemello -----
     if (/^\/(api|v1)\/twin$/.test(p) && req.method === 'GET') return send(res, 200, { ...twin.list(), engines: engines.listEngines().filter((e) => ['twin', 'lipsync'].includes(e.id)) });
     if (/^\/(api|v1)\/twin\/photo$/.test(p) && req.method === 'POST') {

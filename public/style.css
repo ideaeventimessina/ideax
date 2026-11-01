@@ -502,3 +502,22 @@ pre.code { max-width: 100%; }
   .nav a { min-height: 40px; }
   .side-foot { gap: 10px; }
 }
+
+/* ---------- Regia ---------- */
+.regia-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-top: 16px; }
+.rcard { background: var(--card); border-radius: 14px; padding: 16px; display: grid; gap: 8px; align-content: start; }
+.rcard.known { opacity: .7; }
+.rcard h3 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.rcard ul { margin: 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
+.rcard .row { gap: 6px; }
+.idea { background: var(--card); border-radius: 14px; padding: 18px; display: grid; gap: 10px; }
+.idea dl { display: grid; grid-template-columns: 170px 1fr; gap: 4px 14px; margin: 0; font-size: 14px; }
+.idea dt { color: var(--muted); }
+.idea dd { margin: 0; }
+.steps-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.steps-list li { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 10px; border-radius: 10px; background: var(--panel); font-size: 14px; }
+.steps-list li .tool { font-weight: 600; color: var(--accent); min-width: 90px; }
+.steps-list li select { width: auto; min-height: 34px; padding: 4px 8px; font-size: 13px; }
+.steps-list li.fatto { opacity: .6; }
+.steps-list li.bloccato .tool { color: var(--red); }
+@media (max-width: 860px) { .idea dl { grid-template-columns: 1fr; } .idea dd { margin-bottom: 6px; } }
