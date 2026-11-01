@@ -409,6 +409,18 @@
     <section class="page" id="page-gemello">
       <header class="page-head"><div><h1>Il tuo gemello</h1><p>Foto e video di te, creati sul tuo PC. Serve sempre il consenso della persona ritratta.</p></div></header>
 
+      <div class="card" id="personaggi-card">
+        <div class="section-head"><div><h2>Personaggi inventati</h2>
+          <p class="muted">Un volto che non esiste, tenuto sempre uguale: diventa un personaggio ricorrente (per social, contenuti per adulti, testimonial di fantasia). Nessuna persona reale, nessun consenso. ideax crea la faccia, la ripete in tante pose e addestra la sua LoRA (serve il motore Gemello foto e Fotomontaggio Qwen). Circa 1–2 ore, una volta sola.</p></div></div>
+        <form id="personaggio-form" class="stack-sm">
+          <label>Nome <input name="nome" required maxlength="40" placeholder="Es. Aurora"></label>
+          <label>Descrizione (il volto è inventato, deve essere adulto) <textarea name="descrizione" rows="2" required placeholder="donna sui 28 anni, capelli biondi lunghi, occhi verdi, look naturale"></textarea></label>
+          <label class="check"><input type="checkbox" name="nsfw"> Personaggio per contenuti per adulti (aggiunge pose in lingerie/costume al dataset)</label>
+          <div class="row"><button class="btn primary">Crea il personaggio</button><span class="error-text small" data-personaggio-err></span></div>
+        </form>
+        <div id="personaggi-list" class="grid-cards"></div>
+      </div>
+
       <div class="card">
         <h2>Gemello foto</h2>
         <p class="muted">Carica 15–30 tue foto: ideax impara il tuo viso (una volta, circa 1–2 ore) e poi ti crea in qualsiasi scena. In Studio basta scrivere, per esempio, "una foto di me in barca al tramonto".</p>

@@ -4,6 +4,13 @@ Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.17.1.exe** e apr
 ## Decorazioni per IDEAlab
 - Le immagini lunghe non si interrompono più a 5 minuti: ideax aspetta il motore immagini quanto serve (fino a 15 minuti). Prima una decorazione con Flux su una scheda lenta finiva con "Non riesco a contattare 127.0.0.1:7861"
 
+## Personaggi inventati
+- Nella pagina **Gemello** → **Personaggi inventati**: crei un volto che non esiste e ideax lo tiene sempre uguale
+- Come funziona: ideax genera la faccia da una descrizione, la ripete in tante pose con Fotomontaggio Qwen (che tiene il volto), e addestra la sua LoRA (serve il motore Gemello foto e Fotomontaggio Qwen). Una volta sola, circa 1–2 ore
+- Poi basta scrivere il suo nome in Studio e torna identico, in foto e video
+- Nessuna persona reale: niente consenso, e per i contenuti per adulti spunta "Personaggio per adulti". Diventa un personaggio ricorrente per social o contenuti per adulti
+- Resta il solo limite sui minori
+
 ## Nuovi motori
 - **Trascrizione** (Whisper large-v3-turbo): allega un vocale o un video e ideax lo trascrive; con "sottotitoli" anche con i tempi. Il modello (1,6 GB) si scarica da solo la prima volta
 - **Vista**: allega una foto e chiedi cosa c'è, quante persone, cosa dice un testo. Usa il tuo Qwen3-VL: il file della vista (circa 1 GB) si scarica da solo

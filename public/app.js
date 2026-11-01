@@ -86,7 +86,7 @@ function showPage() {
   if (page === 'collega') loadSystems();
   if (page === 'regia') loadRegia();
   if (page === 'modelli') { loadEngines(); loadFixes(); refreshSetup().then(() => { renderLlmSupport(); if (state.engines) renderEngines(); }); }
-  if (page === 'gemello') { loadEngines(); loadTwin(); }
+  if (page === 'gemello') { loadEngines(); loadTwin(); loadPersonaggi(); }
   window.scrollTo({ top: 0 });
 }
 window.addEventListener('hashchange', showPage);
@@ -2883,4 +2883,40 @@ window.addEventListener('focus', () => {
   if (Date.now() - lastUpdateFocus < 10 * 60 * 1000) return;
   lastUpdateFocus = Date.now();
   api('/api/update/check', { method: 'POST' }).catch(() => {});
+});
+
+// ----- Personaggi inventati -----
+let personaggiTimer = null;
+async function loadPersonaggi() {
+  clearTimeout(personaggiTimer);
+  const d = await api('/api/personaggi').catch(() => null);
+  if (!d) return;
+  const tr = d.training || {};
+  const busy = tr.status === 'running';
+  $('#personaggi-list').innerHTML = (d.personaggi || []).map((p) => {
+    const t = tr.id === p.id ? tr : null;
+    const stato = p.status === 'ready' ? '<span class="ok-text">Pronto ✓</span>'
+      : p.status === 'error' ? `<span class="error-text">${esc(p.error || 'errore')}</span>`
+      : t ? `${esc(t.phase || 'Preparo')}${t.total ? ` · ${Math.min(100, Math.round((t.step / t.total) * 100))}%` : ''}…` : 'In preparazione…';
+    return `<article class="mcard"><div class="head"><span class="chip">${p.nsfw ? 'adulti' : 'generale'}</span><span class="state">${stato}</span></div>
+      <h3>${esc(p.nome)}</h3><p class="meta">${esc(p.descrizione || '')}</p>
+      ${p.status === 'ready' ? `<p class="muted small">Scrivi "${esc(p.nome)}" in Studio per usarlo in foto e video.</p>` : ''}
+      <div class="row">${p.status !== 'ready' && t ? '<button class="btn small" type="button" data-personaggio-cancel>Annulla</button>' : ''}
+        <button class="btn small danger" type="button" data-personaggio-del="${esc(p.id)}" data-nome="${esc(p.nome)}">Elimina</button></div></article>`;
+  }).join('') || '<div class="empty">Nessun personaggio. Creane uno qui sopra.</div>';
+  if (busy && $('#page-gemello').classList.contains('active')) personaggiTimer = setTimeout(loadPersonaggi, 3000);
+}
+$('#personaggio-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  $('[data-personaggio-err]').textContent = '';
+  try {
+    await api('/api/personaggi', { method: 'POST', body: { nome: f.nome.value, descrizione: f.descrizione.value, nsfw: f.nsfw.checked } });
+    f.reset(); loadPersonaggi();
+  } catch (err) { $('[data-personaggio-err]').textContent = err.message; }
+});
+$('#personaggi-list').addEventListener('click', async (e) => {
+  if (e.target.closest('[data-personaggio-cancel]')) { await api('/api/personaggi/cancel', { method: 'POST' }); loadPersonaggi(); }
+  const del = e.target.closest('[data-personaggio-del]');
+  if (del && confirm(`Eliminare il personaggio "${del.dataset.nome}"?`)) { await api(`/api/personaggi/${del.getAttribute('data-personaggio-del')}`, { method: 'DELETE' }); loadPersonaggi(); }
 });
