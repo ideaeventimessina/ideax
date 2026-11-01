@@ -569,6 +569,19 @@
         <div id="bridge-result" hidden></div>
       </div>
 
+      <div class="card" id="accessi-card">
+        <div class="section-head"><div><h2>Accessi ai miei siti</h2>
+          <p class="muted">Per i video dimostrativi (Regista web): ideax apre il sito, fa login e registra lo schermo. Utente e password restano qui sul PC, non escono mai. In Studio basta dire: "registra una demo di Pianifico".</p></div></div>
+        <div id="accessi-list" class="stack-sm"></div>
+        <form id="accesso-form" class="stack-sm">
+          <div class="grid2"><label>Nome <input name="nome" placeholder="Pianifico"></label>
+            <label>Indirizzo <input name="url" required class="mono" placeholder="https://pianifico.app"></label></div>
+          <div class="grid2"><label>Utente <input name="utente" autocomplete="off" placeholder="email o username"></label>
+            <label>Password <input name="password" type="password" autocomplete="new-password"></label></div>
+          <div class="row"><button class="btn">Salva accesso</button><span class="error-text small" data-accesso-err></span></div>
+        </form>
+      </div>
+
       <div class="card">
         <h2>App collegate</h2>
         <div id="systems-list" class="stack-sm"></div>

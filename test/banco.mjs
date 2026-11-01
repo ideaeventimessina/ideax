@@ -61,6 +61,10 @@ const CASI = [
   ['un personaggio che dice "benvenuti alla festa"', [], null, 'personaggio'],
   ['crea una presentatrice bionda che annuncia gli sposi', [], null, 'personaggio'],
   ['un avatar che legga le offerte della settimana', [], null, 'personaggio'],
+  // demo di un sito
+  ['registra una demo del sito pianifico', [], null, 'demo'],
+  ['fammi un video dimostrativo del gestionale', [], null, 'demo'],
+  ['registra lo schermo mentre usi la app', [], null, 'demo'],
   // video e montaggi
   ['crea un video di una ragazza che cammina sulla spiaggia', [], null, 'video'],
   ['genera una clip di un drone sopra Messina', [], null, 'video'],

@@ -21,6 +21,7 @@ import * as personaggio from './lib/personaggio.js';
 import * as trascrizione from './lib/transcribe.js';
 import * as visione from './lib/vision.js';
 import * as personaggi from './lib/personaggi.js';
+import * as webdemo from './lib/webdemo.js';
 import { fallbackTitle } from './lib/router.js';
 import * as runtime from './lib/runtime.js';
 import * as updater from './lib/updater.js';
@@ -202,6 +203,7 @@ async function createJob(body, ctx = {}) {
     talk: body.talk,
     catena: body.catena,
     personaggio: body.personaggio,
+    demo: body.demo,
     client: ctx.client || 'ideax',
     origin: ctx.origin || '',
     callbackUrl: callback,
@@ -305,6 +307,11 @@ async function processJob(job) {
     }
     if (job.kind === 'talk') {
       await twin.runTalk(job, log);
+      return;
+    }
+    if (job.kind === 'demo') {
+      job.results = await webdemo.runDemo(job, log);
+      job.status = 'done'; log('Completato.');
       return;
     }
     if (job.kind === 'personaggio') {
@@ -511,6 +518,7 @@ systems.configure({ createJob, chat: chatForSystem });
 catena.configure({ createJob });
 personaggio.configure({ createJob });
 personaggi.configure({ createJob });
+webdemo.configure({ createJob });
 
 function publicSettings() {
   const s = store.getSettings();
@@ -582,6 +590,14 @@ const server = http.createServer(async (req, res) => {
     if (p === '/v1/personaggio' && req.method === 'POST') {
       const b = await readJson(req);
       const job = await createJob({ prompt: b.testo, kind: 'personaggio', personaggio: { descrizione: b.descrizione, voce: b.voce, lingua: b.lingua, formato: b.formato }, attachments: b.foto ? [{ name: 'foto', dataUrl: b.foto }] : [] }, ctx);
+      return send(res, 202, { id: job.id, status: job.status, status_url: `${origin}/v1/jobs/${job.id}` });
+    }
+    if (p === '/api/accessi' && req.method === 'GET') return send(res, 200, { accessi: webdemo.listAccessi() });
+    if (p === '/api/accessi' && req.method === 'POST') return send(res, 200, webdemo.saveAccesso(await readJson(req)));
+    if (/^\/api\/accessi\/[\w-]+$/.test(p) && req.method === 'DELETE') { webdemo.deleteAccesso(p.split('/').pop()); return send(res, 200, { ok: true }); }
+    if (p === '/v1/demo' && req.method === 'POST') {
+      const b = await readJson(req);
+      const job = await createJob({ prompt: b.obiettivo || 'demo', kind: 'demo', demo: b }, ctx);
       return send(res, 202, { id: job.id, status: job.status, status_url: `${origin}/v1/jobs/${job.id}` });
     }
     if (p === '/api/personaggi' && req.method === 'GET') return send(res, 200, { personaggi: personaggi.list(), training: personaggi.training });

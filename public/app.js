@@ -83,7 +83,7 @@ function showPage() {
   if (page === 'musica') loadEngines();
   if (page === 'reel') { loadReelForm(); loadCatena(); }
   if (page === 'cervello') loadBrainPage();
-  if (page === 'collega') loadSystems();
+  if (page === 'collega') { loadSystems(); loadAccessi(); }
   if (page === 'regia') loadRegia();
   if (page === 'modelli') { loadEngines(); loadFixes(); refreshSetup().then(() => { renderLlmSupport(); if (state.engines) renderEngines(); }); }
   if (page === 'gemello') { loadEngines(); loadTwin(); loadPersonaggi(); }
@@ -2498,6 +2498,25 @@ $('#persona-form').addEventListener('submit', async (e) => {
 
 const SYS_STATUS = { online: ['on', 'Collegato'], errore: ['off', 'Non raggiungibile'], spento: ['', 'Spento'], 'in collegamento': ['warn', 'Mi collego…'], 'in attesa': ['warn', 'In attesa'], 'attesa chiave': ['warn', 'In attesa dell\'app'] };
 let systemsTimer = null;
+
+async function loadAccessi() {
+  const d = await api('/api/accessi').catch(() => null);
+  if (!d) return;
+  $('#accessi-list').innerHTML = (d.accessi || []).map((a) => `<div class="teacher" data-accesso="${esc(a.id)}">
+    <strong>${esc(a.nome)}</strong><span class="small muted grow">${esc(a.url)}${a.utente ? ` · ${esc(a.utente)}` : ''}${a.haPassword ? ' · 🔑' : ''}</span>
+    <button class="btn small danger" type="button" data-accesso-del>✕</button></div>`).join('') || '<p class="muted small">Nessun accesso. Aggiungine uno qui sotto per i video dimostrativi.</p>';
+}
+if (document.querySelector('#accesso-form')) {
+  $('#accesso-form').addEventListener('submit', async (e) => {
+    e.preventDefault(); const f = e.target; $('[data-accesso-err]').textContent = '';
+    try { await api('/api/accessi', { method: 'POST', body: Object.fromEntries(new FormData(f)) }); f.reset(); loadAccessi(); }
+    catch (err) { $('[data-accesso-err]').textContent = err.message; }
+  });
+  $('#accessi-list').addEventListener('click', async (e) => {
+    const row = e.target.closest('[data-accesso]');
+    if (row && e.target.closest('[data-accesso-del]')) { await api(`/api/accessi/${row.dataset.accesso}`, { method: 'DELETE' }); loadAccessi(); }
+  });
+}
 
 async function loadSystems() {
   clearTimeout(systemsTimer);

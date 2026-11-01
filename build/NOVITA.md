@@ -4,6 +4,12 @@ Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.17.1.exe** e apr
 ## Decorazioni per IDEAlab
 - Le immagini lunghe non si interrompono più a 5 minuti: ideax aspetta il motore immagini quanto serve (fino a 15 minuti). Prima una decorazione con Flux su una scheda lenta finiva con "Non riesco a contattare 127.0.0.1:7861"
 
+## Regista web: ideax registra i tuoi siti
+- Nuovo motore **Regista web** (Modelli → Motori): ideax apre un browser vero sulle tue pagine, fa login e **registra lo schermo** per i video dimostrativi dei tuoi software
+- Gli accessi (indirizzo, utente, password) si salvano in **Collega app → Accessi ai miei siti**: restano sul PC, non escono mai, non finiscono nel video
+- In Studio: **"registra una demo di Pianifico"**. Il cervello scrive il copione (cosa mostrare, con quali sottotitoli), ideax fa il login e registra. Con "con la voce" lo monta anche in un reel
+- La prima volta scarica il browser (circa 150 MB)
+
 ## Regia: fai soldi con ogni progetto
 - Ogni progetto nella pagina **Regia** ha il tasto **💰 Fai soldi con questo**: ideax studia quel software e scrive il piano per portarlo a rendimento
 - Il piano dice: come si guadagna, il prezzo, il mercato, il ricavo stimato e quando arriva il primo incasso
