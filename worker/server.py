@@ -17,6 +17,7 @@ import gc
 import inspect
 import io
 import subprocess
+import sys
 import os
 import tempfile
 import threading
@@ -380,6 +381,7 @@ def run_real(req: RunRequest) -> list[dict]:
     params.update(req.params)
     fps = int(params.pop("fps", 8))
     seed = params.pop("seed", None)
+    face_fix = str(params.pop("face_fix", True)).lower() not in ("false", "0", "no")
     aspect = params.pop("aspect", None)
     if aspect and "width" in params and "height" in params:
         # Stessa quantità di pixel del formato nativo, con le proporzioni richieste (multipli di 64)
@@ -436,10 +438,56 @@ def run_real(req: RunRequest) -> list[dict]:
     try:
         with t.inference_mode():
             result = pipe(**kwargs)
+            # Secondo passaggio sui volti, con le stesse LoRA ancora caricate (il gemello resta riconoscibile)
+            if face_fix and req.task in ("image_generate", "image_edit") and getattr(result, "frames", None) is None and not is_svd:
+                result.images = [refine_faces(img, base, req, params, seed) for img in result.images]
     finally:
         if adapters:
             pipe.unload_lora_weights()
     return encode_result(result, req.task, fps)
+
+
+def refine_faces(img, base, req: RunRequest, params: dict, seed):
+    """Ridisegna ad alta risoluzione i volti piccoli (worker/faces.py). Se qualcosa va storto si tiene l'immagine com'era."""
+    try:
+        import diffusers as d
+
+        if HERE not in sys.path:
+            sys.path.insert(0, HERE)
+        from faces import FACE_NEGATIVE, FACE_PROMPT, fix_faces
+
+        t = torch()
+        key = ("img2img",)
+        if key not in _loaded["derived"]:
+            _loaded["derived"][key] = d.AutoPipelineForImage2Image.from_pipe(base)
+        i2i = _loaded["derived"][key]
+        side = 512 if req.model.arch == "sd15" else 768 if req.model.arch == "sd2" else 1024
+        schnell = req.model.arch == "flux" and _loaded.get("variant") == "schnell"
+        steps = 8 if schnell else max(int(params.get("num_inference_steps", 30)), 24)
+        sig = inspect.signature(i2i.__call__).parameters
+
+        def redraw(crop):
+            kw = {
+                "prompt": f"{FACE_PROMPT}, {req.prompt}"[:900], "image": crop, "strength": 0.38 if not schnell else 0.5,
+                "num_inference_steps": steps, "width": side, "height": side,
+                "negative_prompt": ", ".join(x for x in (FACE_NEGATIVE, req.negative_prompt) if x),
+            }
+            if "guidance_scale" in params:
+                kw["guidance_scale"] = params["guidance_scale"]
+            if seed is not None:
+                kw["generator"] = t.Generator("cpu").manual_seed(int(seed))
+            kw = {k: v for k, v in kw.items() if k in sig}
+            return i2i(**kw).images[0]
+
+        out, n = fix_faces(img, redraw, side=side, progress=lambda ph: PROGRESS.update(phase=ph))
+        if n:
+            print(f"[ideax] volti rifiniti: {n}", flush=True)
+        return out
+    except Cancelled:
+        raise
+    except Exception as err:  # noqa: BLE001
+        print(f"[ideax] rifinitura dei volti saltata: {err}", flush=True)
+        return img
 
 
 def run_demo(req: RunRequest) -> list[dict]:

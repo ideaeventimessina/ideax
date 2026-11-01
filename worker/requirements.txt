@@ -14,4 +14,6 @@ pillow
 numpy
 imageio
 imageio-ffmpeg
+# Rilevatore dei volti per la rifinitura (worker/faces.py); se manca si installa da solo al primo uso
+opencv-python-headless
 # Facoltativo, per il cervello .gguf: llama-cpp-python (si installa da Impostazioni)
