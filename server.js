@@ -1189,6 +1189,20 @@ const server = http.createServer(async (req, res) => {
       await runtime.restartWorker();
       return send(res, 200, { ok: true });
     }
+    // "Libera la GPU": annulla ogni lavoro appeso, ferma i motori (libera la memoria della scheda) e riavvia il worker
+    // pulito. È il tasto d'emergenza per quando qualcosa si è incastrato e tiene occupata la scheda video.
+    if (p === '/api/gpu/libera' && req.method === 'POST') {
+      const attivi = [...jobs.values()].filter((j) => !['done', 'error', 'cancelled'].includes(j.status));
+      for (const job of attivi) {
+        job.cancelled = true;
+        if (job.abortRun) job.abortRun(new Error('Annullato'));
+      }
+      await cancelOnWorker().catch(() => {});
+      engines.stopAll();
+      llama.stop();
+      await runtime.restartWorker().catch(() => {});
+      return send(res, 200, { ok: true, annullati: attivi.length });
+    }
     if (p === '/api/setup' && req.method === 'GET') {
       if (!runtime.setup.gpu) runtime.setup.gpu = await runtime.detectGpu();
       return send(res, 200, {

@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.24.0.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.24.1.exe** e aprilo.
+
+## Pulsante "Libera la GPU"
+- Se qualcosa si incastra e tiene occupata la scheda video, un clic su **Libera la GPU** annulla ogni lavoro appeso, ferma i motori e riavvia il worker pulito. Lo trovi in **Impostazioni → Motore** (sempre) e nello Studio quando un lavoro è "in fila"
 
 ## Regia in diretta: vedi i lavori delle app mentre nascono
 - Quando arriva un lavoro da una tua app (IDEAlab, Bill, IDEAeventi…), ideax ti porta **da solo allo Studio** e te lo fa vedere costruire in tempo reale

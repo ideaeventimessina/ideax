@@ -365,7 +365,7 @@ function renderStage() {
     stage.innerHTML = `<div class="stage-glow"></div><div class="stage-state">
       <span class="chip">${esc(chip)}</span><h2>${esc(title)}</h2><p class="muted stage-text">${esc(text)}</p>
       <div class="progress ${pct == null ? 'indeterminate' : ''}"><div style="width:${pct ?? 0}%"></div></div>
-      ${job.id ? '<div class="row"><button class="btn" data-act="cancel">Annulla questo lavoro</button></div>' : ''}
+      ${job.id ? `<div class="row"><button class="btn" data-act="cancel">Annulla questo lavoro</button>${job.waiting ? '<button class="btn ghost" data-act="libera" title="Annulla tutto e riavvia il motore se qualcosa si è incastrato">Libera la GPU</button>' : ''}</div>` : ''}
       ${job.reason ? `<p class="muted small">${esc(job.reason)}</p>` : ''}
       ${regiaPanel(job)}</div>`;
     updateRegia(job);
@@ -451,6 +451,14 @@ $('#stage').addEventListener('click', async (e) => {
     btn.disabled = true;
     btn.textContent = 'Riavvio…';
     await api('/api/worker/restart', { method: 'POST' }).catch(() => {});
+    setTimeout(refreshStatus, 3000);
+  }
+  if (act === 'libera') {
+    btn.disabled = true;
+    btn.textContent = 'Libero…';
+    await api('/api/gpu/libera', { method: 'POST' }).catch(() => {});
+    state.job = null;
+    renderStage();
     setTimeout(refreshStatus, 3000);
   }
   if (act === 'delete' && confirm('Eliminare questa creazione e i suoi file?')) {
@@ -919,7 +927,8 @@ function renderEngine(el) {
       <p class="muted">${!online ? 'Il worker è spento o si sta avviando. Se non parte, guarda il registro qui sotto.'
         : w.demo ? 'Il worker genera immagini di prova, senza usare la scheda video.'
           : esc(w.gpu ? `${w.gpu} · ${w.vram_gb} GB di memoria video` : gpuText(s.gpu))}</p></div>
-      <button class="btn" data-restart>${online ? 'Riavvia il worker' : 'Avvia il worker'}</button></div>
+      <div class="row"><button class="btn" data-restart>${online ? 'Riavvia il worker' : 'Avvia il worker'}</button>
+      <button class="btn ghost" data-libera title="Annulla ogni lavoro appeso, ferma i motori e riavvia il worker: sblocca la scheda se qualcosa si è incastrato">Libera la GPU</button></div></div>
     <div class="facts">
       ${w.device ? `<span class="chip">Dispositivo: ${esc(w.device)}</span>` : ''}
       ${w.vram_gb ? `<span class="chip">${w.vram_gb} GB · ${w.vram_free_gb ?? '?'} GB liberi</span>` : ''}
@@ -941,6 +950,16 @@ document.addEventListener('click', async (e) => {
     await api('/api/worker/restart', { method: 'POST' }).catch(() => {});
     setTimeout(refreshStatus, 2500);
     setTimeout(refreshStatus, 8000);
+  }
+  if (e.target.closest('[data-libera]')) {
+    const b = e.target.closest('[data-libera]');
+    b.disabled = true;
+    b.textContent = 'Libero…';
+    const r = await api('/api/gpu/libera', { method: 'POST' }).catch(() => ({}));
+    state.job = null;
+    setTimeout(refreshStatus, 2500);
+    setTimeout(() => { refreshStatus(); if ($('#page-impostazioni').classList.contains('active')) renderEngine($('#engine-card')); }, 8000);
+    if (typeof r?.annullati === 'number') b.textContent = r.annullati ? `Liberata · ${r.annullati} annullati` : 'Liberata';
   }
   if (e.target.closest('[data-install-llm]')) {
     e.target.disabled = true;
