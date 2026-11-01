@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.5.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.6.exe** e aprilo.
+
+## Correzione: immagini SDXL (Pony, realityvision…) non escono più "a rumore"
+- Il VAE di SDXL in fp16 andava in overflow e invece dell'immagine decodificava una poltiglia di colore (rumore verde-grigio al posto del soggetto): è un difetto noto di SDXL. Ora il VAE lavora in fp32 nella decodifica e l'immagine esce giusta. Riguarda i modelli SDXL e SD3; Flux e SD 1.5 non ne soffrivano
 
 ## Ti avvisa quando conviene accendere gli altri PC
 - Se hai più lavori in coda e stai usando un solo PC, ideax te lo dice nello Studio: "Hai N lavori in coda — accendi gli altri PC e la coda si svuota molto più in fretta". Compare solo quando serve davvero (una coda, non un lavoro singolo) e solo se gli altri PC non sono già al lavoro

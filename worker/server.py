@@ -243,6 +243,14 @@ def load_base(spec: ModelSpec):
         pipe = d.StableDiffusion3Pipeline.from_single_file(spec.path, torch_dtype=dtype)
     else:
         raise HTTPException(400, "Architettura del modello sconosciuta: indicala nella pagina Modelli.")
+    # Il VAE di SDXL (e SD3) in fp16 va in overflow numerico (NaN) e decodifica RUMORE invece dell'immagine: è il
+    # classico "SDXL fp16 VAE bug" (una poltiglia di colore al posto del soggetto). force_upcast lo fa lavorare in
+    # fp32 solo durante la decodifica: poca memoria in più, immagine salva. (Flux e SD1.5 non ne soffrono.)
+    if spec.arch in ("sdxl", "sd3") and getattr(pipe, "vae", None) is not None:
+        try:
+            pipe.vae.config.force_upcast = True
+        except Exception as err:  # noqa: BLE001
+            print(f"[ideax] non riesco a forzare il VAE in fp32 ({err}): l'immagine potrebbe uscire rumorosa", flush=True)
     _loaded.update(key=spec.path, pipe=pipe, derived={})
     return pipe
 
