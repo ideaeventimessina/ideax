@@ -521,3 +521,13 @@ pre.code { max-width: 100%; }
 .steps-list li.fatto { opacity: .6; }
 .steps-list li.bloccato .tool { color: var(--red); }
 @media (max-width: 860px) { .idea dl { grid-template-columns: 1fr; } .idea dd { margin-bottom: 6px; } }
+
+/* Collega app: un indirizzo, un tasto */
+.bridge-form { display: flex; gap: 10px; flex-wrap: wrap; }
+.bridge-form input { flex: 1 1 260px; font-size: 16px; padding: 12px 14px; }
+.btn.big { padding: 12px 22px; font-size: 15px; }
+#bridge-result { margin-top: 14px; padding: 14px; border-radius: 12px; background: var(--panel-2, rgba(127,127,127,.08)); display: grid; gap: 10px; }
+#bridge-result p { margin: 0; }
+.dev-details { margin-top: 8px; }
+.dev-details > summary { cursor: pointer; color: var(--muted, #8a8a99); padding: 10px 0; }
+.dev-details[open] > summary { margin-bottom: 8px; }

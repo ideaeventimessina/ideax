@@ -751,6 +751,8 @@ const server = http.createServer(async (req, res) => {
     // ----- Sistemi collegati (ideax va a prendere il lavoro) -----
     if (p === '/api/systems' && req.method === 'GET') return send(res, 200, { systems: systems.listSystems(), capabilities: systems.capabilities() });
     if (p === '/api/systems' && req.method === 'POST') return send(res, 200, systems.saveSystem(await readJson(req)));
+    if (p === '/api/systems/ponte' && req.method === 'POST') return send(res, 200, systems.createBridge(await readJson(req)));
+    if (/^\/api\/systems\/[\w-]+\/chiave$/.test(p) && req.method === 'GET') return send(res, 200, systems.systemKey(p.split('/')[3]));
     if (/^\/api\/systems\/[\w-]+$/.test(p) && req.method === 'DELETE') { systems.deleteSystem(p.split('/').pop()); return send(res, 200, { ok: true }); }
     if (/^\/api\/systems\/[\w-]+\/test$/.test(p) && req.method === 'POST') return send(res, 200, await systems.test(p.split('/')[3]));
     // Decorazioni laser anche dall'API locale

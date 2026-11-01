@@ -500,18 +500,33 @@
 
     <!-- ================= COLLEGA APP ================= -->
     <section class="page" id="page-collega">
-      <header class="page-head"><div><h1>Collega app</h1><p>Una sola porta d'ingresso per tutti i tuoi modelli e i tuoi sistemi.</p></div>
-        <a class="btn" href="/v1/openapi.json" target="_blank" rel="noopener">Specifica OpenAPI ↗</a></header>
+      <header class="page-head"><div><h1>Collega app</h1><p>Scrivi l'indirizzo della tua app e premi Crea ponte. Al resto pensa ideax.</p></div></header>
+
+      <div class="card bridge-card">
+        <form id="bridge-form" class="bridge-form">
+          <input name="url" class="grow mono" required autocomplete="off" placeholder="indirizzo dell'app, es. idealab.replit.app">
+          <button class="btn primary big">Crea ponte</button>
+        </form>
+        <p class="error-text small" data-bridge-err></p>
+        <div id="bridge-result" hidden></div>
+      </div>
+
+      <div class="card">
+        <h2>App collegate</h2>
+        <div id="systems-list" class="stack-sm"></div>
+      </div>
+
+      <details class="dev-details">
+        <summary>Per sviluppatori: indirizzo API, chiavi, webhook, esempi</summary>
       <div class="card base-card">
         <div><p class="eyebrow">Indirizzo base</p><p class="base-url" id="base-url"></p>
           <p class="muted" id="base-help">Dalle app su questo PC non serve la chiave. Per altri computer e server attiva l'accesso dalla rete nelle impostazioni e usa una chiave API.</p></div>
         <button class="btn" data-copy-text="">Copia indirizzo</button>
+        <a class="btn" href="/v1/openapi.json" target="_blank" rel="noopener">Specifica OpenAPI ↗</a>
       </div>
 
       <div class="card" id="systems-card">
-        <div class="section-head"><div><h2>Sistemi online</h2>
-          <p class="muted">IDEAlab, billpro e gli altri programmi su internet non possono chiamare il tuo PC: è ideax che va da loro a prendere il lavoro. Nessuna porta da aprire. Funziona finché ideax è acceso.</p></div></div>
-        <div id="systems-list" class="stack-sm"></div>
+        <h2>Collega con una chiave che hai già</h2>
         <form id="system-form" class="stack-sm">
           <input type="hidden" name="id">
           <div class="grid2">
@@ -519,7 +534,7 @@
             <label>Indirizzo <input name="url" required class="mono" placeholder="https://idealab.replit.app"></label>
           </div>
           <label>Chiave del ponte <input name="key" type="password" autocomplete="off" class="mono" placeholder="la stessa scritta nel secret IDEAX_KEY del sistema"></label>
-          <div class="row"><button class="btn primary">Collega</button><span class="error-text small" data-system-err></span></div>
+          <div class="row"><button class="btn">Collega</button><span class="error-text small" data-system-err></span></div>
         </form>
       </div>
 
@@ -569,6 +584,7 @@
         <p>Imposta l'indirizzo del provider su <code id="base-v1"></code> e come chiave una chiave API di ideax. Le immagini vengono generate dai modelli sul tuo PC: non serve un'API a pagamento.</p>
         <p class="muted">Client pronti nella cartella <code>clients</code> del repository: <code>ideax.js</code> e <code>ideax.py</code>.</p>
       </div>
+      </details>
     </section>
 
     <!-- ================= PRIMI PASSI ================= -->
