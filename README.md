@@ -38,7 +38,7 @@ Niente API a pagamento: niente costi a chiamata, niente attese di servizi estern
 Non serve installare Node.js né Python.
 
 > Windows SmartScreen può avvisare che il programma non è firmato: "Ulteriori informazioni" → "Esegui comunque".
-> La finestra nera che si apre con ideax va lasciata aperta: chiudendola ideax si ferma.
+> ideax gira in sottofondo, senza finestra del terminale: si chiude da "Esci da ideax" (in basso a sinistra). Il registro è in `data/ideax.log`.
 
 ### Aggiornamenti
 

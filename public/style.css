@@ -101,7 +101,7 @@ legend { color: var(--muted); font-size: 13px; padding: 0 6px; }
 
 /* ---------- Struttura ---------- */
 .sidebar {
-  position: fixed; inset: 0 auto var(--status) 0; width: var(--sidebar); padding: 32px 16px 20px;
+  position: fixed; inset: 0 auto var(--status) 0; width: var(--sidebar); padding: 32px 16px 20px; overflow-y: auto;
   border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 36px; background: var(--bg); z-index: 10;
 }
 .logo { font-size: 30px; font-weight: 800; letter-spacing: -.04em; color: var(--text); text-decoration: none; padding-left: 12px; }
@@ -496,3 +496,9 @@ pre.code { max-width: 100%; }
 
 .mcard .fix { display: grid; gap: 8px; margin: 4px 0 8px; }
 .mcard .fix .btn { justify-self: start; }
+
+@media (max-height: 820px) and (min-width: 861px) {
+  .sidebar { gap: 20px; padding-top: 22px; }
+  .nav a { min-height: 40px; }
+  .side-foot { gap: 10px; }
+}

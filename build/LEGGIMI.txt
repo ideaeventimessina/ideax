@@ -18,11 +18,11 @@ ideax.exe non ha una firma digitale a pagamento, quindi Windows SmartScreen puo'
 mostrare "Windows ha protetto il PC". Clicca "Ulteriori informazioni" e poi
 "Esegui comunque". Anche l'antivirus potrebbe chiedere conferma.
 
-LA FINESTRA NERA
-Quando avvii ideax.exe si apre una finestra con l'indirizzo di ideax.
-Lasciala aperta mentre lavori: chiudendola, ideax si ferma.
-Se richiudi il browser, riapri http://localhost:7800 oppure fai di nuovo doppio
-clic su ideax.exe.
+COME SI CHIUDE
+ideax lavora in sottofondo, senza finestre del terminale. Se richiudi il browser
+ideax resta acceso: fai di nuovo doppio clic su ideax.exe (o apri
+http://localhost:7800). Per spegnerlo usa "Esci da ideax" in basso a sinistra.
+I messaggi tecnici finiscono nel file data\ideax.log.
 
 REQUISITI
 - Windows 10 o 11, 64 bit

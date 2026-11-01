@@ -92,6 +92,8 @@ if (target === 'win') {
   vi.setProductVersion(major, minor, patch, 0);
   vi.outputToResourceEntries(res.entries);
   res.outputResource(pe);
+  // Programma "a finestre" e non da terminale: all'avvio non compare la finestra nera (i messaggi vanno in data/ideax.log)
+  pe.newHeader.optionalHeader.subsystem = 2;
   fs.writeFileSync(exe, Buffer.from(pe.generate()));
 } else {
   // Solo per provare l'eseguibile su Linux durante lo sviluppo

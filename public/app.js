@@ -477,11 +477,11 @@ document.addEventListener('drop', (e) => {
   const models = files.filter((f) => MODEL_FILE.test(f.name));
   const media = files.filter((f) => /^(image|video)\//.test(f.type));
   if (models.length) {
-    if (!['#modelli', '#primi-passi'].includes(location.hash)) location.hash = 'modelli';
+    if (!['#modelli', '#primi-passi'].includes(location.hash)) location.replace('#modelli');
     models.forEach(uploadModel);
   }
   if (media.length) {
-    if (!onStudio()) location.hash = 'studio';
+    if (!onStudio()) location.replace('#studio');
     if (chatMode()) addChatAttachments(media);
     else addAttachments(media);
   }
@@ -1192,13 +1192,13 @@ document.addEventListener('click', (e) => {
   if (go) { state.step = Number(go.dataset.stepGo); renderOnboarding(); }
   if (e.target.closest('[data-skip]')) {
     try { localStorage.setItem('ideax-onboarded', '1'); } catch {}
-    location.hash = 'studio';
+    location.replace('#studio');
   }
   const ex = e.target.closest('[data-example]');
   if (ex) {
     const [format, prompt] = EXAMPLES[Number(ex.dataset.example)];
     try { localStorage.setItem('ideax-onboarded', '1'); } catch {}
-    location.hash = 'studio';
+    location.replace('#studio');
     setStudioMode('crea');
     setFormat(format);
     $('#prompt').value = prompt;
@@ -1225,7 +1225,7 @@ document.addEventListener('click', (e) => {
   try { onboarded = localStorage.getItem('ideax-onboarded') === '1'; } catch {}
   if (!location.hash && !onboarded && (!state.worker.online || !state.models.generators.length)) {
     state.step = state.worker.online ? 2 : 1;
-    location.hash = 'primi-passi';
+    location.replace('#primi-passi');
   }
   showPage();
   setInterval(refreshStatus, 5000);
@@ -1262,6 +1262,10 @@ let waiting = false;
 function waitForRestart() {
   if (waiting) return;
   waiting = true;
+  // La nuova versione riapre ideax da sola: questa pagina si chiude. Se il browser non lo permette, resta e si ricarica
+  $('#update-banner').hidden = false;
+  $('#update-banner').innerHTML = '<span class="grow"><strong>Aggiorno ideax…</strong> Questa finestra si chiude: ideax si riapre da solo con la nuova versione tra poco.</span>';
+  setTimeout(() => window.close(), 2500);
   const old = about?.version;
   const started = Date.now();
   const t = setInterval(async () => {
@@ -2029,7 +2033,7 @@ $('#chat-thread').addEventListener('click', async (e) => {
 });
 
 async function startInterview() {
-  location.hash = 'studio';
+  location.replace('#studio');
   setStudioMode('chat');
   stopChatPoll();
   chat.current = await api('/api/chats', { method: 'POST', body: { title: 'Ti conosco meglio', mode: 'intervista' } });
@@ -2640,4 +2644,27 @@ $('#hf-result').addEventListener('click', async (e) => {
       send.disabled = false;
     }
   }
+});
+
+// ======================= Finestra senza terminale =======================
+
+// La navigazione sostituisce l'indirizzo invece di aggiungerne uno: con una sola voce nella cronologia
+// il browser permette alla pagina di chiudersi da sola (aggiornamento, "Esci da ideax")
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[href^="#"]');
+  if (!a || e.ctrlKey || e.metaKey || e.shiftKey || a.target) return;
+  e.preventDefault();
+  location.replace(a.getAttribute('href'));
+});
+
+// Segnale di vita: all'avvio ideax apre il browser solo se nessuna pagina è già aperta
+const ping = () => fetch('/api/ping').catch(() => {});
+ping();
+setInterval(ping, 3000);
+
+$('#quit-ideax').addEventListener('click', async () => {
+  if (!confirm('Chiudere ideax? I lavori in corso si interrompono. Lo riapri dal menu Start o dall\'icona sul desktop.')) return;
+  await api('/api/quit', { method: 'POST' }).catch(() => {});
+  document.body.innerHTML = '<div style="display:grid;place-items:center;height:100vh;font:16px system-ui;color:#a6a6b6;background:#0d0e12;text-align:center;padding:16px">ideax è chiuso. Puoi chiudere questa scheda.<br>Per riaprirlo usa il menu Start o l\'icona sul desktop.</div>';
+  window.close();
 });

@@ -1,6 +1,11 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.8.9.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.9.0.exe** e aprilo.
 
-## Correzione: download dei modelli dei gemelli
-- Risolto "WinError 123 … .lock": su Windows la libreria Python di Hugging Face può creare file con nomi non validi. Ora FLUX.1-dev (Gemello foto) e i modelli di LatentSync (Gemello video) li scarica ideax stesso, in cartelle normali
-- Il download mostra quanti GB mancano e, se si interrompe, riprende dal punto in cui si era fermato
+## Niente più finestra nera
+- ideax si apre senza la finestra del terminale: lavora in sottofondo e mostra solo la sua pagina
+- Per chiuderlo c'è **Esci da ideax** in basso a sinistra. Se chiudi solo il browser, ideax resta acceso: un doppio clic sull'icona riapre la pagina
+- I messaggi tecnici vanno nel file `data\ideax.log` (utile se qualcosa non va)
+
+## Aggiornamenti più puliti
+- Durante l'aggiornamento la pagina si chiude da sola e ideax la riapre con la nuova versione
+- Se una pagina di ideax è già aperta, all'avvio non ne apre un'altra: niente schede doppie

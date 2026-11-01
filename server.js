@@ -36,6 +36,23 @@ import { blockedReason } from './lib/safety.js';
 import { brainPair } from './lib/brain.js';
 
 process.title = 'ideax';
+
+// Senza finestra del terminale (eseguibile Windows): i messaggi vanno nel registro data/ideax.log
+if (store.IS_SEA) {
+  const logFile = path.join(store.DATA_DIR, 'ideax.log');
+  try {
+    fs.mkdirSync(store.DATA_DIR, { recursive: true });
+    if (fs.existsSync(logFile) && fs.statSync(logFile).size > 5e6) fs.renameSync(logFile, `${logFile}.1`);
+  } catch {}
+  const write = (level) => (...args) => {
+    try { fs.appendFileSync(logFile, `${new Date().toISOString()} ${level} ${args.map((a) => (a instanceof Error ? a.stack : typeof a === 'string' ? a : JSON.stringify(a))).join(' ')}\n`); } catch {}
+  };
+  console.log = write('INFO');
+  console.warn = write('WARN');
+  console.error = write('ERRORE');
+}
+// L'ultima volta che una pagina di ideax si è fatta sentire: all'avvio si apre il browser solo se nessuna pagina è già aperta
+let lastPing = 0;
 const startup = store.getSettings();
 const PORT = Number(process.env.PORT) || 7800;
 const HOST = process.env.HOST || (startup.network.lan ? '0.0.0.0' : '127.0.0.1');
@@ -855,6 +872,14 @@ const server = http.createServer(async (req, res) => {
       store.deleteServer(p.split('/').pop());
       return send(res, 200, { ok: true });
     }
+    if (p === '/api/ping') { lastPing = Date.now(); return send(res, 200, { ok: true, version: store.VERSION }); }
+    // Esci da ideax (dal pulsante della barra laterale: non c'è più la finestra del terminale da chiudere)
+    if (p === '/api/quit' && req.method === 'POST') {
+      if (!isLoopback(req)) return send(res, 403, { error: 'Si può chiudere ideax solo da questo PC' });
+      send(res, 200, { ok: true });
+      setTimeout(() => process.exit(0), 400);
+      return;
+    }
     if (p === '/api/settings' && req.method === 'GET') return send(res, 200, publicSettings());
     if (p === '/api/settings' && req.method === 'POST') {
       // Token GitHub e maestri hanno le loro pagine: qui non si toccano
@@ -906,7 +931,7 @@ const server = http.createServer(async (req, res) => {
       const { which } = await readJson(req);
       const dir = { home: store.ROOT, models: store.MODELS_DIR, outputs: store.OUTPUT_DIR }[which] || store.ROOT;
       const cmd = process.platform === 'win32' ? 'explorer' : process.platform === 'darwin' ? 'open' : 'xdg-open';
-      exec(`${cmd} "${dir}"`, () => {});
+      exec(`${cmd} "${dir}"`, { windowsHide: true }, () => {});
       return send(res, 200, { ok: true, dir });
     }
     if (p === '/api/network' && req.method === 'GET') {
@@ -960,7 +985,7 @@ server.headersTimeout = 0;
 
 function openBrowser(url) {
   const cmd = process.platform === 'win32' ? `start "" "${url}"` : process.platform === 'darwin' ? `open "${url}"` : `xdg-open "${url}"`;
-  exec(cmd, () => {});
+  exec(cmd, { windowsHide: true }, () => {});
 }
 
 const localUrl = `http://localhost:${PORT}`;
@@ -988,13 +1013,13 @@ server.listen(PORT, HOST, () => {
     }
   }
   console.log(`  I tuoi dati: ${store.ROOT}`);
-  if (store.IS_SEA) console.log('\n  Lascia aperta questa finestra: chiudendola ideax si ferma.');
   console.log('');
   runtime.startWorker();
   updater.scheduleChecks();
   systems.startAll();
   fixes.autoFix();
-  if (shouldOpen) openBrowser(localUrl);
+  // Se una pagina di ideax è già aperta (es. dopo un aggiornamento) si ricollega da sola: niente schede doppie
+  if (shouldOpen) setTimeout(() => { if (Date.now() - lastPing > 6000) openBrowser(localUrl); }, 5000);
 });
 
 for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) {
