@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.3.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.4.exe** e aprilo.
+
+## Regia "fare soldi": la demo NAVIGA il sito vero (non genera un video a caso)
+- Un contenuto del piano che fa vedere l'app (interfaccia, navigazione, come funziona) ora diventa una **registrazione dello schermo del sito vero** (Regista web), non un video generato da zero con Wan. È ciò che serve a un piano di business — e ciò che la macchina sa fare davvero bene
+- E se serve un video generato, Wan 2.2 14B non muore più con "allega l'immagine di partenza": ideax gli crea la foto di partenza da solo, come già faceva col 5B
 
 ## Decorazioni laser: il taglio segue la sagoma anche su fondo grigio
 - Il modello di immagini non sempre fa il fondo bianco puro: spesso lo dipinge grigio o crema sfumato. Il vettorizzatore prendeva tutto ciò che non era bianco come parte del pezzo, e il taglio diventava il quadrato dell'immagine invece della sagoma (es. un cuore nero su grigio 220)

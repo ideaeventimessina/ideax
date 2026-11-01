@@ -508,7 +508,7 @@ async function processJob(job) {
     // prima si crea l'immagine dal testo, poi la si anima
     // Wan 2.2: per volti perfetti (e per il gemello) si parte da una foto rifinita, salvo da_foto: false
     const svdOnly = !d.model.capabilities?.includes('video_generate') && (d.model.arch === 'svd' || /StableVideoDiffusion/i.test(d.model.pipelineClass || ''));
-    const wanStill = d.model.backend === 'wan' && !['false', '0', 'no'].includes(String(job.params.da_foto ?? true).toLowerCase());
+    const wanStill = ['wan', 'wan14b'].includes(d.model.backend) && !['false', '0', 'no'].includes(String(job.params.da_foto ?? true).toLowerCase());
     const needsStill = /video|animation/.test(d.task) && (svdOnly || wanStill)
       && !job.attachments.some((a) => a.type?.startsWith('image/'));
     if (needsStill) {
