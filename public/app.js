@@ -2145,6 +2145,7 @@ async function loadBrainPage() {
   const pf = $('#persona-form');
   pf.name.value = settings.assistant?.name || '';
   pf.style.value = settings.assistant?.style || '';
+  pf.adult.checked = !!settings.assistant?.adult;
   if (learn) renderLearn(learn);
 }
 
@@ -2376,7 +2377,7 @@ $('#gh-write').addEventListener('change', async (e) => {
 $('#persona-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
-  state.settings = await api('/api/settings', { method: 'POST', body: { assistant: { name: f.name.value.trim() || 'ideax', style: f.style.value.trim() } } });
+  state.settings = await api('/api/settings', { method: 'POST', body: { assistant: { name: f.name.value.trim() || 'ideax', style: f.style.value.trim(), adult: f.adult.checked } } });
   $('[data-persona-ok]').textContent = 'Salvato ✓';
   setTimeout(() => { $('[data-persona-ok]').textContent = ''; }, 1500);
 });

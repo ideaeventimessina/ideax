@@ -32,6 +32,7 @@ import * as llama from './lib/llamaserver.js';
 import * as twin from './lib/twin.js';
 import * as fixes from './lib/fixes.js';
 import * as brains from './lib/brains.js';
+import { blockedReason } from './lib/safety.js';
 import { brainPair } from './lib/brain.js';
 
 process.title = 'ideax';
@@ -158,6 +159,8 @@ async function createJob(body, ctx = {}) {
     if (body.prompt.length > 20000) throw new Error('Testo troppo lungo: massimo 20.000 caratteri per richiesta');
   }
   if (!body.prompt?.trim()) throw new Error('Scrivi un prompt');
+  const blocked = blockedReason(`${body.prompt} ${body.reel?.style || ''}`);
+  if (blocked) throw new Error(blocked);
   if (body.task && !(body.task in store.TASKS)) throw new Error(`Compito sconosciuto: ${body.task}`);
   const callback = body.callback_url || body.callbackUrl || null;
   if (callback && !/^https?:\/\/.+/i.test(callback)) throw new Error('callback_url deve essere un indirizzo http(s)');
@@ -298,6 +301,9 @@ async function processJob(job) {
       task: d.task, modelId: d.model.id, modelName: d.model.name, routedPrompt: d.prompt,
       negativePrompt: d.negativePrompt, loras: d.loras, reason: d.reason, brain: d.brain, title: d.title,
     });
+    // Il prompt riscritto dal cervello passa dagli stessi limiti di quello scritto dall'utente
+    const blockedRouted = blockedReason(job.routedPrompt);
+    if (blockedRouted) throw new Error(blockedRouted);
     // La parola imparata da una LoRA (il viso del gemello) deve stare nel prompt, altrimenti la LoRA non "riconosce" la richiesta
     for (const l of d.loras || []) {
       if (l.promptToken && !job.routedPrompt.includes(l.promptToken)) job.routedPrompt = `${l.promptToken}, ${job.routedPrompt}`;
