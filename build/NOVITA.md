@@ -1,5 +1,10 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.15.4.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.15.5.exe** e aprilo.
+
+## Meno rifiuti, niente code inutili
+- Se il cervello rifiuta un testo, ideax riprova da solo con l'inizio della risposta già scritto (il modello continua invece di bloccarsi), poi con il cervello di riserva
+- Nuovi cervelli consigliati per scrivere senza filtri: **Llama 3.1 8B Lexi · scrittura libera** e **Mistral Nemo 12B senza censure** (Cervello → Cervelli veloci senza censure)
+- Tolte anche le frasi in fondo tipo "Se vuoi un'altra, basta chiedere"
 
 ## Solo risposte
 - ideax risponde e basta: niente premesse ("Ok, capisco", "Visto che hai attivato…"), niente commenti su filtri, impostazioni o regole, niente spiegazioni su cosa sta per fare. Le frasi di contorno vengono tolte anche se il cervello le scrive
