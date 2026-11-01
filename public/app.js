@@ -83,7 +83,7 @@ function showPage() {
   if (page === 'musica') loadEngines();
   if (page === 'reel') { loadReelForm(); loadCatena(); }
   if (page === 'cervello') loadBrainPage();
-  if (page === 'collega') { loadSystems(); loadAccessi(); }
+  if (page === 'collega') { loadSystems(); loadAccessi(); loadFarm(); }
   if (page === 'regia') loadRegia();
   if (page === 'modelli') { loadEngines(); loadFixes(); refreshSetup().then(() => { renderLlmSupport(); if (state.engines) renderEngines(); }); }
   if (page === 'gemello') { loadEngines(); loadTwin(); loadPersonaggi(); }
@@ -2536,6 +2536,42 @@ async function loadSystems() {
   }).join('') : '<p class="muted">Nessuna app collegata: scrivi un indirizzo qui sopra e premi Crea ponte.</p>';
   if ($('#page-collega').classList.contains('active')) systemsTimer = setTimeout(loadSystems, 4000);
 }
+
+let farmTimer = null;
+async function loadFarm() {
+  clearTimeout(farmTimer);
+  const box = $('#farm-box');
+  if (!box) return;
+  const f = await api('/api/farm').catch(() => null);
+  if (!f) return;
+  if (!f.capofila) {
+    box.innerHTML = `<p class="muted">Questo PC lavora <strong>da solo</strong>.</p>
+      <p class="small muted">Rendilo capofila: terrà la coda e distribuirà i lavori in più agli altri PC della rete. Sugli altri non cambi niente — li colleghi a questo come un'app qualsiasi.</p>
+      <div class="row"><button class="btn primary" type="button" data-farm-on>Rendi questo PC il capofila</button></div>`;
+  } else {
+    const url = f.indirizzi?.length ? `http://${f.indirizzi[0]}:${f.porta}` : `(attiva l'accesso dalla rete nelle Impostazioni)`;
+    const online = f.operai.filter((w) => w.online);
+    box.innerHTML = `<p>Questo PC è il <strong>capofila</strong>. ${online.length ? `<span class="dot ok"></span>${online.length} operaio${online.length > 1 ? 'i' : ''} collegato${online.length > 1 ? 'i' : ''}.` : 'Nessun operaio collegato per ora.'}
+        ${f.inCorso ? ` · ${f.inCorso} in corso altrove` : ''}${f.inAttesa ? ` · ${f.inAttesa} in coda` : ''}</p>
+      <div class="card base-card" style="margin:8px 0">
+        <div><p class="eyebrow">Su ogni altro PC</p>
+          <p class="small">Apri ideax → <strong>Collega app</strong> → "Collega con una chiave che hai già" e metti:<br>
+          Nome: <code>Capofila</code> · Indirizzo: <code>${esc(url)}</code> · Chiave: quella qui sotto.</p></div>
+      </div>
+      <div class="row"><input class="mono grow" readonly value="${esc(f.chiave)}"><button class="btn primary" type="button" data-copy-text="${esc(f.chiave)}">Copia chiave</button></div>
+      ${!f.lan ? '<p class="small error-text">Per farti raggiungere dagli altri PC serve l\'accesso dalla rete: l\'ho acceso, ma vale dal prossimo avvio di ideax. Riavvia ideax su questo PC.</p>' : ''}
+      ${online.length ? `<div class="stack-sm" style="margin-top:8px">${online.map((w) => `<div class="small"><span class="dot ok"></span>${esc(w.nome)} <span class="muted">· sa fare: ${esc((w.capacita || []).join(', ') || '—')}</span></div>`).join('')}</div>` : ''}
+      <div class="row" style="margin-top:8px"><button class="btn small danger" type="button" data-farm-off>Torna a lavorare da solo</button>
+        <button class="btn small" type="button" data-farm-rotate>Cambia chiave</button></div>`;
+  }
+  if ($('#page-collega').classList.contains('active')) farmTimer = setTimeout(loadFarm, 5000);
+}
+
+$('#farm-box')?.addEventListener('click', async (e) => {
+  if (e.target.closest('[data-farm-on]')) { await api('/api/farm', { method: 'POST', body: { role: 'capofila' } }); loadFarm(); }
+  if (e.target.closest('[data-farm-off]') && confirm('Tornare a lavorare da solo? Gli operai collegati smetteranno di ricevere lavori.')) { await api('/api/farm', { method: 'POST', body: { role: 'solo' } }); loadFarm(); }
+  if (e.target.closest('[data-farm-rotate]') && confirm('Cambiare la chiave? Dovrai rimetterla sugli altri PC.')) { await api('/api/farm/chiave', { method: 'POST' }); loadFarm(); }
+});
 
 function showBridgeKey(r) {
   const box = $('#bridge-result');

@@ -10,7 +10,7 @@ import * as store from './lib/store.js';
 import { scanModels, readSafetensorsHeader, readGgufArchitecture, classifyKeys, ARCH_LABELS, KIND_LABELS } from './lib/scanner.js';
 import { route, buildCatalog, PROMPT_STYLES, styleFor, heuristicTask } from './lib/router.js';
 import { resolveBrain } from './lib/brain.js';
-import { runModel, cancelOnWorker, inGpuQueue } from './lib/backends.js';
+import { runModel, cancelOnWorker, inGpuQueue, localBusy } from './lib/backends.js';
 import * as engines from './lib/engines.js';
 import * as voices from './lib/voices.js';
 import * as voicelib from './lib/voicelib.js';
@@ -34,6 +34,7 @@ import * as chats from './lib/chats.js';
 import * as teachers from './lib/teachers.js';
 import * as github from './lib/github.js';
 import * as systems from './lib/systems.js';
+import * as farm from './lib/farm.js';
 import * as laser from './lib/laser.js';
 import * as llama from './lib/llamaserver.js';
 import * as twin from './lib/twin.js';
@@ -126,6 +127,12 @@ function serveFile(res, root, rel) {
 
 const isLoopback = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
 
+// Confronto a tempo costante di due chiavi (la farm). Lunghezze diverse → subito false, senza far crollare timingSafeEqual.
+function sameKey(a, b) {
+  const A = Buffer.from(String(a || '')), B = Buffer.from(String(b || ''));
+  return A.length > 0 && A.length === B.length && crypto.timingSafeEqual(A, B);
+}
+
 // ---------- Caricamento modelli (drag & drop) ----------
 
 const SUBFOLDER = { checkpoint: 'checkpoints', lora: 'loras', motion: 'motion', vae: 'vae', llm: 'llm' };
@@ -214,8 +221,111 @@ async function createJob(body, ctx = {}) {
     createdAt: Date.now(),
   };
   jobs.set(job.id, job);
-  job.done = processJob(job);
+  // Se questo PC è capofila di una farm, la sua GPU è già occupata e c'è un altro PC libero sulla rete, il lavoro
+  // (se è di quelli che un PC identico può fare da solo) va a chi è libero. Altrimenti si fa qui, come sempre.
+  job.done = offloadable(body) && localBusy() && farm.operaiOnline() > 0 ? dispatchFarm(job, body) : processJob(job);
   return job;
+}
+
+// Chiude il lavoro: lo archivia, consegna l'eventuale webhook, alleggerisce gli allegati. Uguale per un lavoro fatto
+// qui e per uno fatto da un altro PC della farm.
+function finalize(job) {
+  job.finishedAt = Date.now();
+  if (job.status !== 'cancelled') {
+    store.addHistory({
+      id: job.id, title: job.title, prompt: job.prompt, task: job.task, modelName: job.modelName,
+      routedPrompt: job.routedPrompt, negativePrompt: job.negativePrompt, loras: (job.loras || []).map((l) => l.name),
+      reason: job.reason, brain: job.brain, status: job.status, error: job.error, results: job.results,
+      createdAt: job.createdAt, seconds: job.startedAt ? Math.round((job.finishedAt - job.startedAt) / 1000) : null,
+      client: job.client, metadata: job.metadata,
+      ...(job.catenaInfo ? { catena: job.catenaInfo } : {}),
+      ...(job.reelPlan ? { reel: { caption: job.reelPlan.caption, hashtags: job.reelPlan.hashtags, scenes: job.reelPlan.scenes.map(({ text }) => text) } } : {}),
+    });
+  }
+  job.attachments = (job.attachments || []).map(({ name, type }) => ({ name, type }));
+  if (job.callbackUrl) {
+    const event = { done: 'job.completed', cancelled: 'job.cancelled' }[job.status] || 'job.failed';
+    job.webhook = {};
+    deliver(job.callbackUrl, event, publicJob(job, job.origin), job.webhook)
+      .then((r) => job.log.push({ t: Date.now(), msg: r.status === 'delivered' ? `Webhook consegnato a ${job.callbackUrl}` : `Webhook non consegnato dopo ${r.attempts} tentativi` }));
+  }
+}
+
+// ---------- La farm: distribuire i lavori sugli altri PC ----------
+
+// I lavori che un PC con la stessa configurazione può fare da solo: immagine/video da testo, fotomontaggio,
+// ingrandimento, musica. Restano QUI quelli legati ai dati di questa macchina — voci clonate, gemello e personaggi
+// (LoRA addestrate qui), reel, demo dello schermo — perché sull'altro PC quei dati potrebbero non esserci.
+function offloadable(body) {
+  if (!farm.isCapofila() || body._farm) return false;
+  const kind = body.kind || 'media';
+  if (!['media', 'music'].includes(kind)) return false;
+  if (body.talk) return false;
+  const prompt = String(body.prompt || '');
+  try { if (personaggi.personaggioForPrompt(prompt)) return false; } catch { /* catalogo non pronto */ }
+  try { if (twin.twinForPrompt(prompt)) return false; } catch { /* idem */ }
+  const model = body.model || body.modelId;
+  if (model && !/^engine-/.test(String(model))) return false; // un modello non-motore potrebbe non esserci sull'operaio
+  return true;
+}
+
+const EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'video/mp4': 'mp4', 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/wav': 'wav' };
+
+// Un altro PC ha finito: ne scrivo i file qui e riempio il lavoro come se l'avessi fatto io (archivio e interfaccia
+// non vedono differenza).
+function materializeRemote(job, r) {
+  const results = [];
+  for (const out of r.risultati || []) {
+    const ext = EXT[out.tipo] || 'bin';
+    const name = `${job.id}-${crypto.randomUUID().slice(0, 4)}.${ext}`;
+    fs.writeFileSync(path.join(store.OUTPUT_DIR, name), Buffer.from(out.base64, 'base64'));
+    results.push({ url: `/outputs/${name}`, type: out.tipo, seconds: out.secondi ?? out.seconds });
+  }
+  job.results = results;
+  job.modelName = r.modello || job.modelName || 'Altro PC';
+  job.routedPrompt = r.prompt || job.routedPrompt || job.prompt;
+  job.title = r.titolo || job.title || fallbackTitle(job.prompt);
+  if (!job.task) {
+    const t0 = results[0]?.type || '';
+    job.task = /^video\//.test(t0) ? 'video_generate' : /^audio\//.test(t0) ? 'music' : 'image_generate';
+  }
+  job.brain = job.brain || 'farm';
+}
+
+// Offre il lavoro agli operai e aspetta. Se nessuno lo prende entro "grace" secondi (sono tutti occupati), lo ritira
+// e lo fa qui. Se l'operaio che l'ha preso cade, ripiega lo stesso in locale: il lavoro non si perde mai.
+async function dispatchFarm(job, body) {
+  const grace = farm.config().grace * 1000;
+  const log = (msg) => job.log.push({ t: Date.now(), msg });
+  const off = farm.offer({ ...body, _farm: true });
+  job.status = 'queued';
+  job.waiting = true;
+  log('In fila per un altro PC della rete…');
+  const claimed = await new Promise((resolve) => {
+    const iv = setInterval(() => { if (off.claimed) { clearInterval(iv); resolve(true); } }, 300);
+    setTimeout(() => { clearInterval(iv); resolve(off.claimed); }, grace);
+  });
+  if (!claimed && farm.withdraw(off.id)) {
+    job.waiting = false;
+    log('Nessun PC libero adesso: lo faccio qui.');
+    return processJob(job);
+  }
+  job.waiting = false;
+  job.status = 'running';
+  job.backend = 'operaio';
+  job.startedAt = Date.now();
+  log('Lo sta facendo un altro PC della rete…');
+  try {
+    const r = await off.promise;
+    materializeRemote(job, r);
+    job.status = 'done';
+    log('Completato da un altro PC della rete.');
+    finalize(job);
+  } catch (err) {
+    job.backend = null;
+    log(`L'altro PC non ce l'ha fatta (${err.message}): rifaccio qui.`);
+    return processJob(job);
+  }
 }
 
 // Lettura di un testo con una voce clonata, sul motore voce locale
@@ -398,25 +508,7 @@ async function processJob(job) {
     job.error = job.cancelled ? 'Annullato' : err.message;
     log(job.cancelled ? 'Lavoro annullato.' : `Errore: ${err.message}`);
   } finally {
-    job.finishedAt = Date.now();
-    if (job.status !== 'cancelled') {
-      store.addHistory({
-        id: job.id, title: job.title, prompt: job.prompt, task: job.task, modelName: job.modelName,
-        routedPrompt: job.routedPrompt, negativePrompt: job.negativePrompt, loras: (job.loras || []).map((l) => l.name),
-        reason: job.reason, brain: job.brain, status: job.status, error: job.error, results: job.results,
-        createdAt: job.createdAt, seconds: job.startedAt ? Math.round((job.finishedAt - job.startedAt) / 1000) : null,
-        client: job.client, metadata: job.metadata,
-        ...(job.catenaInfo ? { catena: job.catenaInfo } : {}),
-        ...(job.reelPlan ? { reel: { caption: job.reelPlan.caption, hashtags: job.reelPlan.hashtags, scenes: job.reelPlan.scenes.map(({ text }) => text) } } : {}),
-      });
-    }
-    job.attachments = job.attachments.map(({ name, type }) => ({ name, type }));
-    if (job.callbackUrl) {
-      const event = { done: 'job.completed', cancelled: 'job.cancelled' }[job.status] || 'job.failed';
-      job.webhook = {};
-      deliver(job.callbackUrl, event, publicJob(job, job.origin), job.webhook)
-        .then((r) => job.log.push({ t: Date.now(), msg: r.status === 'delivered' ? `Webhook consegnato a ${job.callbackUrl}` : `Webhook non consegnato dopo ${r.attempts} tentativi` }));
-    }
+    finalize(job);
   }
 }
 
@@ -545,7 +637,8 @@ const server = http.createServer(async (req, res) => {
   // Autenticazione: da questo PC non serve; dagli altri dispositivi serve una chiave API.
   // Una chiave sbagliata viene rifiutata sempre, così gli errori di configurazione si notano subito.
   const PUBLIC = ['/v1/health', '/v1/openapi.json'];
-  const protectedPath = /^\/(api|v1|outputs)\//.test(p) && !PUBLIC.includes(p);
+  // Il ponte della farm (gli altri PC che vengono a prendere i lavori) ha la sua chiave: salta l'autenticazione generica.
+  const protectedPath = /^\/(api|v1|outputs)\//.test(p) && !PUBLIC.includes(p) && !p.startsWith('/api/ponte/ideax');
   const key = apikeys.keyFromRequest(req, url);
   let client = null;
   if (key) {
@@ -558,6 +651,37 @@ const server = http.createServer(async (req, res) => {
   const ctx = { client: client?.name || (p.startsWith('/v1/') ? 'App su questo PC' : 'ideax'), origin };
 
   try {
+    // ----- Il ponte della FARM: gli altri PC (operai) vengono a prendere i lavori in eccesso -----
+    // Stesso patto delle app online (docs/ponte-ideax.md), ma qui il ponte lo espone IDEAX capofila e lo interroga
+    // un altro ideax operaio (con "Collega app" puntato su questo PC). La chiave è quella della farm.
+    if (p.startsWith('/api/ponte/ideax')) {
+      const fkey = farm.config().key;
+      if (!farm.isCapofila() || !fkey) return send(res, 503, { error: 'ponte_non_attivo', message: 'Questo ideax non è capofila di una farm (accendilo in Collega app → Più PC)' });
+      const given = String(req.headers['x-ideax-key'] || '').trim();
+      if (!sameKey(given, fkey)) return send(res, 401, { error: 'chiave_non_valida' });
+      const operaio = { id: String(req.headers['x-ideax-nome'] || req.socket.remoteAddress || 'operaio'), nome: String(req.headers['x-ideax-nome'] || '') || req.socket.remoteAddress, versione: req.headers['x-ideax-versione'] };
+      if (p === '/api/ponte/ideax/stato' && req.method === 'GET') {
+        farm.noteWorker(operaio);
+        const s = farm.stato();
+        return send(res, 200, { acceso: true, capofila: true, versione: store.VERSION, inAttesa: s.inAttesa, inCorso: s.inCorso });
+      }
+      if (p === '/api/ponte/ideax/lavori' && req.method === 'GET') {
+        const caps = String(url.searchParams.get('capacita') || '').split(',').map((s) => s.trim()).filter(Boolean);
+        operaio.capacita = caps;
+        const fine = Date.now() + Math.min(25, Math.max(0, parseInt(url.searchParams.get('attendi') || '0', 10))) * 1000;
+        for (;;) {
+          const lavori = caps.length ? farm.claim(caps, operaio) : (farm.noteWorker(operaio), []);
+          if (lavori.length || Date.now() >= fine) return send(res, 200, { lavori });
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+      }
+      const m = p.match(/^\/api\/ponte\/ideax\/lavori\/([\w-]+)$/);
+      if (m && req.method === 'POST') {
+        const ok = farm.deliver(m[1], await readJson(req));
+        return send(res, ok ? 200 : 404, ok ? { ok: true } : { error: 'lavoro_non_trovato' });
+      }
+      return send(res, 404, { error: 'rotta_ponte_sconosciuta' });
+    }
     // ----- API pubblica per le applicazioni -----
     if (p === '/v1/models' && req.method === 'GET') {
       return send(res, 200, { models: modelsPayload().generators, tasks: store.TASKS });
@@ -846,6 +970,20 @@ const server = http.createServer(async (req, res) => {
     if (/^\/api\/systems\/[\w-]+\/chiave$/.test(p) && req.method === 'GET') return send(res, 200, systems.systemKey(p.split('/')[3]));
     if (/^\/api\/systems\/[\w-]+$/.test(p) && req.method === 'DELETE') { systems.deleteSystem(p.split('/').pop()); return send(res, 200, { ok: true }); }
     if (/^\/api\/systems\/[\w-]+\/test$/.test(p) && req.method === 'POST') return send(res, 200, await systems.test(p.split('/')[3]));
+    // ----- La farm (più PC che lavorano insieme) -----
+    // GET: stato (ruolo, chiave, operai online). POST: diventa capofila / torna solo. /chiave: rigenera la chiave.
+    if (p === '/api/farm' && req.method === 'GET') {
+      const addrs = Object.values(os.networkInterfaces()).flat().filter((a) => a && a.family === 'IPv4' && !a.internal).map((a) => a.address);
+      return send(res, 200, { ...farm.stato(), chiave: farm.config().key, grace: farm.config().grace, lan: store.getSettings().network.lan, indirizzi: addrs, porta: PORT });
+    }
+    if (p === '/api/farm' && req.method === 'POST') {
+      const b = await readJson(req);
+      const cfg = farm.setConfig({ role: b.role, grace: b.grace });
+      // Capofila deve ascoltare sulla rete locale perché gli altri PC lo raggiungano: lo accendo (vale dal prossimo avvio).
+      if (cfg.role === 'capofila' && !store.getSettings().network.lan) store.saveSettings({ network: { ...store.getSettings().network, lan: true } });
+      return send(res, 200, { ...farm.stato(), chiave: cfg.key, grace: cfg.grace, lan: store.getSettings().network.lan });
+    }
+    if (p === '/api/farm/chiave' && req.method === 'POST') return send(res, 200, { chiave: farm.rotateKey() });
     // Decorazioni laser anche dall'API locale
     if (p === '/v1/laser/decoration' && req.method === 'POST') return send(res, 200, await laser.decoration(await readJson(req), { createJob, ctx }));
     if (p === '/v1/laser/vectorize' && req.method === 'POST') {

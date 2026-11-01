@@ -45,15 +45,15 @@ await esbuild.build({
   logOverride: { 'empty-import-meta': 'silent' },
 });
 
-// 1a. Banco di prova dell'orchestratore: ogni richiesta del banco deve andare ancora al motore giusto
-console.log('1a/5 Banco di prova dell\'orchestratore');
+// 1a. Banco di prova: l'orchestratore manda ogni richiesta al motore giusto, e la farm non fa doppioni né perde lavori
+console.log('1a/5 Banco di prova');
 {
   const { execFileSync } = await import('node:child_process');
   try {
-    execFileSync(process.execPath, ['--test', path.join(ROOT, 'test', 'banco.mjs')], { stdio: 'pipe' });
+    execFileSync(process.execPath, ['--test', path.join(ROOT, 'test', 'banco.mjs'), path.join(ROOT, 'test', 'farm.mjs')], { stdio: 'pipe' });
     console.log('   tutte le scelte giuste: ok');
   } catch (err) {
-    throw new Error(`Il banco di prova non passa: una richiesta ora va al motore sbagliato.\n${String(err.stdout || '').split('\n').filter((l) => /not ok|expected|actual/.test(l)).join('\n').slice(0, 3000)}`);
+    throw new Error(`Il banco di prova non passa.\n${String(err.stdout || '').split('\n').filter((l) => /not ok|expected|actual|Error/.test(l)).join('\n').slice(0, 3000)}`);
   }
 }
 

@@ -1,5 +1,12 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.21.0.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.22.0.exe** e aprilo.
+
+## Più PC che lavorano insieme (farm)
+- Hai altri PC con la stessa scheda video? Falli lavorare insieme. In **Collega app → Più PC** rendi un PC il **capofila**: tiene la coda e, quando è occupato, manda i lavori in più agli altri PC (gli **operai**)
+- Sugli altri PC non si installa niente di nuovo: li colleghi al capofila come un'app qualsiasi ("Collega con una chiave che hai già", indirizzo del capofila sulla rete + chiave della farm)
+- Tre PC fanno **tre lavori insieme**, non uno in un terzo: utile quando la Regia sforna tanti contenuti. Un lavoro singolo su un PC libero resta dov'è, come prima
+- Si distribuiscono immagine/video da testo, fotomontaggio, ingrandimento e musica. Restano sul capofila i lavori legati ai suoi dati (voci, gemello, personaggi, reel, demo dello schermo)
+- Mai un doppione e mai un lavoro perso: se nessuno lo prende, o un PC si spegne a metà, lo rifà il capofila
 
 ## Decorazioni per IDEAlab
 - Le immagini lunghe non si interrompono più a 5 minuti: ideax aspetta il motore immagini quanto serve (fino a 15 minuti). Prima una decorazione con Flux su una scheda lenta finiva con "Non riesco a contattare 127.0.0.1:7861"
