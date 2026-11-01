@@ -1,9 +1,12 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.10.0.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.11.0.exe** e aprilo.
 
-## Novità: la Regia
-- Nuova pagina **Regia**: ideax conosce tutti i tuoi progetti
-- **I miei progetti**: con il token di GitHub ideax legge la scheda (project.json di Mission Control), il README e le note di ogni repository e scrive a cosa serve, cosa sa fare, per chi è, come guadagna e come ideax può usarlo. Puoi aggiungere una nota e segnare un progetto "solo da conoscere" (il gestionale di IDEAeventi lo è già)
-- **Business**: il cervello di riserva incrocia i progetti e propone idee per guadagnare con quello che hai già: chi paga, prezzo, ricavo stimato, tempo al primo incasso e i passi con lo strumento giusto ("Bill: crea le aziende", "ideax: foto e reel", "tu: contatta i clienti")
-- **Missioni**: un'idea scelta diventa una lista di passi con lo stato di ognuno
-- La chat conosce i progetti: puoi parlarne per nome
+## Correzione: il cervello non si blocca più
+- Se il cervello di riserva non riesce a partire (per esempio un modello troppo grande per la scheda), ideax continua con il cervello principale invece di fermarsi
+- In automatico come riserva si usano solo cervelli fino a 13 GB; più grandi si possono ancora scegliere a mano
+- Quando un cervello non parte, il messaggio dice il motivo vero: modello non supportato, memoria insufficiente, oppure l'errore preciso
+
+## Novità: MOSS-Image
+- Nuovo motore **MOSS-Image** (pagina Modelli → Motori): ideax installa ComfyUI e scarica MOSS-Image già preparato per una scheda da 16 GB (circa 30 GB in tutto)
+- Compare tra i modelli come "MOSS-Image" e segue alla lettera prompt lunghi e dettagliati
+- Le **LoRA fatte per Moss** (es. Mystic XXX) vengono riconosciute da sole e applicate quando usi MOSS-Image
