@@ -2169,7 +2169,11 @@ function pollChat() {
     chat.current = c;
     if (changed) renderChat();
     if (c.busy) pollChat();
-    else { loadChats(); loadMemoryCount(); }
+    else {
+      if (changed) { loadChats(); loadMemoryCount(); }
+      // Piano piano si continua a guardare: una risposta può arrivare dopo (es. dopo il download del cervello scrittore)
+      chat.polling = setTimeout(() => { if (chat.current?.id === id) pollChat(); }, 5000);
+    }
   }, 700);
 }
 

@@ -1,5 +1,10 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.15.5.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.15.6.exe** e aprilo.
+
+## Cervello scrittore: niente più rifiuti
+- Racconti, barzellette, scene e testi per adulti li scrive un **cervello scrittore** fatto per scrivere senza filtri (Llama 3.1 8B Lexi), indipendente dal cervello principale
+- Se non c'è e il cervello principale rifiuta, ideax lo **scarica da solo** (circa 5 GB, una volta sola) e appena è pronto **rifà la tua richiesta**: la risposta arriva nella stessa chat
+- Un rifiuto non ti arriva più: al suo posto risponde il cervello scrittore
 
 ## Meno rifiuti, niente code inutili
 - Se il cervello rifiuta un testo, ideax riprova da solo con l'inizio della risposta già scritto (il modello continua invece di bloccarsi), poi con il cervello di riserva
