@@ -232,7 +232,9 @@ async function poll(id) {
 async function watchIncoming() {
   for (;;) {
     try {
-      const { active } = await api('/api/jobs');
+      const r = await api('/api/jobs');
+      const active = r.active;
+      state.coda = { attivi: r.attivi || 0, inAttesa: r.inAttesa || 0, operaiOnline: r.operaiOnline || 0, capofila: !!r.capofila };
       const vivi = new Set((active || []).map((j) => j.id));
       for (const s of [state.localIds, state.liveSeen]) for (const id of [...s]) if (!vivi.has(id)) s.delete(id);
       const busy = state.job && !['done', 'error', 'cancelled'].includes(state.job.status);
@@ -300,6 +302,14 @@ function updateRegia(job) {
     log.innerHTML = job.log.slice(-7).map((l) => `<div>${esc(l.msg)}</div>`).join('');
     log.scrollTop = log.scrollHeight;
   }
+}
+
+// Il consiglio onesto sulla farm: ha senso SOLO con una coda (più lavori), mai per un lavoro singolo — e solo se non
+// ci sono già altri PC al lavoro. Con 2+ lavori in attesa, accendere gli altri PC svuota la coda molto più in fretta.
+function consiglioFarmHtml() {
+  const c = state.coda;
+  if (!c || c.operaiOnline > 0 || (c.attivi || 0) < 2) return '';
+  return `<p class="small" style="margin-top:2px;color:var(--accent)">Hai <strong>${c.attivi} lavori in coda</strong> su un solo PC — <a href="#collega">accendi gli altri PC</a> e la coda si svuota molto più in fretta.</p>`;
 }
 
 function renderStage() {
@@ -371,6 +381,7 @@ function renderStage() {
       <div class="progress ${pct == null ? 'indeterminate' : ''}"><div style="width:${pct ?? 0}%"></div></div>
       ${job.id ? `<div class="row"><button class="btn" data-act="cancel">Annulla questo lavoro</button>${job.waiting ? '<button class="btn ghost" data-act="libera" title="Annulla tutto e riavvia il motore se qualcosa si è incastrato">Libera la GPU</button>' : ''}</div>` : ''}
       ${job.reason ? `<p class="muted small">${esc(job.reason)}</p>` : ''}
+      ${consiglioFarmHtml()}
       ${regiaPanel(job)}</div>`;
     updateRegia(job);
     return;

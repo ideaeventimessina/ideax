@@ -1313,11 +1313,11 @@ const server = http.createServer(async (req, res) => {
     // I lavori in corso adesso (anche quelli arrivati dalle app via ponte): la "regia in diretta" li guarda per
     // portarti allo Studio appena ne nasce uno e farti vedere il prompt e come lo costruisce.
     if (p === '/api/jobs' && req.method === 'GET') {
-      const active = [...jobs.values()]
-        .filter((j) => !['done', 'error', 'cancelled'].includes(j.status))
-        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
-        .map((j) => ({ id: j.id, client: j.client, status: j.status, prompt: j.prompt, title: j.title, model: j.modelName, createdAt: j.createdAt }));
-      return send(res, 200, { active });
+      const vivi = [...jobs.values()].filter((j) => !['done', 'error', 'cancelled'].includes(j.status)).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+      const active = vivi.map((j) => ({ id: j.id, client: j.client, status: j.status, prompt: j.prompt, title: j.title, model: j.modelName, createdAt: j.createdAt }));
+      const fs2 = farm.stato();
+      // Riepilogo per il consiglio "accendi gli altri PC": ha senso solo con una coda, non per un lavoro singolo.
+      return send(res, 200, { active, attivi: vivi.length, inAttesa: vivi.filter((j) => j.waiting).length, operaiOnline: fs2.operaiOnline, capofila: fs2.capofila });
     }
     if (p.startsWith('/api/jobs/') && req.method === 'GET') {
       const job = jobs.get(p.split('/').pop());

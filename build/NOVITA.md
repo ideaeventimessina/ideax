@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.4.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.5.exe** e aprilo.
+
+## Ti avvisa quando conviene accendere gli altri PC
+- Se hai più lavori in coda e stai usando un solo PC, ideax te lo dice nello Studio: "Hai N lavori in coda — accendi gli altri PC e la coda si svuota molto più in fretta". Compare solo quando serve davvero (una coda, non un lavoro singolo) e solo se gli altri PC non sono già al lavoro
 
 ## Regia "fare soldi": la demo NAVIGA il sito vero (non genera un video a caso)
 - Un contenuto del piano che fa vedere l'app (interfaccia, navigazione, come funziona) ora diventa una **registrazione dello schermo del sito vero** (Regista web), non un video generato da zero con Wan. È ciò che serve a un piano di business — e ciò che la macchina sa fare davvero bene
