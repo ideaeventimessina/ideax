@@ -516,6 +516,7 @@ async function chatForSystem(d, sys) {
 }
 systems.configure({ createJob, chat: chatForSystem });
 catena.configure({ createJob });
+regia.configure({ createJob, getJob: (id) => jobs.get(id) });
 personaggio.configure({ createJob });
 personaggi.configure({ createJob });
 webdemo.configure({ createJob });
@@ -800,6 +801,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/regia/study' && req.method === 'POST') return send(res, 200, regia.studyProjects());
     if (/^\/api\/regia\/projects\/[\w-]+$/.test(p) && req.method === 'PATCH') return send(res, 200, regia.updateProject(p.split('/').pop(), await readJson(req)));
     if (/^\/api\/regia\/projects\/[\w-]+\/piano$/.test(p) && req.method === 'POST') return send(res, 200, regia.pianoGuadagno(p.split('/')[4], (await readJson(req)).focus || ''));
+    if (/^\/api\/regia\/projects\/[\w-]+\/contenuti$/.test(p) && req.method === 'POST') return send(res, 200, { lavori: await regia.creaContenuti(p.split('/')[4]) });
     if (p === '/api/regia/ideas' && req.method === 'POST') return send(res, 200, regia.proposeBusiness((await readJson(req)).focus || ''));
     if (/^\/api\/regia\/ideas\/[\w-]+$/.test(p) && req.method === 'DELETE') { regia.deleteIdea(p.split('/').pop()); return send(res, 200, { ok: true }); }
     if (/^\/api\/regia\/ideas\/[\w-]+\/mission$/.test(p) && req.method === 'POST') return send(res, 200, regia.startMission(p.split('/')[4]));

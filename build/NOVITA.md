@@ -4,6 +4,15 @@ Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.17.1.exe** e apr
 ## Decorazioni per IDEAlab
 - Le immagini lunghe non si interrompono più a 5 minuti: ideax aspetta il motore immagini quanto serve (fino a 15 minuti). Prima una decorazione con Flux su una scheda lenta finiva con "Non riesco a contattare 127.0.0.1:7861"
 
+## Regia esegue i piani
+- Nel piano per fare soldi c'è **▶ Crea i contenuti con ideax**: ideax produce da solo i contenuti del piano (reel, immagini, video, demo del sito). I passi su Bill e a tuo carico restano da fare a mano
+- I contenuti avviati si vedono nel piano e finiscono nell'archivio creazioni man mano che sono pronti
+
+## Video Wan 2.2 14B (sperimentale)
+- Nuovo motore **Video Wan 2.2 14B** (Modelli → Motori, circa 34 GB): video più dettagliati e con più movimento del 5B, da una foto. È dove sono fatte la maggior parte delle LoRA per Wan
+- Due modelli esperti + acceleratore Lightning a 4 passi. Pesante per una scheda da 16 GB (fp8): può essere lento, da provare sulla tua scheda
+- Le LoRA per Wan 14B vanno in models\loras e vengono usate nel video
+
 ## Regista web: ideax registra i tuoi siti
 - Nuovo motore **Regista web** (Modelli → Motori): ideax apre un browser vero sulle tue pagine, fa login e **registra lo schermo** per i video dimostrativi dei tuoi software
 - Gli accessi (indirizzo, utente, password) si salvano in **Collega app → Accessi ai miei siti**: restano sul PC, non escono mai, non finiscono nel video

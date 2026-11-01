@@ -2826,7 +2826,9 @@ function pianoHtml(pl) {
     ${(pl.social || []).length ? `<h4>Social</h4><ul>${pl.social.map((x) => `<li><strong>${esc(x.piattaforma)}</strong>: ${esc(x.cosa)}</li>`).join('')}</ul>` : ''}
     ${(pl.campagne || []).length ? `<h4>Campagne adv</h4><ul>${pl.campagne.map((x) => `<li><strong>${esc(x.piattaforma)}</strong> · ${esc(x.pubblico)} · ${esc(x.budget_mese)}/mese${x.messaggio ? `<br><span class="muted">${esc(x.messaggio)}</span>` : ''}</li>`).join('')}</ul>` : ''}
     <h4>Passi</h4><ol class="steps-list">${(pl.passi || []).map((x) => `<li><span class="tool">${esc(x.strumento)}</span>${esc(x.cosa)}</li>`).join('')}</ol>
-    ${pl.rischi ? `<p class="small muted">Rischi: ${esc(pl.rischi)}</p>` : ''}</details>`;
+    ${pl.rischi ? `<p class="small muted">Rischi: ${esc(pl.rischi)}</p>` : ''}
+    ${(pl.contenuti || []).some((c) => /ideax/i.test(c.strumento || '')) ? `<div class="row"><button class="btn small primary" type="button" data-contenuti>▶ Crea i contenuti con ideax</button><span class="small muted">i passi su Bill e a tuo carico restano da fare a mano</span></div>` : ''}
+    ${(pl.lavori || []).length ? `<div class="lavori">${pl.lavori.map((l) => `<div class="small">${l.errore ? `<span class="error-text">${esc(l.tipo)}: ${esc(l.errore)}</span>` : `<span class="tool">${esc(l.tipo)}</span>${esc(l.idea)} <span class="muted">avviato</span>`}</div>`).join('')}</div>` : ''}</details>`;
 }
 
 async function loadRegia() {
@@ -2902,6 +2904,12 @@ $('#page-regia').addEventListener('click', async (e) => {
   if (card && e.target.closest('[data-note]')) {
     const note = prompt('Nota per ideax su questo progetto (es. "è il nostro prodotto principale", "fermo, non usarlo")');
     if (note != null) { await api(`/api/regia/projects/${card.dataset.project}`, { method: 'PATCH', body: { note } }); loadRegia(); }
+  }
+  if (card && e.target.closest('[data-contenuti]')) {
+    const btn = e.target.closest('[data-contenuti]'); btn.disabled = true; btn.textContent = 'Avvio…';
+    try { const r = await api(`/api/regia/projects/${card.dataset.project}/contenuti`, { method: 'POST' }); alert(`Avviati ${r.lavori.filter((l) => !l.errore).length} contenuti. Li trovi nell'archivio creazioni man mano che sono pronti.`); }
+    catch (err) { alert(err.message); }
+    loadRegia(); return;
   }
   if (card && e.target.closest('[data-piano]')) {
     const focus = prompt('Vuoi un taglio preciso al piano? (facoltativo: es. "parti da TikTok", "poco budget")') || '';
