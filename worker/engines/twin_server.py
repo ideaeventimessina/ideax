@@ -26,6 +26,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--port", type=int, default=7873)
 parser.add_argument("--app", required=True, help="cartella di ai-toolkit")
 parser.add_argument("--work", required=True, help="cartella dei dati di addestramento")
+parser.add_argument("--model", default="black-forest-labs/FLUX.1-dev", help="cartella locale di FLUX.1-dev (scaricata da ideax)")
 args = parser.parse_args()
 APP = Path(args.app)
 WORK = Path(args.work)
@@ -69,7 +70,7 @@ def config_for(req: TrainRequest, dataset: Path, out: Path) -> dict:
                     "dtype": "bf16", "disable_sampling": True, "skip_first_sample": True,
                 },
                 # 16 GB: trasformatore quantizzato a 8 bit e quantizzazione a pezzi (più lenta, ma ci sta)
-                "model": {"name_or_path": "black-forest-labs/FLUX.1-dev", "is_flux": True, "quantize": True, "low_vram": req.low_vram},
+                "model": {"name_or_path": args.model, "is_flux": True, "quantize": True, "low_vram": req.low_vram},
                 "sample": {"sampler": "flowmatch", "sample_every": 100000, "width": 1024, "height": 1024,
                            "prompts": [f"photo of {req.trigger}"], "neg": "", "seed": 42, "guidance_scale": 4, "sample_steps": 20},
             }],
