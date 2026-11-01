@@ -328,8 +328,29 @@ async function processJob(job) {
     }
     log(`Compito: ${store.TASKS[d.task]} → ${d.model.name}`);
     if (d.reason) log(d.reason);
+    // Un modello che anima solo una foto (es. Stable Video Diffusion) senza foto di partenza:
+    // prima si crea l'immagine dal testo, poi la si anima
+    const needsStill = /video|animation/.test(d.task) && !d.model.capabilities?.includes('video_generate')
+      && (d.model.arch === 'svd' || /StableVideoDiffusion/i.test(d.model.pipelineClass || ''))
+      && !job.attachments.some((a) => a.type?.startsWith('image/'));
+    if (needsStill) {
+      log('Il motore video parte da una foto: prima creo l\'immagine dal testo');
+      const di = await route(job.prompt, [], { forceTask: 'image_generate' });
+      const blockedStill = blockedReason(di.prompt);
+      if (blockedStill) throw new Error(blockedStill);
+      const still = { ...job, attachments: [], loras: di.loras || [], routedPrompt: di.prompt, negativePrompt: di.negativePrompt,
+        params: { ...(di.styleParams || {}), ...(di.model.params || {}), aspect: /reel|verticale|storia|stories|9:16|tiktok/i.test(job.prompt) ? '9:16' : '16:9' } };
+      const [img] = await runModel(di.model, 'image_generate', still, log);
+      if (job.cancelled) throw new Error('Annullato');
+      if (!img) throw new Error('Non sono riuscito a creare la foto di partenza del video');
+      const buf = fs.readFileSync(path.join(store.OUTPUT_DIR, path.basename(img.url)));
+      job.attachments = [{ name: path.basename(img.url), type: img.type, dataUrl: `data:${img.type};base64,${buf.toString('base64')}` }];
+      job.still = img;
+      log(`Foto di partenza pronta (${di.model.name}), ora la animo`);
+    }
     job.status = 'running';
     job.results = await runModel(d.model, d.task, job, log);
+    if (job.still) job.results = [...job.results, job.still];
     job.status = 'done';
     log('Completato.');
   } catch (err) {
