@@ -1,3 +1,4 @@
+# Questo codice è stato progettato, scritto e generato da Andrea Gentile C.f GNTNDR88S28F158M
 """Vettorizzatore per il laser: da un'immagine (sagoma nera su fondo bianco) a tracciati SVG in millimetri.
 
 - "taglio": la sagoma si taglia. Si tolgono le parti più sottili di min_mm e si chiudono i varchi più
@@ -94,6 +95,22 @@ def _layout(box_size, width_mm, height_mm):
     return w_mm, h_mm, ppm, size
 
 
+def _background(rgb: Image.Image, limit: int, margin: int = 24) -> tuple[int, int, int]:
+    """Soglia per canale fra fondo e disegno, presa dal bordo dell'immagine: il modello di immagini non sempre fa
+    il fondo bianco puro (spesso è un grigio o un crema sfumato, 215-230) e una soglia fissa lo prenderebbe tutto
+    come parte del pezzo. Se il bordo è scuro (il soggetto tocca il bordo) resta la soglia fissa."""
+    w, h = rgb.size
+    s = max(2, round(min(w, h) * 0.02))
+    strips = [rgb.crop((0, 0, w, s)), rgb.crop((0, h - s, w, h)), rgb.crop((0, 0, s, h)), rgb.crop((w - s, 0, w, h))]
+    levels = []
+    for c in range(3):
+        values = sorted(v for strip in strips for v in strip.getchannel(c).getdata())
+        levels.append(values[len(values) // 2])
+    if min(levels) < 128:
+        return (limit, limit, limit)
+    return tuple(min(limit, v - margin) for v in levels)
+
+
 def _binary(img: Image.Image) -> Image.Image:
     return img.point(lambda v: 255 if v >= 128 else 0)
 
@@ -181,9 +198,11 @@ def decorate(data: bytes, width_mm: float, height_mm: float, min_mm: float = 3.0
     """Da un'illustrazione su fondo bianco a un pezzo vero: il contorno esterno si taglia, i tratti scuri
     dentro il pezzo si incidono. Le misure di entrambi i livelli sono nello stesso riquadro w×h (mm)."""
     rgb = _load(data)
-    # Tutto ciò che non è fondo bianco fa parte del pezzo
-    fg = rgb.point(lambda v: 255 if v < background else 0).convert("L").point(lambda v: 255 if v > 0 else 0)
-    fg = ImageChops.lighter(fg, rgb.convert("L").point(lambda v: 255 if v < background else 0))
+    # Tutto ciò che è nettamente più scuro del fondo fa parte del pezzo
+    thr = _background(rgb, background)
+    fg = Image.merge("RGB", [ch.point(lambda v, t=t: 255 if v < t else 0) for ch, t in zip(rgb.split(), thr)])
+    fg = fg.convert("L").point(lambda v: 255 if v > 0 else 0)
+    fg = ImageChops.lighter(fg, rgb.convert("L").point(lambda v: 255 if v < min(thr) else 0))
     fg = fg.filter(ImageFilter.MedianFilter(5))
     box = fg.getbbox()
     if not box:

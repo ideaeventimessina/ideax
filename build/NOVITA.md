@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.2.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.3.exe** e aprilo.
+
+## Decorazioni laser: il taglio segue la sagoma anche su fondo grigio
+- Il modello di immagini non sempre fa il fondo bianco puro: spesso lo dipinge grigio o crema sfumato. Il vettorizzatore prendeva tutto ciò che non era bianco come parte del pezzo, e il taglio diventava il quadrato dell'immagine invece della sagoma (es. un cuore nero su grigio 220)
+- Ora il colore del fondo si misura sul bordo dell'immagine e nel pezzo entra solo ciò che è nettamente più scuro: cuore su grigio, su bianco e su crema danno tutti e tre il contorno del cuore
 
 ## Decorazioni laser: scelgono un SDXL pulito
 - Tra i modelli che hai, le decorazioni preferiscono un SDXL generico (es. realityvision) a uno specializzato in anime/espliciti (es. Pony, che senza i suoi tag rende sporco)
