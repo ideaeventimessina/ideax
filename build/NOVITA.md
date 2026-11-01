@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.15.3.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.15.4.exe** e aprilo.
+
+## Solo risposte
+- ideax risponde e basta: niente premesse ("Ok, capisco", "Visto che hai attivato…"), niente commenti su filtri, impostazioni o regole, niente spiegazioni su cosa sta per fare. Le frasi di contorno vengono tolte anche se il cervello le scrive
 
 ## Correzione: niente più falsi rifiuti
 - Una barzelletta o un racconto con dentro "non posso" veniva scambiato per un rifiuto del cervello e sostituito da un messaggio sui filtri. Ora conta come rifiuto solo una risposta che rifiuta davvero la richiesta
