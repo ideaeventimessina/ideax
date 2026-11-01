@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.16.0.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.16.1.exe** e aprilo.
+
+## Il racconto continua
+- Il seguito di un testo ("più breve", "più esplicito", "continua") resta un testo e lo scrive il cervello scrittore
+- Immagini, video e musica partono solo quando li chiedi davvero: niente più immagini a caso al posto di una risposta
 
 ## Fotomontaggio e scontorno
 - Due nuovi motori in Modelli → Motori (usano il ComfyUI di MOSS-Image):
