@@ -1,5 +1,10 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.22.1.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.23.0.exe** e aprilo.
+
+## Nuovo stile "Fotoreale (pelle vera)"
+- Un nuovo stile che mette i tag giusti per la pelle vera (quello che trasforma una base SD1.5/SDXL realistica da "plastica" a fotografia): pori, luce naturale, grana, e un negativo forte contro il look finto. Vale per ritratti, matrimoni e per i profili adulti
+- Si accende **da solo** sulle basi realistiche (epiCRealism, Realistic Vision, CyberRealistic, Juggernaut… o qualunque nome con "realistic/photoreal"). Lo puoi anche scegliere a mano su qualunque checkpoint da Modelli → (apri il modello) → Stile
+- Per un profilo pronto: metti una base SD1.5 realistica (priorità alta) + le tue LoRA con **peso ~0,7**, **"sempre attiva"** e le **parole chiave** della LoRA: così i grilletti si scrivono da soli a ogni generazione e non li digiti più
 
 ## Correzione: VAE di Video Wan 2.2 14B
 - Il file del VAE si scaricava col nome sbagliato (`wan2.1_vae` invece di `wan_2.1_vae`), così l'installazione del motore 14B finiva con "Dopo il download manca wan2.1_vae.safetensors". Ora il nome è giusto: reinstalla **Video Wan 2.2 14B** da Modelli → Motori e scarica solo il VAE mancante (~250 MB, i modelli grossi già scaricati non si riscaricano)
