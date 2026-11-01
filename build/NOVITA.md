@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.15.2.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.15.3.exe** e aprilo.
+
+## Correzione: niente più falsi rifiuti
+- Una barzelletta o un racconto con dentro "non posso" veniva scambiato per un rifiuto del cervello e sostituito da un messaggio sui filtri. Ora conta come rifiuto solo una risposta che rifiuta davvero la richiesta
 
 ## Aggiornamenti e ponti più chiari
 - ideax controlla le nuove versioni ogni 30 minuti (prima ogni 6 ore) e anche quando torni sulla sua finestra
