@@ -24,7 +24,7 @@ DEMO = os.environ.get("IDEAX_DEMO") == "1"
 SR = 24000
 app = FastAPI(title="ideax voce")
 lock = threading.Lock()
-state: dict = {"model": None, "device": None}
+state: dict = {"model": None, "device": None, "cond_key": None}  # cond_key: l'impronta della voce già calcolata (vedi /speak)
 PROGRESS: dict = {"step": 0, "total": 0, "phase": None, "cancel": False}
 
 LANGUAGES = ["ar", "da", "de", "el", "en", "es", "fi", "fr", "he", "hi", "it", "ja", "ko", "ms", "nl", "no", "pl", "pt", "ru", "sv", "sw", "tr", "zh"]
@@ -60,6 +60,7 @@ def load_model():
     print(f"[voce] carico Chatterbox Multilingual su {device}", flush=True)
     state["model"] = ChatterboxMultilingualTTS.from_pretrained(device=device)
     state["device"] = device
+    state["cond_key"] = None  # modello nuovo: l'impronta va ricalcolata
     return state["model"]
 
 
@@ -80,6 +81,7 @@ def warmup():
 def unload():
     with lock:
         state["model"] = None
+        state["cond_key"] = None
         try:
             import torch
 
@@ -205,9 +207,25 @@ def speak(req: SpeakRequest):
                 model = load_model()
                 if req.seed is not None:
                     torch.manual_seed(int(req.seed))
+                # L'impronta della voce (dal campione di riferimento) si calcola UNA volta e si riusa: senza questo,
+                # il modello la ricalcolava a ogni frase e a ogni chiamata — il grosso del tempo anche solo per "ciao".
+                # Se la versione di Chatterbox non ha prepare_conditionals, si torna al vecchio modo (nessun peggioramento).
+                usa_cache = False
+                if req.reference and hasattr(model, "prepare_conditionals"):
+                    try:
+                        chiave = (req.reference, os.path.getmtime(req.reference), round(req.exaggeration, 3))
+                        if state.get("cond_key") != chiave:
+                            model.prepare_conditionals(req.reference, exaggeration=req.exaggeration)
+                            state["cond_key"] = chiave
+                        usa_cache = True
+                    except Exception as err:  # noqa: BLE001
+                        print(f"[voce] impronta non riusabile ({type(err).__name__}: {err}): la ricalcolo ogni volta", flush=True)
+                        state["cond_key"] = None
+                        usa_cache = False
                 for i, c in enumerate(chunks):
                     wav = model.generate(
-                        c, language_id=req.language, audio_prompt_path=req.reference,
+                        c, language_id=req.language,
+                        audio_prompt_path=None if usa_cache else req.reference,
                         exaggeration=req.exaggeration, cfg_weight=req.cfg_weight, temperature=req.temperature,
                     )
                     pieces += [wav.squeeze(0).detach().cpu().numpy().astype("float32"), pause]

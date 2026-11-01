@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.23.1.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.23.2.exe** e aprilo.
+
+## Voce più veloce (anche solo per "ciao")
+- L'impronta della voce (ricavata dal campione di 8-10 s) veniva **ricalcolata a ogni frase e a ogni chiamata**: era il grosso del tempo, anche per una parola. Ora si calcola **una volta sola** e si riusa finché resti sulla stessa voce — le letture brevi diventano molto più rapide
+- Resta il caricamento del modello (~3 GB) quando il motore voce è stato spento da fermo (dopo 10 minuti di inattività libera la scheda video per le immagini): la prima lettura dopo una pausa è più lenta, le successive no
 
 ## Correzione: un lavoro bloccato non resta più appeso per sempre
 - Se il motore immagini si inchioda (memoria esaurita, modello incastrato) la richiesta restava appesa all'infinito: il lavoro non consegnava né risultato né errore, e teneva occupata la GPU (le app, es. IDEAlab, aspettavano a vuoto). Ora c'è un tetto di tempo (20 min per le immagini, 45 per i video): oltre quello il lavoro **fallisce con un messaggio chiaro** invece di restare muto
