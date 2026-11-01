@@ -155,6 +155,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 def free_memory():
     _loaded.update(key=None, pipe=None, derived={}, arch=None, variant=None)
+    _whisper.update(path=None, pipe=None)
     gc.collect()
     if not DEMO and torch().cuda.is_available():
         torch().cuda.empty_cache()
@@ -718,6 +719,58 @@ def decorate_endpoint(req: DecorateRequest):
         return decorate(base64.b64decode(raw), req.width_mm, req.height_mm, req.min_mm, req.gap_mm)
     except ValueError as err:
         raise HTTPException(400, str(err))
+
+
+class TrascriviRequest(BaseModel):
+    audio: str  # data URL o base64 (qualsiasi formato che ffmpeg legge: mp3, m4a, ogg, webm, wav, video…)
+    model: str  # cartella locale di whisper-large-v3-turbo (la scarica ideax)
+    language: Optional[str] = None  # "it", "en"… vuoto = la riconosce da sé
+    timestamps: bool = True
+
+
+_whisper: dict[str, Any] = {"path": None, "pipe": None}
+
+
+@app.post("/trascrivi")
+def trascrivi(req: TrascriviRequest):
+    """Trascrizione con Whisper large-v3-turbo (OpenAI, MIT) sulla scheda video: testo e pezzi con i tempi."""
+    start = time.time()
+    raw = req.audio.split(",", 1)[1] if req.audio.startswith("data:") else req.audio
+    with tempfile.TemporaryDirectory() as tmp:
+        src, wav = os.path.join(tmp, "in"), os.path.join(tmp, "audio.wav")
+        with open(src, "wb") as f:
+            f.write(base64.b64decode(raw))
+        import imageio_ffmpeg
+        proc = subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-i", src, "-ac", "1", "-ar", "16000", "-f", "wav", wav],
+                              capture_output=True, text=True)
+        if proc.returncode != 0 or not os.path.exists(wav):
+            raise HTTPException(400, f"Non riesco a leggere l'audio: {proc.stderr[-300:]}")
+        import numpy as np
+        import wave
+        with wave.open(wav) as w:
+            audio = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768.0
+    seconds = len(audio) / 16000
+    if DEMO:
+        return {"text": f"(trascrizione di prova di {seconds:.1f} secondi)", "chunks": [], "seconds": round(seconds, 1), "elapsed": 0}
+    with gen_lock:
+        try:
+            t = torch()
+            if _whisper["path"] != req.model:
+                from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+
+                dev = device_info()["device"]
+                dtype = t.float16 if dev == "cuda" else t.float32
+                model = AutoModelForSpeechSeq2Seq.from_pretrained(req.model, torch_dtype=dtype, low_cpu_mem_usage=True).to(dev)
+                proc_ = AutoProcessor.from_pretrained(req.model)
+                _whisper.update(path=req.model, pipe=pipeline("automatic-speech-recognition", model=model, tokenizer=proc_.tokenizer,
+                                                              feature_extractor=proc_.feature_extractor, torch_dtype=dtype, device=dev))
+            kwargs = {"return_timestamps": req.timestamps, "chunk_length_s": 30, "batch_size": 8,
+                      "generate_kwargs": {"task": "transcribe", **({"language": req.language} if req.language else {})}}
+            out = _whisper["pipe"]({"raw": audio, "sampling_rate": 16000}, **kwargs)
+        except Exception as err:  # noqa: BLE001
+            raise HTTPException(500, f"Trascrizione non riuscita: {type(err).__name__}: {err}")
+    chunks = [{"inizio": c["timestamp"][0], "fine": c["timestamp"][1], "testo": c["text"].strip()} for c in out.get("chunks", []) if c.get("timestamp")]
+    return {"text": out["text"].strip(), "chunks": chunks, "seconds": round(seconds, 1), "elapsed": round(time.time() - start, 2)}
 
 
 class ScontornaRequest(BaseModel):

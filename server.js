@@ -17,6 +17,9 @@ import * as voicelib from './lib/voicelib.js';
 import * as music from './lib/music.js';
 import { runReel } from './lib/reels.js';
 import * as catena from './lib/catena.js';
+import * as personaggio from './lib/personaggio.js';
+import * as trascrizione from './lib/transcribe.js';
+import * as visione from './lib/vision.js';
 import { fallbackTitle } from './lib/router.js';
 import * as runtime from './lib/runtime.js';
 import * as updater from './lib/updater.js';
@@ -34,7 +37,7 @@ import * as llama from './lib/llamaserver.js';
 import * as twin from './lib/twin.js';
 import * as fixes from './lib/fixes.js';
 import * as brains from './lib/brains.js';
-import { blockedReason } from './lib/safety.js';
+import { blockedReason, adultGuard } from './lib/safety.js';
 import * as regia from './lib/regia.js';
 import { brainPair } from './lib/brain.js';
 
@@ -197,6 +200,7 @@ async function createJob(body, ctx = {}) {
     reel: body.reel,
     talk: body.talk,
     catena: body.catena,
+    personaggio: body.personaggio,
     client: ctx.client || 'ideax',
     origin: ctx.origin || '',
     callbackUrl: callback,
@@ -302,6 +306,12 @@ async function processJob(job) {
       await twin.runTalk(job, log);
       return;
     }
+    if (job.kind === 'personaggio') {
+      job.results = await personaggio.runPersonaggio(job, log);
+      job.status = 'done';
+      log('Completato.');
+      return;
+    }
     if (job.kind === 'catena') {
       job.results = await catena.runCatena(job, log);
       job.status = 'done';
@@ -336,6 +346,7 @@ async function processJob(job) {
     // Il prompt riscritto dal cervello passa dagli stessi limiti di quello scritto dall'utente
     const blockedRouted = blockedReason(job.routedPrompt);
     if (blockedRouted) throw new Error(blockedRouted);
+    { const g = adultGuard(job.routedPrompt, job.negativePrompt); job.routedPrompt = g.prompt; job.negativePrompt = g.negative; }
     // La parola imparata da una LoRA (il viso del gemello) deve stare nel prompt, altrimenti la LoRA non "riconosce" la richiesta
     for (const l of d.loras || []) {
       if (l.promptToken && !job.routedPrompt.includes(l.promptToken)) job.routedPrompt = `${l.promptToken}, ${job.routedPrompt}`;
@@ -493,6 +504,7 @@ async function chatForSystem(d, sys) {
 }
 systems.configure({ createJob, chat: chatForSystem });
 catena.configure({ createJob });
+personaggio.configure({ createJob });
 
 function publicSettings() {
   const s = store.getSettings();
@@ -552,6 +564,20 @@ const server = http.createServer(async (req, res) => {
       return send(res, job.status === 'done' ? 200 : 500, out);
     }
     // ----- Voce -----
+    // Trascrizione (Whisper) e vista (cervello VL): { audio } → { testo, pezzi }, { immagini: [dataUrl], domanda, schema? }
+    if (p === '/v1/trascrivi' && req.method === 'POST') {
+      const b = await readJson(req);
+      return send(res, 200, await trascrizione.transcribe(b.audio, { lingua: b.lingua, tempi: b.tempi !== false }));
+    }
+    if (p === '/v1/vista' && req.method === 'POST') {
+      const b = await readJson(req);
+      return send(res, 200, await visione.look(b.immagini || (b.immagine ? [b.immagine] : []), b.domanda, { schema: b.schema || null }));
+    }
+    if (p === '/v1/personaggio' && req.method === 'POST') {
+      const b = await readJson(req);
+      const job = await createJob({ prompt: b.testo, kind: 'personaggio', personaggio: { descrizione: b.descrizione, voce: b.voce, lingua: b.lingua, formato: b.formato }, attachments: b.foto ? [{ name: 'foto', dataUrl: b.foto }] : [] }, ctx);
+      return send(res, 202, { id: job.id, status: job.status, status_url: `${origin}/v1/jobs/${job.id}` });
+    }
     if (p === '/api/catena/montatore' && req.method === 'GET') return send(res, 200, await catena.montatoreStato());
     if (p === '/v1/catena' && req.method === 'POST') {
       const b = await readJson(req);

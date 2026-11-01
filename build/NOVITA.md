@@ -1,5 +1,22 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.16.1.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.17.0.exe** e aprilo.
+
+## Nuovi motori
+- **Trascrizione** (Whisper large-v3-turbo): allega un vocale o un video e ideax lo trascrive; con "sottotitoli" anche con i tempi. Il modello (1,6 GB) si scarica da solo la prima volta
+- **Vista**: allega una foto e chiedi cosa c'è, quante persone, cosa dice un testo. Usa il tuo Qwen3-VL: il file della vista (circa 1 GB) si scarica da solo
+- **Immagini con testo (Qwen-Image)**: inviti, locandine, copertine, menu con le scritte giuste. Modelli → Motori → Installa (circa 22 GB; meno se hai già il Fotomontaggio Qwen)
+- **Ingrandimento 4×** per la stampa (4x-UltraSharp, 67 MB): allega una foto e scrivi "ingrandisci"
+- **Personaggio parlante**: "un personaggio che dice …": foto (o la crei), video con Wan, voce dalla Libreria voci e labbra a tempo
+- **LoRA per Wan**: le LoRA fatte per Wan nella cartella loras vengono riconosciute e usate nei video
+
+## Orchestratore
+- Nei casi chiari il motore lo scelgono regole fisse (foto + "trasforma" = fotomontaggio, vocale = trascrizione, "racconta" = scrittore…), il cervello decide solo il resto
+- Ogni versione passa da un banco di prova di 57 richieste vere: se una va al motore sbagliato, la versione non esce
+- Il cervello conosce la scheda di ogni motore
+
+## Limiti
+- Divise e uniformi (college, università, gioco di ruolo) sono ammesse nelle scene per adulti: ideax aggiunge da solo che sono adulte
+- Resta un solo blocco: niente contenuti sessuali con minori
 
 ## Il racconto continua
 - Il seguito di un testo ("più breve", "più esplicito", "continua") resta un testo e lo scrive il cervello scrittore
