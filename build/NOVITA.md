@@ -1,5 +1,10 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.23.2.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.24.0.exe** e aprilo.
+
+## Regia in diretta: vedi i lavori delle app mentre nascono
+- Quando arriva un lavoro da una tua app (IDEAlab, Bill, IDEAeventi…), ideax ti porta **da solo allo Studio** e te lo fa vedere costruire in tempo reale
+- Leggi il **prompt arrivato** e da **quale app**, vedi il **modello scelto** e come ha interpretato la richiesta, e segui i **passi** del motore uno per uno con l'avanzamento
+- Non ti ruba la scena: se stai già guardando un altro lavoro, aspetta che finisca. I lavori che lanci tu dallo Studio restano come prima
 
 ## Voce più veloce (anche solo per "ciao")
 - L'impronta della voce (ricavata dal campione di 8-10 s) veniva **ricalcolata a ogni frase e a ogni chiamata**: era il grosso del tempo, anche per una parola. Ora si calcola **una volta sola** e si riusa finché resti sulla stessa voce — le letture brevi diventano molto più rapide

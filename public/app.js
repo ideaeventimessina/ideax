@@ -19,7 +19,15 @@ const state = {
   shown: null, // creazione mostrata nel riquadro grande
   lastRequest: null,
   step: 1,
+  localIds: new Set(), // lavori nati da QUESTO browser: la regia in diretta non li "riacchiappa"
+  liveSeen: new Set(), // lavori esterni (dalle app) già portati in scena una volta
 };
+
+// Chi ha mandato il lavoro è "esterno" se non è questo browser (chat interna "ideax") né l'API locale di questo PC:
+// un nome d'app (IDEAlab, Bill, IDEAeventi…) significa che è arrivato da fuori, via ponte.
+function isExternal(client) {
+  return !!client && !/^(App su questo PC|ideax)$/i.test(client);
+}
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
@@ -189,6 +197,7 @@ async function submit(request) {
   renderStage();
   try {
     const { id } = await api('/api/generate', { method: 'POST', body: request });
+    state.localIds.add(id);
     $('#prompt').value = '';
     state.attachments = [];
     renderAttachments();
@@ -218,6 +227,30 @@ async function poll(id) {
   }
 }
 
+// LA REGIA IN DIRETTA: guarda i lavori in corso; appena ne nasce uno arrivato da un'app (via ponte), ti porta allo
+// Studio e te lo fa vedere costruire. Non ruba la scena se stai già guardando un altro lavoro: aspetta che finisca.
+async function watchIncoming() {
+  for (;;) {
+    try {
+      const { active } = await api('/api/jobs');
+      const vivi = new Set((active || []).map((j) => j.id));
+      for (const s of [state.localIds, state.liveSeen]) for (const id of [...s]) if (!vivi.has(id)) s.delete(id);
+      const busy = state.job && !['done', 'error', 'cancelled'].includes(state.job.status);
+      const esterno = (active || []).find((j) => isExternal(j.client) && !state.localIds.has(j.id) && !state.liveSeen.has(j.id));
+      if (esterno && !busy) {
+        state.liveSeen.add(esterno.id);
+        attachLive(esterno.id);
+      }
+    } catch { /* ideax non raggiungibile per un attimo: riprovo */ }
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+}
+
+async function attachLive(id) {
+  if ((location.hash.slice(1) || 'studio') !== 'studio') location.hash = 'studio';
+  await poll(id); // guida la scena (prompt, modello, log, avanzamento) fino alla consegna
+}
+
 function errorAdvice(msg) {
   if (/Memoria della GPU/i.test(msg)) {
     return { title: 'Memoria della GPU esaurita', text: 'Prova una risoluzione più bassa oppure meno fotogrammi.', actions: ['retry-small', 'retry'] };
@@ -238,6 +271,36 @@ const ART = `<svg class="art" viewBox="0 0 320 220" aria-hidden="true">
   <path d="M0 170 L70 110 L120 150 L180 95 L250 150 L320 120 L320 220 L0 220Z" fill="#14151b" opacity=".75"/>
   <path d="M0 190 L90 150 L160 185 L240 155 L320 180 L320 220 L0 220Z" fill="#0d0e12" opacity=".8"/>
 </svg>`;
+
+// Il pannello della regia in diretta: lo spazio dove leggi il prompt arrivato e vedi i passi. Si mostra solo per i
+// lavori che hanno un prompt (immagini, video, musica…): i contenitori sono vuoti e li riempie updateRegia a ogni giro.
+function regiaPanel(job) {
+  if (!job || !job.prompt) return '';
+  const chi = isExternal(job.client) ? `<span class="chip small">da ${esc(job.client)}</span>` : '';
+  return `<div class="regia">
+    <div class="regia-head">${chi}<span class="muted small">Richiesta</span></div>
+    <p class="regia-prompt"></p>
+    <p class="muted small regia-model"></p>
+    <div class="live-log" aria-live="polite"></div>
+  </div>`;
+}
+
+function updateRegia(job) {
+  const stage = $('#stage');
+  const p = $('.regia-prompt', stage);
+  if (p) p.textContent = `“${job.prompt || ''}”`;
+  const m = $('.regia-model', stage);
+  if (m) {
+    const righe = [job.model, job.task && state.meta.tasks[job.task]].filter(Boolean).join(' · ');
+    const interp = job.routedPrompt && job.routedPrompt !== job.prompt ? ` · come: ${job.routedPrompt}` : '';
+    m.textContent = righe + interp;
+  }
+  const log = $('.live-log', stage);
+  if (log && job.log) {
+    log.innerHTML = job.log.slice(-7).map((l) => `<div>${esc(l.msg)}</div>`).join('');
+    log.scrollTop = log.scrollHeight;
+  }
+}
 
 function renderStage() {
   const stage = $('#stage');
@@ -290,11 +353,12 @@ function renderStage() {
         text = p?.phase === 'Carico il modello in memoria' ? 'Carico il modello in memoria: la prima volta può richiedere un minuto.' : `${job.model ? `${job.model} · ` : ''}preparazione in corso.`;
       }
     }
-    // Se la fase non cambia aggiorniamo solo testo e barra: il pulsante Annulla resta cliccabile
+    // Se la fase non cambia aggiorniamo solo testo, barra e la regia in diretta (prompt + log): Annulla resta cliccabile
     const sig = `${job.id}|${chip}|${pct == null}`;
     if (stage.dataset.sig === sig) {
       $('.stage-text', stage).textContent = text;
       $('.progress > div', stage).style.width = `${pct ?? 0}%`;
+      updateRegia(job);
       return;
     }
     stage.dataset.sig = sig;
@@ -302,7 +366,9 @@ function renderStage() {
       <span class="chip">${esc(chip)}</span><h2>${esc(title)}</h2><p class="muted stage-text">${esc(text)}</p>
       <div class="progress ${pct == null ? 'indeterminate' : ''}"><div style="width:${pct ?? 0}%"></div></div>
       ${job.id ? '<div class="row"><button class="btn" data-act="cancel">Annulla questo lavoro</button></div>' : ''}
-      ${job.reason ? `<p class="muted small">${esc(job.reason)}</p>` : ''}</div>`;
+      ${job.reason ? `<p class="muted small">${esc(job.reason)}</p>` : ''}
+      ${regiaPanel(job)}</div>`;
+    updateRegia(job);
     return;
   }
 
@@ -1229,6 +1295,7 @@ document.addEventListener('click', (e) => {
     location.replace('#primi-passi');
   }
   showPage();
+  watchIncoming(); // la regia in diretta: porta allo Studio i lavori che arrivano dalle app
   setInterval(refreshStatus, 5000);
   setInterval(() => { if (!state.models.local.length) loadModels(); }, 15000);
 })();

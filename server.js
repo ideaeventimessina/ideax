@@ -1252,6 +1252,15 @@ const server = http.createServer(async (req, res) => {
       const job = await createJob(body, ctx);
       return send(res, 202, { id: job.id });
     }
+    // I lavori in corso adesso (anche quelli arrivati dalle app via ponte): la "regia in diretta" li guarda per
+    // portarti allo Studio appena ne nasce uno e farti vedere il prompt e come lo costruisce.
+    if (p === '/api/jobs' && req.method === 'GET') {
+      const active = [...jobs.values()]
+        .filter((j) => !['done', 'error', 'cancelled'].includes(j.status))
+        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
+        .map((j) => ({ id: j.id, client: j.client, status: j.status, prompt: j.prompt, title: j.title, model: j.modelName, createdAt: j.createdAt }));
+      return send(res, 200, { active });
+    }
     if (p.startsWith('/api/jobs/') && req.method === 'GET') {
       const job = jobs.get(p.split('/').pop());
       return job ? send(res, 200, publicJob(job)) : send(res, 404, { error: 'Lavoro non trovato' });
