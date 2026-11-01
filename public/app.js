@@ -93,7 +93,7 @@ function showPage() {
   if (page === 'cervello') loadBrainPage();
   if (page === 'collega') { loadSystems(); loadAccessi(); loadFarm(); }
   if (page === 'regia') loadRegia();
-  if (page === 'modelli') { loadEngines(); loadFixes(); refreshSetup().then(() => { renderLlmSupport(); if (state.engines) renderEngines(); }); }
+  if (page === 'modelli') { loadEngines(); loadFixes(); loadBaseFotoreale(); refreshSetup().then(() => { renderLlmSupport(); if (state.engines) renderEngines(); }); }
   if (page === 'gemello') { loadEngines(); loadTwin(); loadPersonaggi(); }
   window.scrollTo({ top: 0 });
 }
@@ -714,6 +714,44 @@ async function loadModels() {
   renderStatus();
   if ($('#page-primi-passi').classList.contains('active')) renderOnboarding();
 }
+
+let baseTimer = null;
+async function loadBaseFotoreale() {
+  const card = $('#base-fotoreale-card');
+  if (!card) return;
+  const btn = $('[data-base-fotoreale]', card);
+  const out = $('.base-fotoreale-stato', card);
+  clearTimeout(baseTimer);
+  let s;
+  try { s = await api('/api/models/base-fotoreale'); } catch { return; }
+  if (s.installata) {
+    btn.textContent = 'Già nella libreria ✓'; btn.disabled = true; btn.classList.remove('primary');
+    out.hidden = false; out.textContent = `${s.nome} è pronta: scrivi un prompt e si usa da sola (stile Fotoreale automatico).`;
+    return;
+  }
+  if (s.status === 'downloading') {
+    btn.disabled = true; btn.textContent = 'Scarico…';
+    const pct = s.total ? Math.round((s.done / s.total) * 100) : null;
+    out.hidden = false; out.textContent = pct != null ? `Scarico ${s.nome}: ${pct}% di ${s.gb} GB (una volta sola)` : `Scarico ${s.nome}…`;
+    baseTimer = setTimeout(loadBaseFotoreale, 1200);
+    return;
+  }
+  if (s.status === 'error') {
+    btn.disabled = false; btn.textContent = 'Riprova';
+    out.hidden = false; out.innerHTML = `<span class="error-text">Download non riuscito: ${esc(s.error || '')}</span>`;
+    return;
+  }
+  if (s.status === 'done') { await loadModels(); baseTimer = setTimeout(loadBaseFotoreale, 300); return; }
+  // idle: pronto da scaricare
+  btn.disabled = false; btn.textContent = 'Scarica la base'; out.hidden = true;
+}
+
+$('#base-fotoreale-card')?.addEventListener('click', async (e) => {
+  if (!e.target.closest('[data-base-fotoreale]')) return;
+  e.target.disabled = true; e.target.textContent = 'Avvio…';
+  await api('/api/models/base-fotoreale', { method: 'POST' }).catch(() => {});
+  loadBaseFotoreale();
+});
 
 document.addEventListener('click', async (e) => {
   const t = e.target.closest('[data-edit],[data-toggle],[data-del],[data-srv-edit],[data-srv-del]');
@@ -1566,6 +1604,8 @@ $$('#speak-form select[name=language], #voice-form select[name=language]').forEa
 state.voices = [];
 
 async function loadVoices() {
+  const kw = $('#voice-keepwarm');
+  if (kw) kw.checked = !!state.settings?.voice?.keepWarm;
   const r = await api('/v1/voices').catch(() => ({ voices: [] }));
   state.voices = r.voices;
   const sel = $('#speak-form').voice;
@@ -1583,6 +1623,12 @@ async function loadVoices() {
         <button class="btn small danger" data-voice-del="${v.id}" data-name="${esc(v.name)}">Elimina</button></div></article>`).join('')
     : '<div class="empty">Nessuna voce ancora. Registra 15–30 secondi qui sopra e crea la tua.</div>';
 }
+
+$('#voice-keepwarm')?.addEventListener('change', async (e) => {
+  const keepWarm = e.target.checked;
+  const s = await api('/api/settings', { method: 'POST', body: { voice: { keepWarm } } }).catch(() => null);
+  if (s) state.settings = s;
+});
 
 // ----- Libreria voci (personaggi sintetici) -----
 const vlState = { filter: '', timer: null, data: null };

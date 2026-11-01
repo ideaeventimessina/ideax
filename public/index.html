@@ -263,6 +263,12 @@
           </label>
           <div class="uploads"></div>
         </div>
+        <div class="card" id="base-fotoreale-card">
+          <div class="section-head"><div><h2>Base fotoreale pronta</h2>
+            <p class="muted">Non hai una base realistica? Scaricala con un clic: <strong>Realistic Vision 6.0</strong> (SD 1.5, ~2,1 GB, uso libero). Dà la pelle vera a ritratti, matrimoni e profili — lo stile “Fotoreale” si accende da solo. Poi aggiungi le tue LoRA.</p></div>
+            <button class="btn primary" data-base-fotoreale>Scarica la base</button></div>
+          <div class="base-fotoreale-stato small muted" hidden></div>
+        </div>
         <div id="model-warnings"></div>
         <div id="model-groups"></div>
         <div class="card" id="models-engines"></div>
@@ -334,6 +340,12 @@
     <section class="page" id="page-voce">
       <header class="page-head"><div><h1>Voce</h1><p>La tua voce clonata, sul tuo PC. Senza abbonamenti.</p></div></header>
       <div class="card" id="voice-engine"></div>
+      <div class="card">
+        <label class="row" style="justify-content:space-between;cursor:pointer">
+          <span><strong>Tieni la voce pronta</strong><br><span class="muted small">Tiene il modello voce caricato: la prima lettura (anche "ciao") parte subito, senza attendere i ~3 GB. Lo libera da sola quando generi immagini, e lo riscalda dopo. Tienila spenta se la scheda ti serve tutta per le immagini.</span></span>
+          <input type="checkbox" id="voice-keepwarm" role="switch">
+        </label>
+      </div>
       <div class="voice-grid">
         <div class="card">
           <h2>Leggi un testo</h2>

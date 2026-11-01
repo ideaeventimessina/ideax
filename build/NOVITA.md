@@ -1,5 +1,15 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.24.1.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.0.exe** e aprilo.
+
+## Correzione: "Proponi business" (e i piani) non si rompe più sul JSON
+- Il cervello locale ogni tanto sbagliava una virgola nel piano e usciva un errore "Expected ',' or ']'…". Ora ideax ripara da solo i difetti comuni (virgole, risposte troncate) e, se non basta, rigenera una volta a temperatura 0: vale per "Proponi business", i piani di guadagno e ogni altra risposta strutturata
+
+## Base fotoreale con un clic
+- In **Modelli** c'è "**Scarica la base**": prende *Realistic Vision 6.0* (SD 1.5, ~2,1 GB, uso libero) e la mette nella libreria. Lo stile Fotoreale si accende da solo. Così hai il profilo fotoreale (ritratti, matrimoni, adulto) senza passare da Civitai per il checkpoint
+
+## Voce: "Tieni la voce pronta" + memoria dei 16 GB
+- Nella pagina **Voce** un interruttore **Tieni la voce pronta**: tiene il modello caricato, così la prima lettura (anche "ciao") parte subito invece di aspettare i ~3 GB
+- E una gestione della memoria video: chi usa la scheda libera prima gli altri motori (le immagini liberano la voce e viceversa), così i 16 GB non vanno più in conflitto — è anche ciò che causava i blocchi da memoria esaurita. Con "voce pronta" attivo, dopo le immagini la voce si riscalda da sola
 
 ## Pulsante "Libera la GPU"
 - Se qualcosa si incastra e tiene occupata la scheda video, un clic su **Libera la GPU** annulla ogni lavoro appeso, ferma i motori e riavvia il worker pulito. Lo trovi in **Impostazioni → Motore** (sempre) e nello Studio quando un lavoro è "in fila"

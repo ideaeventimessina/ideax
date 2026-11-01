@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import { exec } from 'node:child_process';
 import * as store from './lib/store.js';
 import { scanModels, readSafetensorsHeader, readGgufArchitecture, classifyKeys, ARCH_LABELS, KIND_LABELS } from './lib/scanner.js';
+import { snapshot } from './lib/hfdownload.js';
 import { route, buildCatalog, PROMPT_STYLES, styleFor, heuristicTask } from './lib/router.js';
 import { resolveBrain } from './lib/brain.js';
 import { runModel, cancelOnWorker, inGpuQueue, localBusy } from './lib/backends.js';
@@ -69,6 +70,11 @@ const HOST = process.env.HOST || (startup.network.lan ? '0.0.0.0' : '127.0.0.1')
 const LEGACY_TOKEN = process.env.IDEAX_TOKEN || (startup.network.lan ? startup.network.token : '');
 const MAX_JSON = 300 * 1024 * 1024;
 const jobs = new Map();
+
+// Download con un clic di una base SD 1.5 fotorealistica (per il profilo fotoreale/adulto): pubblica, non gated,
+// licenza creativeml-openrail-m. Il file fp16 (~2,1 GB) va nella cartella modelli e viene trovato dallo scanner.
+const BASE_FOTOREALE = { repo: 'SG161222/Realistic_Vision_V6.0_B1_noVAE', file: 'Realistic_Vision_V6.0_NV_B1_fp16.safetensors', nome: 'Realistic Vision 6.0', gb: 2.1 };
+let baseJob = { status: 'idle', done: 0, total: 0, error: null };
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.svg': 'image/svg+xml',
@@ -227,6 +233,25 @@ async function createJob(body, ctx = {}) {
   return job;
 }
 
+// Gestione della memoria video su 16 GB: i motori pesanti non ci stanno tutti insieme, quindi chi sta per usare la
+// scheda libera prima gli altri (modelli idle: la fila GPU è seriale, quindi non c'è nulla in corso quando si libera).
+async function liberaPerImmagini() {
+  engines.stop('voice');
+  engines.stop('music');
+}
+async function liberaPerVoce() {
+  engines.stop('music');
+  // Il worker immagini può tenere ~12 GB caricati: gli chiediamo di scaricare il modello per fare posto alla voce.
+  await fetch(`${store.getSettings().workerUrl}/unload`, { method: 'POST', signal: AbortSignal.timeout(5000) }).catch(() => {});
+}
+// "Tieni la voce pronta": dopo un lavoro, se la scheda è libera, riscalda la voce in sottofondo così la prossima
+// lettura parte subito. Non lo fa se c'è ancora un lavoro in corso (non le ruba la memoria mentre serve altrove).
+function riscaldaVoceSeServe() {
+  if (!store.getSettings().voice?.keepWarm || !engines.isInstalled('voice')) return;
+  if ([...jobs.values()].some((j) => !['done', 'error', 'cancelled'].includes(j.status))) return;
+  engines.call('voice', '/warmup').catch(() => {});
+}
+
 // Chiude il lavoro: lo archivia, consegna l'eventuale webhook, alleggerisce gli allegati. Uguale per un lavoro fatto
 // qui e per uno fatto da un altro PC della farm.
 function finalize(job) {
@@ -249,6 +274,7 @@ function finalize(job) {
     deliver(job.callbackUrl, event, publicJob(job, job.origin), job.webhook)
       .then((r) => job.log.push({ t: Date.now(), msg: r.status === 'delivered' ? `Webhook consegnato a ${job.callbackUrl}` : `Webhook non consegnato dopo ${r.attempts} tentativi` }));
   }
+  riscaldaVoceSeServe();
 }
 
 // ---------- La farm: distribuire i lavori sugli altri PC ----------
@@ -340,6 +366,7 @@ async function runSpeech(job, log) {
   });
   job.status = 'running';
   log(`Leggo con la voce "${voice.name}"…`);
+  await liberaPerVoce(); // fa posto sulla scheda: scarica il modello immagini del worker prima di caricare la voce
   const out = await inGpuQueue(job, log, () => {
     job.backend = 'voice';
     return engines.call('voice', '/speak', {
@@ -475,6 +502,8 @@ async function processJob(job) {
     }
     log(`Compito: ${store.TASKS[d.task]} → ${d.model.name}`);
     if (d.reason) log(d.reason);
+    // Fa posto sulla scheda: libera voce e musica prima di caricare il modello immagini/video (16 GB non bastano a tutti)
+    await liberaPerImmagini();
     // Un modello che anima solo una foto (es. Stable Video Diffusion) senza foto di partenza:
     // prima si crea l'immagine dal testo, poi la si anima
     // Wan 2.2: per volti perfetti (e per il gemello) si parte da una foto rifinita, salvo da_foto: false
@@ -1095,6 +1124,21 @@ const server = http.createServer(async (req, res) => {
 
     // ----- API dell'interfaccia -----
     if (p === '/api/models' && req.method === 'GET') return send(res, 200, modelsPayload());
+    // Scarica la base fotoreale con un clic. GET = stato/avanzamento, POST = avvia (o ridà lo stato se già in corso).
+    if (p === '/api/models/base-fotoreale' && req.method === 'GET') {
+      const gia = scanModels().some((m) => path.basename(m.path) === BASE_FOTOREALE.file);
+      return send(res, 200, { ...baseJob, ...BASE_FOTOREALE, installata: gia });
+    }
+    if (p === '/api/models/base-fotoreale' && req.method === 'POST') {
+      if (scanModels().some((m) => path.basename(m.path) === BASE_FOTOREALE.file)) return send(res, 200, { status: 'done', installata: true });
+      if (baseJob.status !== 'downloading') {
+        baseJob = { status: 'downloading', done: 0, total: 0, error: null };
+        snapshot(BASE_FOTOREALE.repo, store.MODELS_DIR, [BASE_FOTOREALE.file], { onProgress: (pr) => { baseJob.done = pr.done; baseJob.total = pr.total; } })
+          .then(() => { baseJob.status = 'done'; })
+          .catch((err) => { baseJob = { status: 'error', done: 0, total: 0, error: err.message }; });
+      }
+      return send(res, 202, { ...baseJob, ...BASE_FOTOREALE });
+    }
     if (p.startsWith('/api/models/') && req.method === 'PATCH') {
       const id = p.split('/').pop();
       const patch = await readJson(req);
@@ -1327,6 +1371,7 @@ server.listen(PORT, HOST, () => {
   updater.scheduleChecks();
   systems.startAll();
   fixes.autoFix();
+  riscaldaVoceSeServe(); // "tieni la voce pronta": scalda il motore voce all'avvio, così la prima lettura non aspetta
   // Se una pagina di ideax è già aperta (es. dopo un aggiornamento) si ricollega da sola: niente schede doppie
   if (shouldOpen) setTimeout(() => { if (Date.now() - lastPing > 6000) openBrowser(localUrl); }, 5000);
 });
