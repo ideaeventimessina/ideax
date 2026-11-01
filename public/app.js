@@ -1879,7 +1879,7 @@ $('#catena-form').addEventListener('submit', async (e) => {
   const f = e.target;
   $('[data-catena-err]').textContent = '';
   try {
-    const { id } = await api('/v1/catena', { method: 'POST', body: { prompt: f.prompt.value, clip: Number(f.clip.value), formato: f.formato.value, stile: f.stile.value || undefined, musica_provenienza: f.musica_provenienza.value } });
+    const { id } = await api('/v1/catena', { method: 'POST', body: { prompt: f.prompt.value, clip: Number(f.clip.value), formato: f.formato.value, stile: f.stile.value || undefined, musica_provenienza: f.musica_provenienza.value, veloce: f.veloce.checked } });
     watchCatena(id);
   } catch (err) {
     $('[data-catena-err]').textContent = err.message;

@@ -1,5 +1,12 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.15.0.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.15.1.exe** e aprilo.
+
+## Video più veloci
+- Le catene di clip lavorano in due fasi: prima tutte le foto, poi tutte le animazioni. La scheda video cambia modello una volta sola invece che a ogni clip
+- Nuova opzione **Veloce (bozza)** nel "Video montato con Impagino": clip da 3 secondi a risoluzione più bassa e con meno passi, per provare un'idea prima della versione finale
+
+## Ponti con Bill e Impagino
+- In Collega app ora si possono collegare anche Bill e Impagino (dopo il loro aggiornamento): scrivi l'indirizzo, Crea ponte, e la chiave va nei loro Secrets come IDEAX_KEY
 
 ## Video veri con Wan 2.2
 - Nuovo motore **Video Wan 2.2** (Modelli → Motori → Installa, circa 18 GB): video da testo o da una foto, 720p a 24 fotogrammi al secondo, fino a 5 secondi a clip, con movimento naturale. Licenza Apache 2.0, uso commerciale consentito
