@@ -720,6 +720,41 @@ def decorate_endpoint(req: DecorateRequest):
         raise HTTPException(400, str(err))
 
 
+class ScontornaRequest(BaseModel):
+    image: str
+    model: str = "birefnet-general"
+
+
+_rembg: dict[str, Any] = {}
+
+
+@app.post("/scontorna")
+def scontorna(req: ScontornaRequest):
+    """Scontorno con BiRefNet (lo stesso modello di fal-ai/birefnet), in locale con rembg: PNG con lo sfondo trasparente.
+    rembg e il modello si scaricano da soli al primo uso."""
+    start = time.time()
+    if DEMO:
+        raw = req.image.split(",", 1)[1] if req.image.startswith("data:") else req.image
+        return {"outputs": [encode_png(Image.open(io.BytesIO(base64.b64decode(raw))).convert("RGBA"))], "seconds": 0.0}
+    try:
+        try:
+            import rembg
+        except ImportError:
+            print("[ideax] installo rembg per lo scontorno", flush=True)
+            gpu = (not DEMO) and torch().cuda.is_available()
+            subprocess.run([sys.executable, "-m", "pip", "install", "--disable-pip-version-check",
+                            "rembg[gpu]" if gpu else "rembg"], check=True)
+            import rembg
+        if req.model not in _rembg:
+            _rembg[req.model] = rembg.new_session(req.model)
+        raw = req.image.split(",", 1)[1] if req.image.startswith("data:") else req.image
+        img = Image.open(io.BytesIO(base64.b64decode(raw))).convert("RGB")
+        out = rembg.remove(img, session=_rembg[req.model])
+    except Exception as err:  # noqa: BLE001
+        raise HTTPException(500, f"Scontorno non riuscito: {type(err).__name__}: {err}")
+    return {"outputs": [encode_png(out)], "seconds": round(time.time() - start, 2)}
+
+
 @app.post("/vectorize")
 def vectorize_endpoint(req: VectorizeRequest):
     import sys

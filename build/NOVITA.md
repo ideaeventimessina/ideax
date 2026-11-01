@@ -1,5 +1,13 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.15.6.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.16.0.exe** e aprilo.
+
+## Fotomontaggio e scontorno
+- Due nuovi motori in Modelli → Motori (usano il ComfyUI di MOSS-Image):
+  - **Fotomontaggio Qwen** (Qwen-Image-Edit-2509 con Lightning 8 passi, circa 30 GB): trasforma una foto vera tenendo il volto, fino a 3 immagini insieme (foto + stile)
+  - **Fotomontaggio Kontext** (FLUX.1 Kontext dev, circa 18 GB, uso privato): modifiche fedelissime al volto
+- In Studio basta allegare una foto e scrivere cosa cambiare: ideax usa Qwen, oppure Kontext se Qwen non c'è
+- **Scontorno** con BiRefNet (lo stesso modello di fal), sul tuo PC: si prepara da solo al primo uso
+- I sistemi collegati (es. IDEAphoto Suite) possono chiedere a ideax "fotomontaggio" e "scontorno"
 
 ## Cervello scrittore: niente più rifiuti
 - Racconti, barzellette, scene e testi per adulti li scrive un **cervello scrittore** fatto per scrivere senza filtri (Llama 3.1 8B Lexi), indipendente dal cervello principale
