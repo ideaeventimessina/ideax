@@ -1,5 +1,10 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.0.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.1.exe** e aprilo.
+
+## Decorazioni laser: veloci (una sagoma in secondi, non minuti)
+- Una decorazione (es. un cuore) faceva tre generazioni pesanti: il disegno + due giri di rifinitura di pelle e volti (24-30 passi ciascuno) su Flux-dev che sui 16 GB sborda sulla CPU. Per una sagoma piatta è tutto sprecato: ci metteva minuti, a volte andava in timeout e all'app non arrivava nulla
+- Ora le decorazioni **non rifiniscono** (una sagoma non ha pelle né volti) e **non partono più da Flux-dev**: usano il modello più veloce che hai (Flux schnell, poi SDXL, poi SD 1.5). Risultato in secondi, e appare sia nell'app sia nelle Creazioni di ideax
+- E durante la rifinitura (per le foto vere) la barra non resta più ferma su "20 di 20": mostra la fase ("Rifinisco la pelle…", "Rifinisco i volti")
 
 ## Correzione: "Proponi business" (e i piani) non si rompe più sul JSON
 - Il cervello locale ogni tanto sbagliava una virgola nel piano e usciva un errore "Expected ',' or ']'…". Ora ideax ripara da solo i difetti comuni (virgole, risposte troncate) e, se non basta, rigenera una volta a temperatura 0: vale per "Proponi business", i piani di guadagno e ogni altra risposta strutturata

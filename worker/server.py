@@ -499,7 +499,7 @@ def refine_skin(img, base, req: RunRequest, params: dict, seed):
         steps = 8 if schnell else max(int(params.get("num_inference_steps", 30)), 24)
         if hasattr(i2i, "vae") and hasattr(i2i.vae, "enable_tiling"):
             i2i.vae.enable_tiling()  # decodifica a pezzi: l'immagine grande sta nei 16 GB
-        PROGRESS.update(phase="Rifinisco la pelle e i dettagli")
+        PROGRESS.update(step=0, total=0, phase="Rifinisco la pelle e i dettagli")  # azzera il conteggio: non è più "20 di 20"
         kw = {
             "prompt": f"{req.prompt}, {SKIN_PROMPT}"[:900], "image": big, "strength": 0.45 if schnell else 0.3,
             "num_inference_steps": steps, "width": big.width, "height": big.height,
@@ -538,6 +538,7 @@ def refine_faces(img, base, req: RunRequest, params: dict, seed):
         side = 512 if req.model.arch == "sd15" else 768 if req.model.arch == "sd2" else 1024
         schnell = req.model.arch == "flux" and _loaded.get("variant") == "schnell"
         steps = 8 if schnell else max(int(params.get("num_inference_steps", 30)), 24)
+        PROGRESS.update(step=0, total=0, phase="Rifinisco i volti")  # non più "20 di 20": è una fase a sé
         sig = inspect.signature(i2i.__call__).parameters
 
         def redraw(crop):

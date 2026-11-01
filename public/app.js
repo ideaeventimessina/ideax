@@ -349,8 +349,12 @@ function renderStage() {
         const elapsed = job.log?.length ? (Date.now() - job.log[job.log.length - 1].t) / 1000 : 0;
         const eta = p.step > 1 && elapsed > 0 ? Math.round((elapsed / p.step) * (p.total - p.step)) : null;
         text = `${p.step} di ${p.total} passi${eta ? ` · circa ${eta} s rimanenti` : ''}`;
+      } else if (p?.phase === 'Carico il modello in memoria') {
+        text = 'Carico il modello in memoria: la prima volta può richiedere un minuto.';
+      } else if (p?.phase) {
+        text = p.phase; // es. "Rifinisco la pelle e i dettagli", "Rifinisco i volti": così non sembra fermo sul 20/20
       } else {
-        text = p?.phase === 'Carico il modello in memoria' ? 'Carico il modello in memoria: la prima volta può richiedere un minuto.' : `${job.model ? `${job.model} · ` : ''}preparazione in corso.`;
+        text = `${job.model ? `${job.model} · ` : ''}preparazione in corso.`;
       }
     }
     // Se la fase non cambia aggiorniamo solo testo, barra e la regia in diretta (prompt + log): Annulla resta cliccabile
