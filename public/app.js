@@ -2798,6 +2798,18 @@ $('#quit-ideax').addEventListener('click', async () => {
 let regiaTimer = null;
 const STEP_STATES = ['da fare', 'in corso', 'fatto', 'bloccato'];
 
+function pianoHtml(pl) {
+  const row = (t) => `<div class="row-mini"><span class="k">${t[0]}</span><span>${esc(t[1])}</span></div>`;
+  return `<details class="piano" open><summary>💰 Piano per fare soldi${pl.focus ? ` · ${esc(pl.focus)}` : ''}</summary>
+    ${row(['Come si guadagna', pl.modello_ricavo])}${row(['Prezzo', pl.prezzo])}${row(['Mercato', pl.mercato])}
+    ${row(['Ricavo stimato', pl.ricavo_mensile_stimato])}${row(['Primo incasso', pl.tempo_al_primo_incasso])}
+    ${(pl.contenuti || []).length ? `<h4>Contenuti da produrre</h4><ul>${pl.contenuti.map((c) => `<li><span class="tool">${esc(c.strumento)}</span><strong>${esc(c.tipo)}</strong>${c.quanti ? ` ×${esc(c.quanti)}` : ''}: ${esc(c.idea)}</li>`).join('')}</ul>` : ''}
+    ${(pl.social || []).length ? `<h4>Social</h4><ul>${pl.social.map((x) => `<li><strong>${esc(x.piattaforma)}</strong>: ${esc(x.cosa)}</li>`).join('')}</ul>` : ''}
+    ${(pl.campagne || []).length ? `<h4>Campagne adv</h4><ul>${pl.campagne.map((x) => `<li><strong>${esc(x.piattaforma)}</strong> · ${esc(x.pubblico)} · ${esc(x.budget_mese)}/mese${x.messaggio ? `<br><span class="muted">${esc(x.messaggio)}</span>` : ''}</li>`).join('')}</ul>` : ''}
+    <h4>Passi</h4><ol class="steps-list">${(pl.passi || []).map((x) => `<li><span class="tool">${esc(x.strumento)}</span>${esc(x.cosa)}</li>`).join('')}</ol>
+    ${pl.rischi ? `<p class="small muted">Rischi: ${esc(pl.rischi)}</p>` : ''}</details>`;
+}
+
 async function loadRegia() {
   clearTimeout(regiaTimer);
   const r = await api('/api/regia').catch(() => null);
@@ -2820,8 +2832,10 @@ async function loadRegia() {
       ${s.come_ideax_lo_usa ? `<p class="small muted">Per ideax: ${esc(s.come_ideax_lo_usa)}</p>` : ''}
       <p class="small muted">${esc(s.stato || '')}${p.lastCommit ? ` · ultimo lavoro ${esc(p.lastCommit)}` : ''}</p>
       ${p.note ? `<p class="small">Nota: ${esc(p.note)}</p>` : ''}
-      <div class="row"><label class="check small"><input type="checkbox" data-know ${p.knowOnly ? 'checked' : ''}> Solo da conoscere</label>
-        <button class="btn small" type="button" data-note>${p.note ? 'Modifica nota' : 'Aggiungi nota'}</button></div></div>`;
+      <div class="row"><button class="btn small primary" type="button" data-piano>💰 ${p.piano ? 'Rifai il piano' : 'Fai soldi con questo'}</button>
+        <button class="btn small" type="button" data-note>${p.note ? 'Nota' : 'Nota'}</button>
+        <label class="check small"><input type="checkbox" data-know ${p.knowOnly ? 'checked' : ''}> Solo da conoscere</label></div>
+      ${p.piano ? pianoHtml(p.piano) : ''}</div>`;
   }).join('');
   const th = r.thinking;
   $('#regia-thinking').innerHTML = th.status === 'running' ? '<div class="note"><h3>Studio le idee…</h3><p class="small">Il cervello di riserva incrocia tutti i progetti: può volerci qualche minuto.</p><div class="progress indeterminate"><div></div></div></div>'
@@ -2869,6 +2883,11 @@ $('#page-regia').addEventListener('click', async (e) => {
   if (card && e.target.closest('[data-note]')) {
     const note = prompt('Nota per ideax su questo progetto (es. "è il nostro prodotto principale", "fermo, non usarlo")');
     if (note != null) { await api(`/api/regia/projects/${card.dataset.project}`, { method: 'PATCH', body: { note } }); loadRegia(); }
+  }
+  if (card && e.target.closest('[data-piano]')) {
+    const focus = prompt('Vuoi un taglio preciso al piano? (facoltativo: es. "parti da TikTok", "poco budget")') || '';
+    try { await api(`/api/regia/projects/${card.dataset.project}/piano`, { method: 'POST', body: { focus } }); } catch (err) { alert(err.message); }
+    loadRegia();
   }
   const idea = e.target.closest('[data-idea]');
   if (idea && e.target.closest('[data-mission]')) { await api(`/api/regia/ideas/${idea.dataset.idea}/mission`, { method: 'POST' }); loadRegia(); }

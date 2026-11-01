@@ -783,6 +783,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/regia' && req.method === 'GET') return send(res, 200, regia.state());
     if (p === '/api/regia/study' && req.method === 'POST') return send(res, 200, regia.studyProjects());
     if (/^\/api\/regia\/projects\/[\w-]+$/.test(p) && req.method === 'PATCH') return send(res, 200, regia.updateProject(p.split('/').pop(), await readJson(req)));
+    if (/^\/api\/regia\/projects\/[\w-]+\/piano$/.test(p) && req.method === 'POST') return send(res, 200, regia.pianoGuadagno(p.split('/')[4], (await readJson(req)).focus || ''));
     if (p === '/api/regia/ideas' && req.method === 'POST') return send(res, 200, regia.proposeBusiness((await readJson(req)).focus || ''));
     if (/^\/api\/regia\/ideas\/[\w-]+$/.test(p) && req.method === 'DELETE') { regia.deleteIdea(p.split('/').pop()); return send(res, 200, { ok: true }); }
     if (/^\/api\/regia\/ideas\/[\w-]+\/mission$/.test(p) && req.method === 'POST') return send(res, 200, regia.startMission(p.split('/')[4]));

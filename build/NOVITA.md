@@ -4,6 +4,12 @@ Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.17.1.exe** e apr
 ## Decorazioni per IDEAlab
 - Le immagini lunghe non si interrompono più a 5 minuti: ideax aspetta il motore immagini quanto serve (fino a 15 minuti). Prima una decorazione con Flux su una scheda lenta finiva con "Non riesco a contattare 127.0.0.1:7861"
 
+## Regia: fai soldi con ogni progetto
+- Ogni progetto nella pagina **Regia** ha il tasto **💰 Fai soldi con questo**: ideax studia quel software e scrive il piano per portarlo a rendimento
+- Il piano dice: come si guadagna, il prezzo, il mercato, il ricavo stimato e quando arriva il primo incasso
+- **Contenuti da produrre** (reel, immagini, video, anche video da una registrazione dello schermo che carichi), con quale strumento; **social** su cui essere (collegabili con Bill); **campagne adv** con piattaforma, pubblico e budget; i **passi** concreti, ognuno con lo strumento (ideax, Bill, un tuo progetto, o tu)
+- Vale per Pianifico, Foglie del Destino, Prof e tutti gli altri
+
 ## Personaggi inventati
 - Nella pagina **Gemello** → **Personaggi inventati**: crei un volto che non esiste e ideax lo tiene sempre uguale
 - Come funziona: ideax genera la faccia da una descrizione, la ripete in tante pose con Fotomontaggio Qwen (che tiene il volto), e addestra la sua LoRA (serve il motore Gemello foto e Fotomontaggio Qwen). Una volta sola, circa 1–2 ore
