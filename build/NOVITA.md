@@ -1,5 +1,7 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.8.4.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.8.5.exe** e aprilo.
 
-## Correzione: il cervello parte
-- Risolto "Nella release di llama.cpp non trovo un pacchetto adatto a questo PC": l'ultima release di llama.cpp (v0.8.0) contiene solo codice, senza i programmi per Windows. Ora ideax cerca la release più recente che ha la versione per la tua scheda NVIDIA (CUDA 12, oppure CUDA 13 con driver 580+, altrimenti Vulkan) e la scarica da sola al primo messaggio in chat
+## Licenze di Hugging Face accettate da ideax
+- In **Impostazioni → Hugging Face → Verifica**, accanto a ogni modello bloccato c'è **Accetta la licenza per me**: ideax legge il modulo della licenza, lo compila con i dati del tuo account e, dopo la tua conferma, invia la richiesta con il tuo token
+- Se Hugging Face vuole il clic dal sito, ideax apre la pagina giusta nel tuo browser
+- Appena l'accesso c'è, Stable Video Diffusion si sistema da solo e il Gemello foto può riprendere l'installazione

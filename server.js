@@ -826,6 +826,16 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, brains.lighten(b.id, b.type || 'Q4_K_M'));
     }
     if (p === '/api/brains/download' && req.method === 'POST') return send(res, 200, brains.download((await readJson(req)).key));
+    if (p === '/api/hf/gate' && req.method === 'POST') return send(res, 200, await (await import('./lib/hfcheck.js')).gateInfo((await readJson(req)).repo));
+    if (p === '/api/hf/request' && req.method === 'POST') {
+      const b = await readJson(req);
+      if (b.consent !== true) return send(res, 400, { error: 'Serve la tua conferma di accettare la licenza' });
+      const r = await (await import('./lib/hfcheck.js')).requestAccess(b.repo, b.values || {});
+      // Se Hugging Face vuole il clic dal sito, apriamo la pagina giusta nel browser di questo PC
+      if (!r.ok && isLoopback(req)) openBrowser(r.url);
+      if (r.ok) fixes.autoFix();
+      return send(res, 200, r);
+    }
     if (p === '/api/hf/check' && req.method === 'POST') return send(res, 200, await (await import('./lib/hfcheck.js')).check());
     if (p === '/api/fixes' && req.method === 'GET') return send(res, 200, fixes.fixes);
     if (p === '/api/fixes/svd' && req.method === 'POST') return send(res, 200, await fixes.fixSvd());

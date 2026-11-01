@@ -2591,10 +2591,52 @@ $('#hf-check').addEventListener('click', async (e) => {
     const r = await api('/api/hf/check', { method: 'POST' });
     out.innerHTML = r.problem ? `<div class="note error"><p class="small">${esc(r.problem)}</p></div>`
       : `<div class="note ${r.ok ? '' : 'warn'}"><p class="small">Token di <strong>${esc(r.user)}</strong> · tipo ${esc(r.role === 'fineGrained' ? 'fine-grained' : r.role)}</p>
-        ${r.repos.map((x) => `<p class="small">${x.access ? '<span class="ok-text">✓</span>' : '<span class="error-text">✕</span>'} <strong>${esc(x.repo)}</strong> · ${esc(x.usedBy)}${x.fix ? `<br><span class="muted">${esc(x.fix)}</span>` : ''}</p>`).join('')}</div>`;
+        ${r.repos.map((x) => `<div class="small" style="margin-top:8px">${x.access ? '<span class="ok-text">✓</span>' : '<span class="error-text">✕</span>'} <strong>${esc(x.repo)}</strong> · ${esc(x.usedBy)}${x.fix ? `<br><span class="muted">${esc(x.fix)}</span>
+          <div class="row" style="margin-top:6px"><button type="button" class="btn small primary" data-hf-gate="${esc(x.repo)}">Accetta la licenza per me</button></div><div data-hf-form="${esc(x.repo)}"></div>` : ''}</div>`).join('')}</div>`;
   } catch (err) {
     out.innerHTML = `<p class="error-text small">${esc(err.message)}</p>`;
   } finally {
     e.target.disabled = false;
+  }
+});
+
+// Accettare la licenza di un modello protetto da ideax: si mostra il modulo di Hugging Face già compilato e si conferma
+$('#hf-result').addEventListener('click', async (e) => {
+  const g = e.target.closest('[data-hf-gate]');
+  const send = e.target.closest('[data-hf-send]');
+  if (g) {
+    const box = $(`[data-hf-form="${CSS.escape(g.dataset.hfGate)}"]`);
+    box.innerHTML = '<p class="muted small">Leggo il modulo della licenza…</p>';
+    try {
+      const info = await api('/api/hf/gate', { method: 'POST', body: { repo: g.dataset.hfGate } });
+      box.innerHTML = `<form class="stack-sm" data-hf-repo="${esc(info.repo)}">
+        ${info.prompt ? `<p class="muted small">${esc(info.prompt.replace(/<[^>]+>/g, '').slice(0, 600))}</p>` : ''}
+        ${info.fields.map((f, i) => f.type === 'checkbox'
+          ? `<label class="check"><input type="checkbox" name="f${i}" data-label="${esc(f.label)}" checked> ${esc(f.label)}</label>`
+          : `<label>${esc(f.label)} <input name="f${i}" data-label="${esc(f.label)}" value="${esc(f.value)}" required></label>`).join('')}
+        <label class="check"><input type="checkbox" name="consent"> Ho letto e accetto la licenza di <a href="${esc(info.url)}" target="_blank" rel="noopener">${esc(info.repo)}</a> per l'account ${esc(info.user || '')}</label>
+        <div class="row"><button class="btn small primary" type="button" data-hf-send>Accetta e chiedi l'accesso</button><span class="small" data-hf-out></span></div></form>`;
+    } catch (err) {
+      box.innerHTML = `<p class="error-text small">${esc(err.message)}</p>`;
+    }
+  }
+  if (send) {
+    const form = send.closest('form');
+    const out = $('[data-hf-out]', form);
+    if (!form.consent.checked) { out.innerHTML = '<span class="error-text">Spunta l\'accettazione della licenza</span>'; return; }
+    const values = {};
+    $$('[data-label]', form).forEach((i) => { values[i.dataset.label] = i.type === 'checkbox' ? i.checked : i.value; });
+    send.disabled = true;
+    out.textContent = 'Invio la richiesta a Hugging Face…';
+    try {
+      const r = await api('/api/hf/request', { method: 'POST', body: { repo: form.dataset.hfRepo, values, consent: true } });
+      out.innerHTML = r.ok ? '<span class="ok-text">Accesso ottenuto ✓</span>'
+        : '<span class="muted">Hugging Face vuole il clic dal sito: ti ho aperto la pagina nel browser. Premi "Agree and access repository", poi Verifica.</span>';
+      if (r.ok) setTimeout(() => $('#hf-check').click(), 800);
+    } catch (err) {
+      out.innerHTML = `<span class="error-text">${esc(err.message)}</span>`;
+    } finally {
+      send.disabled = false;
+    }
   }
 });
