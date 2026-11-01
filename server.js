@@ -1065,6 +1065,7 @@ const server = http.createServer(async (req, res) => {
       if (!job) return send(res, 404, { error: 'Lavoro non trovato' });
       if (!['done', 'error', 'cancelled'].includes(job.status)) {
         job.cancelled = true;
+        if (job.abortRun) job.abortRun(new Error('Annullato')); // interrompe la richiesta in volo al worker: libera la GPU
         if (job.status === 'running' && !job.waiting && job.backend === 'worker') await cancelOnWorker();
         if (job.status === 'running' && !job.waiting && job.backend === 'voice') await engines.cancel('voice');
         if (job.status === 'running' && job.backend === 'lipsync') await engines.cancel('lipsync');

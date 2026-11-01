@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.23.0.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.23.1.exe** e aprilo.
+
+## Correzione: un lavoro bloccato non resta più appeso per sempre
+- Se il motore immagini si inchioda (memoria esaurita, modello incastrato) la richiesta restava appesa all'infinito: il lavoro non consegnava né risultato né errore, e teneva occupata la GPU (le app, es. IDEAlab, aspettavano a vuoto). Ora c'è un tetto di tempo (20 min per le immagini, 45 per i video): oltre quello il lavoro **fallisce con un messaggio chiaro** invece di restare muto
+- Il pulsante **Annulla** ora interrompe davvero la richiesta in volo al motore e **libera la GPU** (prima su un worker bloccato non serviva a niente)
 
 ## Nuovo stile "Fotoreale (pelle vera)"
 - Un nuovo stile che mette i tag giusti per la pelle vera (quello che trasforma una base SD1.5/SDXL realistica da "plastica" a fotografia): pori, luce naturale, grana, e un negativo forte contro il look finto. Vale per ritratti, matrimoni e per i profili adulti
