@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.15.1.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.15.2.exe** e aprilo.
+
+## Aggiornamenti e ponti più chiari
+- ideax controlla le nuove versioni ogni 30 minuti (prima ogni 6 ore) e anche quando torni sulla sua finestra
+- In Collega app ogni riga dice esattamente cosa manca: l'app online senza il ponte (su Replit: Git → Pull, poi Republish), la chiave mancante nei Secrets, o una chiave diversa da quella di ideax
 
 ## Video più veloci
 - Le catene di clip lavorano in due fasi: prima tutte le foto, poi tutte le animazioni. La scheda video cambia modello una volta sola invece che a ogni clip

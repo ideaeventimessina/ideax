@@ -2492,7 +2492,7 @@ $('#persona-form').addEventListener('submit', async (e) => {
 
 // ======================= Sistemi online =======================
 
-const SYS_STATUS = { online: ['on', 'Collegato'], errore: ['off', 'Non raggiungibile'], spento: ['', 'Spento'], 'in collegamento': ['warn', 'Mi collego…'], 'in attesa': ['warn', 'In attesa'], 'attesa chiave': ['warn', 'Aspetto la chiave nell\'app'] };
+const SYS_STATUS = { online: ['on', 'Collegato'], errore: ['off', 'Non raggiungibile'], spento: ['', 'Spento'], 'in collegamento': ['warn', 'Mi collego…'], 'in attesa': ['warn', 'In attesa'], 'attesa chiave': ['warn', 'In attesa dell\'app'] };
 let systemsTimer = null;
 
 async function loadSystems() {
@@ -2502,7 +2502,7 @@ async function loadSystems() {
   $('#systems-list').innerHTML = data.systems.length ? data.systems.map((s) => {
     const st = s.state || {};
     const [dot, label] = SYS_STATUS[st.status] || ['', st.status || ''];
-    const hint = st.status === 'attesa chiave' ? 'Incolla la chiave nei Secrets dell\'app come IDEAX_KEY e ripubblicala' : st.status === 'errore' ? st.error : '';
+    const hint = st.status === 'attesa chiave' || st.status === 'errore' ? st.error : '';
     return `<div class="teacher" data-system="${esc(s.id)}">
       <span class="dot ${dot}"></span><strong>${esc(s.name)}</strong>
       <span class="small muted grow">${esc(label)}${st.current ? ` · sto facendo ${esc(st.current)}` : ''}${st.done ? ` · ${st.done} lavori fatti` : ''}</span>
@@ -2871,4 +2871,12 @@ $('#page-regia').addEventListener('click', async (e) => {
   if (idea && e.target.closest('[data-idea-del]')) { await api(`/api/regia/ideas/${idea.dataset.idea}`, { method: 'DELETE' }); loadRegia(); }
   const m = e.target.closest('[data-mission-id]');
   if (m && e.target.closest('[data-mission-del]') && confirm('Eliminare questa missione?')) { await api(`/api/regia/missions/${m.dataset.missionId}`, { method: 'DELETE' }); loadRegia(); }
+});
+
+// Quando torni su ideax: se l'ultimo controllo degli aggiornamenti è vecchio di 10 minuti, si ricontrolla
+let lastUpdateFocus = 0;
+window.addEventListener('focus', () => {
+  if (Date.now() - lastUpdateFocus < 10 * 60 * 1000) return;
+  lastUpdateFocus = Date.now();
+  api('/api/update/check', { method: 'POST' }).catch(() => {});
 });
