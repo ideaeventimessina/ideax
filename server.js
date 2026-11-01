@@ -8,7 +8,7 @@ import crypto from 'node:crypto';
 import { exec } from 'node:child_process';
 import * as store from './lib/store.js';
 import { scanModels, readSafetensorsHeader, readGgufArchitecture, classifyKeys, ARCH_LABELS, KIND_LABELS } from './lib/scanner.js';
-import { route, buildCatalog, PROMPT_STYLES, styleFor } from './lib/router.js';
+import { route, buildCatalog, PROMPT_STYLES, styleFor, heuristicTask } from './lib/router.js';
 import { resolveBrain } from './lib/brain.js';
 import { runModel, cancelOnWorker, inGpuQueue } from './lib/backends.js';
 import * as engines from './lib/engines.js';
@@ -311,7 +311,12 @@ async function processJob(job) {
     // "una foto di me al mare": il gemello si usa con il suo modello (Flux), se la richiesta non ne sceglie un altro
     if (!job.forceModelId && !job.attachments.length) {
       const tw = twin.twinForPrompt(job.prompt);
-      if (tw?.modelId) { job.forceModelId = tw.modelId; log(`Uso il gemello "${tw.lora.name}"`); }
+      if (tw?.modelId) {
+        // Per un video il gemello serve alla foto di partenza, non al motore video
+        if (/video|animation/.test(job.forceTask || '') || heuristicTask(job.prompt, []) !== 'image_generate') job.twinModelId = tw.modelId;
+        else job.forceModelId = tw.modelId;
+        log(`Uso il gemello "${tw.lora.name}"`);
+      }
     }
     job.status = 'routing';
     log('Analizzo il prompt…');
@@ -339,12 +344,14 @@ async function processJob(job) {
     if (d.reason) log(d.reason);
     // Un modello che anima solo una foto (es. Stable Video Diffusion) senza foto di partenza:
     // prima si crea l'immagine dal testo, poi la si anima
-    const needsStill = /video|animation/.test(d.task) && !d.model.capabilities?.includes('video_generate')
-      && (d.model.arch === 'svd' || /StableVideoDiffusion/i.test(d.model.pipelineClass || ''))
+    // Wan 2.2: per volti perfetti (e per il gemello) si parte da una foto rifinita, salvo da_foto: false
+    const svdOnly = !d.model.capabilities?.includes('video_generate') && (d.model.arch === 'svd' || /StableVideoDiffusion/i.test(d.model.pipelineClass || ''));
+    const wanStill = d.model.backend === 'wan' && !['false', '0', 'no'].includes(String(job.params.da_foto ?? true).toLowerCase());
+    const needsStill = /video|animation/.test(d.task) && (svdOnly || wanStill)
       && !job.attachments.some((a) => a.type?.startsWith('image/'));
     if (needsStill) {
-      log('Il motore video parte da una foto: prima creo l\'immagine dal testo');
-      const di = await route(job.prompt, [], { forceTask: 'image_generate' });
+      log(svdOnly ? 'Il motore video parte da una foto: prima creo l\'immagine dal testo' : 'Prima creo la foto di partenza (rifinita: pelle e volti), poi la animo con Wan 2.2');
+      const di = await route(job.prompt, [], { forceTask: 'image_generate', forceModelId: job.twinModelId || null });
       const blockedStill = blockedReason(di.prompt);
       if (blockedStill) throw new Error(blockedStill);
       const still = { ...job, attachments: [], loras: di.loras || [], routedPrompt: di.prompt, negativePrompt: di.negativePrompt,
@@ -355,6 +362,7 @@ async function processJob(job) {
       const buf = fs.readFileSync(path.join(store.OUTPUT_DIR, path.basename(img.url)));
       job.attachments = [{ name: path.basename(img.url), type: img.type, dataUrl: `data:${img.type};base64,${buf.toString('base64')}` }];
       job.still = img;
+      job.params.aspect = still.params.aspect; // il video ha lo stesso formato della foto
       log(`Foto di partenza pronta (${di.model.name}), ora la animo`);
     }
     job.status = 'running';

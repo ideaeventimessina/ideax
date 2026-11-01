@@ -1,5 +1,12 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.14.1.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.15.0.exe** e aprilo.
+
+## Video veri con Wan 2.2
+- Nuovo motore **Video Wan 2.2** (Modelli → Motori → Installa, circa 18 GB): video da testo o da una foto, 720p a 24 fotogrammi al secondo, fino a 5 secondi a clip, con movimento naturale. Licenza Apache 2.0, uso commerciale consentito
+- Usa il ComfyUI già installato con MOSS-Image: niente programmi in più
+- Quando c'è, diventa il motore video principale (prima di Stable Video Diffusion)
+- Per volti perfetti ogni video parte da una foto creata e rifinita (pelle e volti, e il tuo gemello se lo nomini), che Wan anima mantenendo la stessa persona
+- Le catene di clip per Impagino usano Wan: clip da 4 secondi, molto più vive
 
 ## Correzione importante: ideax non si apriva
 - Dalla 1.13.0 ideax.exe si chiudeva subito all'avvio, senza mostrare nulla (un errore nel codice della Libreria voci). Corretto
