@@ -45,6 +45,29 @@ await esbuild.build({
   logOverride: { 'empty-import-meta': 'silent' },
 });
 
+// 1b. Prova d'avvio: il pacchetto deve restare acceso. Un errore al caricamento (es. import.meta.url, che nel
+// pacchetto non esiste) chiude ideax.exe subito e senza finestra: meglio fermare qui la release che farlo scoprire all'utente.
+console.log('1b/5 Provo ad avviare il pacchetto');
+{
+  const { spawn } = await import('node:child_process');
+  const os = await import('node:os');
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ideax-prova-'));
+  const child = spawn(process.execPath, [bundle], { env: { ...process.env, IDEAX_HOME: home, PORT: '7979', IDEAX_NO_OPEN: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  let out = '';
+  child.stdout.on('data', (d) => { out += d; });
+  child.stderr.on('data', (d) => { out += d; });
+  const exited = await new Promise((resolve) => {
+    const t = setTimeout(() => resolve(null), 8000);
+    child.on('exit', (code) => { clearTimeout(t); resolve(code ?? 1); });
+  });
+  if (exited !== null) {
+    const log = fs.existsSync(path.join(home, 'data', 'ideax.log')) ? fs.readFileSync(path.join(home, 'data', 'ideax.log'), 'utf8') : '';
+    throw new Error(`Il pacchetto si chiude all'avvio (codice ${exited}):\n${(out + log).slice(-3000)}`);
+  }
+  child.kill();
+  console.log('   resta acceso: ok');
+}
+
 // 2. Blob per l'eseguibile "single executable application" di Node
 console.log('2/5 Preparo il blob dell\'eseguibile');
 const blob = path.join(DIST, 'ideax.blob');

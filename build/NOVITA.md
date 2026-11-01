@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.14.0.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.14.1.exe** e aprilo.
+
+## Correzione importante: ideax non si apriva
+- Dalla 1.13.0 ideax.exe si chiudeva subito all'avvio, senza mostrare nulla (un errore nel codice della Libreria voci). Corretto
+- Da ora ogni versione viene avviata per prova prima di essere pubblicata: se non resta accesa, non esce
 
 ## Video montati con Impagino
 - Nuova sezione nella pagina **Reel**: "Video montato con Impagino". Scrivi l'idea, scegli quante clip (4-12) e il formato

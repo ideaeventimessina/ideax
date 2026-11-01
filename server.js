@@ -1073,7 +1073,7 @@ function openBrowser(url) {
 }
 
 const localUrl = `http://localhost:${PORT}`;
-const shouldOpen = store.IS_SEA || process.env.IDEAX_OPEN === '1';
+const shouldOpen = (store.IS_SEA || process.env.IDEAX_OPEN === '1') && process.env.IDEAX_NO_OPEN !== '1';
 
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
