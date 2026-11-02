@@ -93,7 +93,7 @@ function showPage() {
   if (page === 'cervello') loadBrainPage();
   if (page === 'collega') { loadSystems(); loadAccessi(); loadFarm(); }
   if (page === 'regia') loadRegia();
-  if (page === 'modelli') { loadEngines(); loadFixes(); loadBaseFotoreale(); refreshSetup().then(() => { renderLlmSupport(); if (state.engines) renderEngines(); }); }
+  if (page === 'modelli') { loadEngines(); loadFixes(); loadBaseFotoreale(); loadModelliAdulti(); refreshSetup().then(() => { renderLlmSupport(); if (state.engines) renderEngines(); }); }
   if (page === 'gemello') { loadEngines(); loadTwin(); loadPersonaggi(); }
   window.scrollTo({ top: 0 });
 }
@@ -766,6 +766,35 @@ $('#base-fotoreale-card')?.addEventListener('click', async (e) => {
   e.target.disabled = true; e.target.textContent = 'Avvio…';
   await api('/api/models/base-fotoreale', { method: 'POST' }).catch(() => {});
   loadBaseFotoreale();
+});
+
+let adultiTimer = null;
+async function loadModelliAdulti() {
+  const list = $('#modelli-adulti-list');
+  if (!list) return;
+  clearTimeout(adultiTimer);
+  let ms;
+  try { ms = await api('/api/models/adulti'); } catch { return; }
+  list.innerHTML = ms.map((m) => {
+    let azione;
+    if (m.installato) azione = '<span class="chip">Installato ✓</span>';
+    else if (m.status === 'downloading') {
+      const pct = m.total ? Math.round((m.done / m.total) * 100) : null;
+      azione = `<span class="small muted">Scarico… ${pct != null ? pct + '%' : ''} di ${m.gb} GB</span>`;
+    } else if (m.status === 'error') azione = `<button class="btn small" data-adulto="${esc(m.id)}">Riprova</button> <span class="error-text small">${esc(m.error || '')}</span>`;
+    else azione = `<button class="btn small primary" data-adulto="${esc(m.id)}">Scarica (${m.gb} GB)</button>`;
+    return `<div class="teacher"><strong>${esc(m.nome)}</strong><span class="small muted grow">${esc(m.desc)}</span>${azione}</div>`;
+  }).join('');
+  if (ms.some((m) => m.status === 'downloading')) adultiTimer = setTimeout(loadModelliAdulti, 1500);
+  else if (ms.some((m) => m.installato) && $('#page-modelli').classList.contains('active')) { await loadModels(); }
+}
+
+$('#modelli-adulti-list')?.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-adulto]');
+  if (!b) return;
+  b.disabled = true; b.textContent = 'Avvio…';
+  await api(`/api/models/adulti/${b.dataset.adulto}`, { method: 'POST' }).catch(() => {});
+  loadModelliAdulti();
 });
 
 document.addEventListener('click', async (e) => {

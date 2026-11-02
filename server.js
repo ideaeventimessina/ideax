@@ -77,6 +77,16 @@ const jobs = new Map();
 const BASE_FOTOREALE = { repo: 'SG161222/Realistic_Vision_V6.0_B1_noVAE', file: 'Realistic_Vision_V6.0_NV_B1_fp16.safetensors', nome: 'Realistic Vision 6.0', gb: 2.1 };
 let baseJob = { status: 'idle', done: 0, total: 0, error: null };
 
+// Modelli per adulti (OnlyFans, esplicito fotorealistico): SDXL base Pony (sanno fare gli atti) + addestramento realistico,
+// formato diffusers col VAE incluso (niente rumore). Pubblici, scaricabili con un clic. Si installano in una cartella sotto models/.
+const MODELLI_ADULTI = [
+  { id: 'pony-realism', repo: 'John6666/pony-realism-v22main-sdxl', nome: 'Pony Realism', desc: 'Fotorealistico ed esplicito, base Pony. Il più usato per contenuti realistici OnlyFans.', gb: 6.9 },
+  { id: 'cyberrealistic-pony', repo: 'John6666/cyberrealistic-pony-v65-sdxl', nome: 'CyberRealistic Pony', desc: 'Fotorealistico, pelle molto curata, atti espliciti.', gb: 6.9 },
+  { id: 'big-lust', repo: 'John6666/big-lust-v16-sdxl', nome: 'BigLust', desc: 'Esplicito SDXL, stile vario.', gb: 6.9 },
+];
+const PATTERNS_DIFFUSERS = ['model_index.json', '*/*.json', '*/*.txt', '*/*.safetensors'];
+const adultJobs = {}; // id → { status, done, total, error }
+
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif',
@@ -1143,6 +1153,24 @@ const server = http.createServer(async (req, res) => {
       }
       return send(res, 202, { ...baseJob, ...BASE_FOTOREALE });
     }
+    // Modelli per adulti: lista con stato/avanzamento, e avvio del download (uno per volta per modello)
+    if (p === '/api/models/adulti' && req.method === 'GET') {
+      return send(res, 200, MODELLI_ADULTI.map((m) => ({ ...m, ...(adultJobs[m.id] || { status: 'idle' }), installato: fs.existsSync(path.join(store.MODELS_DIR, m.id, 'model_index.json')) })));
+    }
+    { const am = p.match(/^\/api\/models\/adulti\/([\w-]+)$/);
+      if (am && req.method === 'POST') {
+        const m = MODELLI_ADULTI.find((x) => x.id === am[1]);
+        if (!m) return send(res, 404, { error: 'Modello sconosciuto' });
+        const dest = path.join(store.MODELS_DIR, m.id);
+        if (fs.existsSync(path.join(dest, 'model_index.json'))) return send(res, 200, { ...m, status: 'done', installato: true });
+        if (adultJobs[m.id]?.status !== 'downloading') {
+          adultJobs[m.id] = { status: 'downloading', done: 0, total: 0, error: null };
+          snapshot(m.repo, dest, PATTERNS_DIFFUSERS, { onProgress: (pr) => { adultJobs[m.id].done = pr.done; adultJobs[m.id].total = pr.total; } })
+            .then(() => { adultJobs[m.id].status = 'done'; })
+            .catch((err) => { adultJobs[m.id] = { status: 'error', done: 0, total: 0, error: err.message }; });
+        }
+        return send(res, 202, { ...m, ...adultJobs[m.id] });
+      } }
     if (p.startsWith('/api/models/') && req.method === 'PATCH') {
       const id = p.split('/').pop();
       const patch = await readJson(req);

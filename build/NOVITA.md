@@ -1,5 +1,5 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.12.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.13.exe** e aprilo.
 
 ## Decorazioni laser: sagome piene e nere, non cuori di linee storte
 - Il tema ora si traduce sempre in inglese prima di disegnare: "cuore sagoma semplice nero" arrivava al modello in italiano, che SDXL non capisce
@@ -14,6 +14,10 @@ Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.12.exe** e ap
 
 ## Video già fatto: messaggio chiaro (usa il montatore)
 - Se alleghi un video chiedendo di modificarlo, ideax non lo fa col motore immagini (quelli generano o animano una foto, non rieditano un video). Ora lo dice chiaro e ti manda dove serve: il montatore (Studio → Video montato) per tagliare, montare, musica e titoli
+
+## Modelli per adulti con un clic (OnlyFans)
+- In Modelli c'è "Modelli per adulti": scarichi con un clic Pony Realism, CyberRealistic Pony o BigLust — SDXL base Pony addestrati sul realismo, che sanno fare gli atti espliciti e girano puliti (VAE incluso, niente rumore). ~7 GB l'uno, una volta sola
+- Per l'esplicito realistico (foto, OnlyFans) usa questi, non realityvision (che fa nudo ma non gli atti): dagli priorità alta in Modelli e ideax li userà. E GENERA da testo, non modificare una foto
 
 ## Adulto: la LoRA giusta si accende da sola
 - Quando chiedi un contenuto esplicito (generato da testo), ideax ora accende da solo la LoRA "per adulti" compatibile col modello (es. MysticXXX con realityvision): non devi più attivarla a mano ogni volta. Per i prompt normali resta spenta
