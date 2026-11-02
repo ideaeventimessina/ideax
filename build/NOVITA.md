@@ -1,5 +1,5 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.9.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.10.exe** e aprilo.
 
 ## Decorazioni laser: sagome piene e nere, non cuori di linee storte
 - Il tema ora si traduce sempre in inglese prima di disegnare: "cuore sagoma semplice nero" arrivava al modello in italiano, che SDXL non capisce
@@ -14,6 +14,10 @@ Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.9.exe** e apr
 
 ## Video già fatto: messaggio chiaro (usa il montatore)
 - Se alleghi un video chiedendo di modificarlo, ideax non lo fa col motore immagini (quelli generano o animano una foto, non rieditano un video). Ora lo dice chiaro e ti manda dove serve: il montatore (Studio → Video montato) per tagliare, montare, musica e titoli
+
+## Correzione DEFINITIVA: immagini SDXL (Pony, realityvision…) a rumore
+- Se SDXL usciva ancora "a poltiglia" anche dopo l'aggiornamento, ora è risolto alla radice: il VAE difettoso viene sostituito con quello ufficiale "fp16-safe" (si scarica una volta, ~300 MB), che in fp16 non va in overflow. Vale per Pony e tutti gli SDXL
+- IMPORTANTE: dopo l'aggiornamento **riavvia il worker** (Impostazioni → Motore → Riavvia il worker, o "Libera la GPU"): il modello va ricaricato perché la correzione faccia effetto
 
 ## Correzione: immagini SDXL (Pony, realityvision…) non escono più "a rumore"
 - Il VAE di SDXL in fp16 andava in overflow e invece dell'immagine decodificava una poltiglia di colore (rumore verde-grigio al posto del soggetto): è un difetto noto di SDXL. Ora il VAE lavora in fp32 nella decodifica e l'immagine esce giusta. Riguarda i modelli SDXL e SD3; Flux e SD 1.5 non ne soffrivano

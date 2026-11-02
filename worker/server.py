@@ -217,6 +217,29 @@ def load_flux(spec: ModelSpec, dtype):
     return pipe
 
 
+_fix_vae = {"vae": None, "tried": False}
+
+
+def _sdxl_fix_vae(dtype):
+    """Il VAE di SDXL che in fp16 NON va in overflow (madebyollin/sdxl-vae-fp16-fix, pubblico, MIT). Scaricato una volta
+    (~300 MB) e riusato. Se la rete non c'è, torna None e si ripiega su force_upcast."""
+    if _fix_vae["vae"] is not None:
+        return _fix_vae["vae"]
+    if _fix_vae["tried"]:
+        return None
+    _fix_vae["tried"] = True
+    try:
+        import diffusers as d
+
+        PROGRESS["phase"] = "Preparo il VAE di SDXL (la prima volta, ~300 MB)"
+        _fix_vae["vae"] = d.AutoencoderKL.from_pretrained("madebyollin/sdxl-vae-fp16-fix", torch_dtype=dtype)
+        print("[ideax] VAE fp16-safe per SDXL pronto", flush=True)
+        return _fix_vae["vae"]
+    except Exception as err:  # noqa: BLE001
+        print(f"[ideax] VAE fp16-safe non scaricato ({err}): ripiego su force_upcast", flush=True)
+        return None
+
+
 def load_base(spec: ModelSpec):
     if _loaded["key"] == spec.path:
         return _loaded["pipe"]
@@ -243,14 +266,23 @@ def load_base(spec: ModelSpec):
         pipe = d.StableDiffusion3Pipeline.from_single_file(spec.path, torch_dtype=dtype)
     else:
         raise HTTPException(400, "Architettura del modello sconosciuta: indicala nella pagina Modelli.")
-    # Il VAE di SDXL (e SD3) in fp16 va in overflow numerico (NaN) e decodifica RUMORE invece dell'immagine: è il
-    # classico "SDXL fp16 VAE bug" (una poltiglia di colore al posto del soggetto). force_upcast lo fa lavorare in
-    # fp32 solo durante la decodifica: poca memoria in più, immagine salva. (Flux e SD1.5 non ne soffrono.)
-    if spec.arch in ("sdxl", "sd3") and getattr(pipe, "vae", None) is not None:
+    # Il VAE di SDXL in fp16 va in overflow numerico (NaN) e decodifica RUMORE invece dell'immagine (la poltiglia di
+    # colore vista con Pony). La correzione definitiva: sostituirlo col VAE "fp16-safe" ufficiale, che in fp16 NON va in
+    # overflow. force_upcast resta come ripiego se quel VAE non si scarica. (Flux e SD1.5 non ne soffrono.)
+    if spec.arch == "sdxl" and getattr(pipe, "vae", None) is not None:
+        fix = _sdxl_fix_vae(dtype)
+        if fix is not None:
+            pipe.vae = fix
+        else:
+            try:
+                pipe.vae.config.force_upcast = True
+            except Exception as err:  # noqa: BLE001
+                print(f"[ideax] né VAE di riserva né force_upcast ({err}): SDXL potrebbe uscire rumorosa", flush=True)
+    elif spec.arch == "sd3" and getattr(pipe, "vae", None) is not None:
         try:
             pipe.vae.config.force_upcast = True
-        except Exception as err:  # noqa: BLE001
-            print(f"[ideax] non riesco a forzare il VAE in fp32 ({err}): l'immagine potrebbe uscire rumorosa", flush=True)
+        except Exception:  # noqa: BLE001
+            pass
     _loaded.update(key=spec.path, pipe=pipe, derived={})
     return pipe
 
