@@ -45,9 +45,17 @@ class TrainRequest(BaseModel):
     rank: int = 16
     lr: float = 1e-4
     low_vram: bool = True
+    arch: str = "flux"   # "flux" (gemello/predefinito) o "sdxl" (personaggi per i modelli espliciti SDXL)
+    base: str = ""       # per SDXL: la cartella/file del checkpoint SDXL su cui addestrare (es. Pony Realism)
 
 
 def config_for(req: TrainRequest, dataset: Path, out: Path) -> dict:
+    sdxl = req.arch == "sdxl"
+    # SDXL: nessuna quantizzazione FLUX, scheduler ddpm, base = il checkpoint SDXL su cui addestrare (es. Pony Realism),
+    # così la LoRA risultante è SDXL e si combina con i modelli espliciti. FLUX: come prima (gemello).
+    model = ({"name_or_path": req.base, "quantize": False, "low_vram": req.low_vram}
+             if sdxl else {"name_or_path": args.model, "is_flux": True, "quantize": True, "low_vram": req.low_vram})
+    scheduler = "ddpm" if sdxl else "flowmatch"
     return {
         "job": "extension",
         "config": {
@@ -61,18 +69,19 @@ def config_for(req: TrainRequest, dataset: Path, out: Path) -> dict:
                 "save": {"dtype": "float16", "save_every": 400, "max_step_saves_to_keep": 2, "push_to_hub": False},
                 "datasets": [{
                     "folder_path": str(dataset), "caption_ext": "txt", "caption_dropout_rate": 0.05,
-                    "shuffle_tokens": False, "cache_latents_to_disk": True, "resolution": [512, 768, 1024],
+                    "shuffle_tokens": False, "cache_latents_to_disk": True,
+                    "resolution": [768, 1024] if sdxl else [512, 768, 1024],
                 }],
                 "train": {
                     "batch_size": 1, "steps": req.steps, "gradient_accumulation_steps": 1, "train_unet": True,
-                    "train_text_encoder": False, "gradient_checkpointing": True, "noise_scheduler": "flowmatch",
+                    "train_text_encoder": False, "gradient_checkpointing": True, "noise_scheduler": scheduler,
                     "optimizer": "adamw8bit", "lr": req.lr, "ema_config": {"use_ema": True, "ema_decay": 0.99},
                     "dtype": "bf16", "disable_sampling": True, "skip_first_sample": True,
                 },
-                # 16 GB: trasformatore quantizzato a 8 bit e quantizzazione a pezzi (più lenta, ma ci sta)
-                "model": {"name_or_path": args.model, "is_flux": True, "quantize": True, "low_vram": req.low_vram},
-                "sample": {"sampler": "flowmatch", "sample_every": 100000, "width": 1024, "height": 1024,
-                           "prompts": [f"photo of {req.trigger}"], "neg": "", "seed": 42, "guidance_scale": 4, "sample_steps": 20},
+                "model": model,
+                "sample": {"sampler": scheduler, "sample_every": 100000, "width": 1024, "height": 1024,
+                           "prompts": [f"photo of {req.trigger}"], "neg": "", "seed": 42,
+                           "guidance_scale": 7 if sdxl else 4, "sample_steps": 25 if sdxl else 20},
             }],
         },
         "meta": {"name": req.name, "version": "1.0"},
@@ -93,7 +102,8 @@ def run(req: TrainRequest, cfg_path: Path, out: Path) -> None:
         env = {**os.environ, "PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1"}
         proc = subprocess.Popen([sys.executable, "run.py", str(cfg_path)], cwd=APP, env=env,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace", bufsize=1)
-        state["phase"] = "Preparo il modello (la prima volta scarica FLUX.1-dev, circa 30 GB)"
+        state["phase"] = ("Preparo il modello SDXL su cui addestrare" if req.arch == "sdxl"
+                          else "Preparo il modello (la prima volta scarica FLUX.1-dev, circa 30 GB)")
         buf = ""
         while True:
             ch = proc.stdout.read(1)

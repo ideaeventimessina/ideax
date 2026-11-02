@@ -3169,7 +3169,8 @@ $('#personaggio-form').addEventListener('submit', async (e) => {
   const f = e.target;
   $('[data-personaggio-err]').textContent = '';
   try {
-    await api('/api/personaggi', { method: 'POST', body: { nome: f.nome.value, descrizione: f.descrizione.value, nsfw: f.nsfw.checked } });
+    // Un personaggio "adulti" si addestra su SDXL, così la sua LoRA si combina con i modelli espliciti (Pony Realism…).
+    await api('/api/personaggi', { method: 'POST', body: { nome: f.nome.value, descrizione: f.descrizione.value, nsfw: f.nsfw.checked, sdxl: f.nsfw.checked } });
     f.reset(); loadPersonaggi();
   } catch (err) { $('[data-personaggio-err]').textContent = err.message; }
 });

@@ -1,5 +1,5 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.13.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.0.exe** e aprilo.
 
 ## Decorazioni laser: sagome piene e nere, non cuori di linee storte
 - Il tema ora si traduce sempre in inglese prima di disegnare: "cuore sagoma semplice nero" arrivava al modello in italiano, che SDXL non capisce
@@ -14,6 +14,10 @@ Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.13.exe** e ap
 
 ## Video già fatto: messaggio chiaro (usa il montatore)
 - Se alleghi un video chiedendo di modificarlo, ideax non lo fa col motore immagini (quelli generano o animano una foto, non rieditano un video). Ora lo dice chiaro e ti manda dove serve: il montatore (Studio → Video montato) per tagliare, montare, musica e titoli
+
+## Personaggi inventati su SDXL (per contenuti espliciti coerenti)
+- Un personaggio inventato (volto e corpo generati da zero, nessuna persona reale) marcato "adulti" ora si addestra su SDXL: la sua LoRA si combina con i modelli espliciti (Pony Realism…), così hai la STESSA persona inventata in scene esplicite, coerente scatto dopo scatto. È la pipeline giusta per OnlySans senza il rischio del volto reale
+- Serve un modello esplicito SDXL installato (Modelli → Modelli per adulti) come base. L'addestramento SDXL su 16 GB è nuovo e dura 1-2 ore: la prima volta potrebbe servire un ritocco guardando il registro
 
 ## Modelli per adulti con un clic (OnlyFans)
 - In Modelli c'è "Modelli per adulti": scarichi con un clic Pony Realism, CyberRealistic Pony o BigLust — SDXL base Pony addestrati sul realismo, che sanno fare gli atti espliciti e girano puliti (VAE incluso, niente rumore). ~7 GB l'uno, una volta sola
