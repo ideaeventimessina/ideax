@@ -923,6 +923,21 @@ function openServer(s = {}) {
   $('#server-dialog').showModal();
 }
 $('#add-server').addEventListener('click', () => openServer());
+// "Server cloud pronto": apre il form già compilato col workflow esplicito SDXL. All'utente resta solo l'indirizzo di RunPod.
+const WORKFLOW_SDXL_CLOUD = {
+  4: { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: 'ponyRealism.safetensors' } },
+  5: { class_type: 'EmptyLatentImage', inputs: { width: 832, height: 1216, batch_size: 1 } },
+  6: { class_type: 'CLIPTextEncode', inputs: { text: 'score_9, score_8_up, score_7_up, {{prompt}}', clip: ['4', 1] } },
+  7: { class_type: 'CLIPTextEncode', inputs: { text: '{{negative_prompt}}, worst quality, low quality, bad anatomy, extra fingers, watermark, text', clip: ['4', 1] } },
+  3: { class_type: 'KSampler', inputs: { seed: '{{seed}}', steps: 28, cfg: 6, sampler_name: 'dpmpp_2m_sde', scheduler: 'karras', denoise: 1, model: ['4', 0], positive: ['6', 0], negative: ['7', 0], latent_image: ['5', 0] } },
+  8: { class_type: 'VAEDecode', inputs: { samples: ['3', 0], vae: ['4', 2] } },
+  9: { class_type: 'SaveImage', inputs: { filename_prefix: 'ideax', images: ['8', 0] } },
+};
+$('#add-server-cloud')?.addEventListener('click', () => openServer({
+  name: 'ComfyUI cloud (SDXL esplicito)', type: 'comfyui', priority: 10,
+  description: 'GPU cloud (RunPod) con Pony Realism. Incolla l\'indirizzo della porta 8188 di RunPod.',
+  capabilities: ['image_generate', 'image_edit'], template: WORKFLOW_SDXL_CLOUD, enabled: true,
+}));
 sForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   try {
