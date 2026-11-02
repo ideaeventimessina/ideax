@@ -1146,7 +1146,7 @@ const server = http.createServer(async (req, res) => {
     if (p.startsWith('/api/models/') && req.method === 'PATCH') {
       const id = p.split('/').pop();
       const patch = await readJson(req);
-      const allowed = ['name', 'description', 'priority', 'enabled', 'triggerWords', 'loraWeight', 'loraAlways', 'arch', 'kind', 'capabilities', 'params', 'promptStyle', 'negativePrompt', 'promptToken'];
+      const allowed = ['name', 'description', 'priority', 'enabled', 'triggerWords', 'loraWeight', 'loraAlways', 'arch', 'kind', 'capabilities', 'params', 'promptStyle', 'negativePrompt', 'promptToken', 'adultLora'];
       return send(res, 200, store.saveOverride(id, Object.fromEntries(Object.entries(patch).filter(([k]) => allowed.includes(k)))));
     }
     if (p.startsWith('/api/models/') && req.method === 'DELETE') {

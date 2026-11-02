@@ -1,5 +1,5 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.11.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.12.exe** e aprilo.
 
 ## Decorazioni laser: sagome piene e nere, non cuori di linee storte
 - Il tema ora si traduce sempre in inglese prima di disegnare: "cuore sagoma semplice nero" arrivava al modello in italiano, che SDXL non capisce
@@ -14,6 +14,10 @@ Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.11.exe** e ap
 
 ## Video già fatto: messaggio chiaro (usa il montatore)
 - Se alleghi un video chiedendo di modificarlo, ideax non lo fa col motore immagini (quelli generano o animano una foto, non rieditano un video). Ora lo dice chiaro e ti manda dove serve: il montatore (Studio → Video montato) per tagliare, montare, musica e titoli
+
+## Adulto: la LoRA giusta si accende da sola
+- Quando chiedi un contenuto esplicito (generato da testo), ideax ora accende da solo la LoRA "per adulti" compatibile col modello (es. MysticXXX con realityvision): non devi più attivarla a mano ogni volta. Per i prompt normali resta spenta
+- Puoi anche segnare qualunque LoRA come "adulto" (campo adultLora). La LoRA deve essere della stessa architettura del modello (SDXL con un SDXL): se non scatta, controlla l'architettura della LoRA in Modelli
 
 ## I modelli lavorano GREZZI (niente ritocco automatico)
 - Prima ogni immagine passava da un ritocco automatico di volti e pelle: due generazioni extra + un ingrandimento, su TUTTO. Lento e invadente. Ora è SPENTO di default: il modello genera grezzo, a risoluzione nativa, veloce. (Resta accendibile a richiesta)
