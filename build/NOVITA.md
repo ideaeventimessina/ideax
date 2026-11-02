@@ -1,5 +1,5 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.8.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.7.exe** e aprilo.
 
 ## Decorazioni laser: sagome piene e nere, non cuori di linee storte
 - Il tema ora si traduce sempre in inglese prima di disegnare: "cuore sagoma semplice nero" arrivava al modello in italiano, che SDXL non capisce
@@ -11,6 +11,9 @@ Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.8.exe** e apr
 ## Decorazioni laser: l'anteprima arriva sempre a IDEAlab
 - Con le decorazioni fatte da SDXL l'editor di IDEAlab riceveva il taglio giusto ma l'immagine vuota: l'anteprima era il PNG intero e IDEAlab la scartava
 - Ora ideax manda un'anteprima JPEG leggera (768 px, qualche decina di KB), sempre nel formato che IDEAlab accetta
+
+## Video già fatto: messaggio chiaro (usa il montatore)
+- Se alleghi un video chiedendo di modificarlo, ideax non lo fa col motore immagini (quelli generano o animano una foto, non rieditano un video). Ora lo dice chiaro e ti manda dove serve: il montatore (Studio → Video montato) per tagliare, montare, musica e titoli
 
 ## Correzione: immagini SDXL (Pony, realityvision…) non escono più "a rumore"
 - Il VAE di SDXL in fp16 andava in overflow e invece dell'immagine decodificava una poltiglia di colore (rumore verde-grigio al posto del soggetto): è un difetto noto di SDXL. Ora il VAE lavora in fp32 nella decodifica e l'immagine esce giusta. Riguarda i modelli SDXL e SD3; Flux e SD 1.5 non ne soffrivano
