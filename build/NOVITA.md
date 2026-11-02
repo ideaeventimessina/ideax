@@ -1,5 +1,5 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.7.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.9.exe** e aprilo.
 
 ## Decorazioni laser: sagome piene e nere, non cuori di linee storte
 - Il tema ora si traduce sempre in inglese prima di disegnare: "cuore sagoma semplice nero" arrivava al modello in italiano, che SDXL non capisce
