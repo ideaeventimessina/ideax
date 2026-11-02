@@ -1,5 +1,5 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.10.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.11.exe** e aprilo.
 
 ## Decorazioni laser: sagome piene e nere, non cuori di linee storte
 - Il tema ora si traduce sempre in inglese prima di disegnare: "cuore sagoma semplice nero" arrivava al modello in italiano, che SDXL non capisce
@@ -14,6 +14,10 @@ Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.25.10.exe** e ap
 
 ## Video già fatto: messaggio chiaro (usa il montatore)
 - Se alleghi un video chiedendo di modificarlo, ideax non lo fa col motore immagini (quelli generano o animano una foto, non rieditano un video). Ora lo dice chiaro e ti manda dove serve: il montatore (Studio → Video montato) per tagliare, montare, musica e titoli
+
+## I modelli lavorano GREZZI (niente ritocco automatico)
+- Prima ogni immagine passava da un ritocco automatico di volti e pelle: due generazioni extra + un ingrandimento, su TUTTO. Lento e invadente. Ora è SPENTO di default: il modello genera grezzo, a risoluzione nativa, veloce. (Resta accendibile a richiesta)
+- Nota onesta: i filtri di contenuto bloccano solo i minori e non toccano i tuoi prompt — il rumore grigio di SDXL era un bug del VAE (vedi sopra), non un filtro
 
 ## Correzione DEFINITIVA: immagini SDXL (Pony, realityvision…) a rumore
 - Se SDXL usciva ancora "a poltiglia" anche dopo l'aggiornamento, ora è risolto alla radice: il VAE difettoso viene sostituito con quello ufficiale "fp16-safe" (si scarica una volta, ~300 MB), che in fp16 non va in overflow. Vale per Pony e tutti gli SDXL

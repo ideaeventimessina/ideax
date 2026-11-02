@@ -422,8 +422,10 @@ def run_real(req: RunRequest) -> list[dict]:
     params.update(req.params)
     fps = int(params.pop("fps", 8))
     seed = params.pop("seed", None)
-    face_fix = str(params.pop("face_fix", True)).lower() not in ("false", "0", "no")
-    skin_fix = str(params.pop("skin_fix", True)).lower() not in ("false", "0", "no")
+    # Di default il modello lavora GREZZO: niente ritocco automatico di volti e pelle (erano due generazioni extra +
+    # un ingrandimento a ogni immagine, lente e invadenti). Si accendono solo se la richiesta lo chiede (face_fix/skin_fix).
+    face_fix = str(params.pop("face_fix", False)).lower() in ("true", "1", "yes", "si", "sì")
+    skin_fix = str(params.pop("skin_fix", False)).lower() in ("true", "1", "yes", "si", "sì")
     aspect = params.pop("aspect", None)
     if aspect and "width" in params and "height" in params:
         # Stessa quantità di pixel del formato nativo, con le proporzioni richieste (multipli di 64)
