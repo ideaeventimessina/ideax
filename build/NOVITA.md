@@ -1,5 +1,5 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.1.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.2.exe** e aprilo.
 
 ## Decorazioni laser: sagome piene e nere, non cuori di linee storte
 - Il tema ora si traduce sempre in inglese prima di disegnare: "cuore sagoma semplice nero" arrivava al modello in italiano, che SDXL non capisce
@@ -17,6 +17,10 @@ Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.1.exe** e apr
 
 ## Server cloud pronto con un clic (per immagini velocissime e video)
 - In Modelli c'è "☁ Server cloud pronto (SDXL)": apre il collegamento a un ComfyUI cloud (RunPod) già compilato col workflow esplicito SDXL (Pony Realism). Ti resta solo da incollare l'indirizzo della GPU. Da lì le immagini girano in 2-4 secondi, senza censura (è il tuo server)
+
+## "Crea personaggio da questo volto"
+- Generi un viso che ti piace nello Studio → premi "✧ Crea personaggio" sulla creazione: ideax blocca QUEL volto come personaggio coerente (prima partiva da una descrizione e inventava un volto nuovo). Da lì la stessa faccia torna in tutte le creazioni
+- Se lo marchi "per adulti" lo addestra su SDXL (per i modelli espliciti). L'addestramento resta lungo (1-2 ore): per coerenza immediata senza training c'è la via IP-Adapter sul server cloud
 
 ## Personaggi inventati su SDXL (per contenuti espliciti coerenti)
 - Un personaggio inventato (volto e corpo generati da zero, nessuna persona reale) marcato "adulti" ora si addestra su SDXL: la sua LoRA si combina con i modelli espliciti (Pony Realism…), così hai la STESSA persona inventata in scene esplicite, coerente scatto dopo scatto. È la pipeline giusta per OnlySans senza il rischio del volto reale

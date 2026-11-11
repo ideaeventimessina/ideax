@@ -423,7 +423,8 @@ function renderStage() {
       <div class="row">
         <a class="btn light small" href="${esc(main.url)}" download>↓ Scarica${main.type.startsWith('video/') ? ' MP4' : ''}</a>
         ${gif && gif !== main ? `<a class="btn glass small" href="${esc(gif.url)}" download>↓ GIF</a>` : ''}
-        ${/^image\/(png|jpeg|webp)/.test(main.type) ? `<button class="btn glass small" data-act="reuse" data-url="${esc(main.url)}">Modifica ancora ↗</button>` : ''}
+        ${/^image\/(png|jpeg|webp)/.test(main.type) ? `<button class="btn glass small" data-act="reuse" data-url="${esc(main.url)}">Modifica ancora ↗</button>
+        <button class="btn glass small" data-act="personaggio" data-url="${esc(main.url)}" title="Blocca questo volto come personaggio coerente, da usare in tutte le tue creazioni">✧ Crea personaggio</button>` : ''}
         <button class="btn glass small" data-act="delete" data-id="${esc(item.id)}" aria-label="Elimina questa creazione">Elimina</button>
       </div>
     </div>`;
@@ -496,6 +497,17 @@ $('#stage').addEventListener('click', async (e) => {
     setFormat('image');
     $('#prompt').focus();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  if (act === 'personaggio') {
+    const nome = prompt('Nome del personaggio (la tua creator): la sua faccia resterà questa in tutte le creazioni.');
+    if (!nome?.trim()) return;
+    const adulti = confirm('È per contenuti per adulti? (OK = sì: lo addestro su SDXL per combinarsi coi modelli espliciti)');
+    btn.disabled = true; btn.textContent = 'Preparo…';
+    try {
+      await api('/api/personaggi', { method: 'POST', body: { nome: nome.trim(), anchorUrl: btn.dataset.url, nsfw: adulti, sdxl: adulti } });
+      alert('Personaggio avviato. Lo segui in Gemello → Personaggi (l\'addestramento è lungo). Finito, nomina il personaggio nei prompt e il volto resta questo.');
+      location.hash = 'gemello';
+    } catch (err) { alert(err.message); btn.disabled = false; btn.textContent = '✧ Crea personaggio'; }
   }
 });
 $('#lightbox').addEventListener('close', () => { $('#lightbox-body').innerHTML = ''; });
