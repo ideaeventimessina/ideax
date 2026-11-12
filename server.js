@@ -477,7 +477,14 @@ async function processJob(job) {
     // "una foto di me al mare": il gemello si usa con il suo modello (Flux), se la richiesta non ne sceglie un altro
     if (!job.forceModelId && !job.attachments.length) {
       const car = personaggi.personaggioForPrompt(job.prompt);
-      if (car?.modelId) { job.forceModelId = car.modelId; log(`Uso il personaggio "${car.personaggio.nome}"`); }
+      if (car?.modelId) {
+        job.forceModelId = car.modelId;
+        // Pelle vera anche in resa: senza questi termini Pony/SDXL rende la "plastica" liscia di cui ci si lamenta.
+        // Si aggiunge solo se non li hai già scritti tu, per non raddoppiare.
+        if (!/raw photo|skin texture|pori|pores|pelle vera|film grain/i.test(job.prompt))
+          job.prompt += ', raw photo, natural skin texture with visible pores, realistic skin, no plastic or waxy or airbrushed skin, film grain';
+        log(`Uso il personaggio "${car.personaggio.nome}"`);
+      }
     }
     if (!job.forceModelId && !job.attachments.length) {
       const tw = twin.twinForPrompt(job.prompt);

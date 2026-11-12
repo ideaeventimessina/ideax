@@ -432,7 +432,8 @@
           <p class="muted">Un volto che non esiste, tenuto sempre uguale: diventa un personaggio ricorrente (per social, contenuti per adulti, testimonial di fantasia). Nessuna persona reale, nessun consenso. ideax crea la faccia, la ripete in tante pose e addestra la sua LoRA (serve il motore Gemello foto e Fotomontaggio Qwen). Circa 1–2 ore, una volta sola.</p></div></div>
         <form id="personaggio-form" class="stack-sm">
           <label>Nome <input name="nome" required maxlength="40" placeholder="Es. Aurora"></label>
-          <label>Descrizione (il volto è inventato, deve essere adulto) <textarea name="descrizione" rows="2" required placeholder="donna sui 28 anni, capelli biondi lunghi, occhi verdi, look naturale"></textarea></label>
+          <label>Descrizione (il volto è inventato, deve essere adulto) <textarea name="descrizione" rows="3" required placeholder="donna sui 28 anni, capelli biondi lunghi, occhi verdi, pelle vera (pori, non liscia). Descrivi i segni distintivi: es. tatuaggio di una rosa sull'avambraccio sinistro, neo sullo zigomo — vanno scritti per restare uguali in ogni foto."></textarea></label>
+          <p class="muted small">Più preciso è il segno (tatuaggio, neo, cicatrice: cosa, dove), più resta identico. Quello che non scrivi, il modello lo reinventa a ogni posa.</p>
           <label class="check"><input type="checkbox" name="nsfw"> Personaggio per contenuti per adulti (aggiunge pose in lingerie/costume al dataset)</label>
           <div class="row"><button class="btn primary">Crea il personaggio</button><span class="error-text small" data-personaggio-err></span></div>
         </form>
