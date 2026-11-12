@@ -51,9 +51,13 @@ class TrainRequest(BaseModel):
 
 def config_for(req: TrainRequest, dataset: Path, out: Path) -> dict:
     sdxl = req.arch == "sdxl"
-    # SDXL: nessuna quantizzazione FLUX, scheduler ddpm, base = il checkpoint SDXL su cui addestrare (es. Pony Realism),
-    # così la LoRA risultante è SDXL e si combina con i modelli espliciti. FLUX: come prima (gemello).
-    model = ({"name_or_path": req.base, "quantize": False, "low_vram": req.low_vram}
+    # SDXL: arch="sdxl" OBBLIGATORIO. Senza, ai-toolkit (config_modules.py) non trova nessun flag e cade sul default
+    # arch="sd1" (Stable Diffusion 1.5): carica un checkpoint SDXL come se fosse SD1.5, qualcosa resta None e si
+    # schianta a 0/1600 con "argument of type 'NoneType' is not iterable". Con arch="sdxl" il caricatore accetta sia
+    # la cartella diffusers (from_pretrained) sia il file singolo. Niente quantizzazione FLUX, scheduler ddpm,
+    # base = il checkpoint SDXL su cui addestrare (es. Pony Realism), così la LoRA è SDXL e si combina coi modelli
+    # espliciti. FLUX: come prima (gemello).
+    model = ({"name_or_path": req.base, "arch": "sdxl", "quantize": False, "low_vram": req.low_vram}
              if sdxl else {"name_or_path": args.model, "is_flux": True, "quantize": True, "low_vram": req.low_vram})
     scheduler = "ddpm" if sdxl else "flowmatch"
     return {
@@ -125,7 +129,7 @@ def run(req: TrainRequest, cfg_path: Path, out: Path) -> None:
             return
         final = out / req.name / f"{req.name}.safetensors"
         if code != 0 or not final.exists():
-            tail = " · ".join(state["log"][-3:])
+            tail = " · ".join(state["log"][-5:])
             raise RuntimeError(f"addestramento terminato con codice {code}: {tail}")
         state.update(status="done", output=str(final), phase=None, step=req.steps)
     except Exception as err:  # noqa: BLE001
