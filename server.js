@@ -486,6 +486,13 @@ async function processJob(job) {
         log(`Uso il personaggio "${car.personaggio.nome}"`);
       }
     }
+    // "A figura intera" in un quadrato 1024×1024 viene tagliato a mezzo busto: se chiedi il corpo intero e non hai
+    // scelto tu un formato, si passa al verticale 2:3, dove una persona in piedi ci sta davvero.
+    if (!job.attachments.length && (job.forceTask || heuristicTask(job.prompt, [])) === 'image_generate' && !job.params?.aspect
+        && /figura intera|corpo intero|full[ -]?body|full[ -]?length|in piedi|standing full|dalla testa ai piedi/i.test(job.prompt)) {
+      job.params = { ...(job.params || {}), aspect: '2:3' };
+      log('Formato verticale 2:3 per la figura intera');
+    }
     if (!job.forceModelId && !job.attachments.length) {
       const tw = twin.twinForPrompt(job.prompt);
       if (tw?.modelId) {
