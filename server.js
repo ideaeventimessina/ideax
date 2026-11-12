@@ -771,6 +771,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/personaggi' && req.method === 'GET') return send(res, 200, { personaggi: personaggi.list(), training: personaggi.training });
     if (p === '/api/personaggi' && req.method === 'POST') { const b = await readJson(req); return send(res, 200, await personaggi.createPersonaggio(b)); }
     if (p === '/api/personaggi/cancel' && req.method === 'POST') { await personaggi.cancel(); return send(res, 200, { ok: true }); }
+    if (/^\/api\/personaggi\/[\w-]+\/riprova$/.test(p) && req.method === 'POST') return send(res, 200, await personaggi.riprova(p.split('/')[3]));
     if (/^\/api\/personaggi\/[\w-]+$/.test(p) && req.method === 'DELETE') return send(res, 200, { ok: personaggi.del(p.split('/').pop()) });
     if (p === '/api/catena/montatore' && req.method === 'GET') return send(res, 200, await catena.montatoreStato());
     if (p === '/v1/catena' && req.method === 'POST') {

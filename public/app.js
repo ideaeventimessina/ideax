@@ -3186,7 +3186,9 @@ async function loadPersonaggi() {
     return `<article class="mcard"><div class="head"><span class="chip">${p.nsfw ? 'adulti' : 'generale'}</span><span class="state">${stato}</span></div>
       <h3>${esc(p.nome)}</h3><p class="meta">${esc(p.descrizione || '')}</p>
       ${p.status === 'ready' ? `<p class="muted small">Scrivi "${esc(p.nome)}" in Studio per usarlo in foto e video.</p>` : ''}
+      ${p.status === 'error' ? '<p class="muted small">Riprova riusa le foto già create e riparte dall\'addestramento (non le rigenera), dopo aver controllato che bastino.</p>' : ''}
       <div class="row">${p.status !== 'ready' && t ? '<button class="btn small" type="button" data-personaggio-cancel>Annulla</button>' : ''}
+        ${p.status === 'error' && !busy ? `<button class="btn small primary" type="button" data-personaggio-retry="${esc(p.id)}">Riprova (riusa le foto)</button>` : ''}
         <button class="btn small danger" type="button" data-personaggio-del="${esc(p.id)}" data-nome="${esc(p.nome)}">Elimina</button></div></article>`;
   }).join('') || '<div class="empty">Nessun personaggio. Creane uno qui sopra.</div>';
   if (busy && $('#page-gemello').classList.contains('active')) personaggiTimer = setTimeout(loadPersonaggi, 3000);
@@ -3203,6 +3205,13 @@ $('#personaggio-form').addEventListener('submit', async (e) => {
 });
 $('#personaggi-list').addEventListener('click', async (e) => {
   if (e.target.closest('[data-personaggio-cancel]')) { await api('/api/personaggi/cancel', { method: 'POST' }); loadPersonaggi(); }
+  const retry = e.target.closest('[data-personaggio-retry]');
+  if (retry) {
+    retry.disabled = true; retry.textContent = 'Controllo le foto…';
+    try { const r = await api(`/api/personaggi/${retry.getAttribute('data-personaggio-retry')}/riprova`, { method: 'POST' }); loadPersonaggi(); }
+    catch (err) { alert(err.message); retry.disabled = false; retry.textContent = 'Riprova (riusa le foto)'; }
+    return;
+  }
   const del = e.target.closest('[data-personaggio-del]');
   if (del && confirm(`Eliminare il personaggio "${del.dataset.nome}"?`)) { await api(`/api/personaggi/${del.getAttribute('data-personaggio-del')}`, { method: 'DELETE' }); loadPersonaggi(); }
 });
