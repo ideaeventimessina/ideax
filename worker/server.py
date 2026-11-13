@@ -269,7 +269,12 @@ def load_base(spec: ModelSpec):
     # Il VAE di SDXL in fp16 va in overflow numerico (NaN) e decodifica RUMORE invece dell'immagine (la poltiglia di
     # colore vista con Pony). La correzione definitiva: sostituirlo col VAE "fp16-safe" ufficiale, che in fp16 NON va in
     # overflow. force_upcast resta come ripiego se quel VAE non si scarica. (Flux e SD1.5 non ne soffrono.)
-    if spec.arch == "sdxl" and getattr(pipe, "vae", None) is not None:
+    # Una CARTELLA diffusers ha spec.arch == "diffusers", non "sdxl": il fix va applicato riconoscendo l'SDXL dalla
+    # pipeline VERA caricata (StableDiffusionXLPipeline → "XL" nel nome). Senza, i modelli adulti scaricati come cartella
+    # (BigLust, Pony Realism ecc.) uscivano come RUMORE colorato, perché il loro VAE fp16 andava in NaN e nessuno lo
+    # sostituiva. Vale per ogni pipeline SDXL (testo, img2img, inpaint): tutte portano "XL" nel nome di classe.
+    is_sdxl = spec.arch == "sdxl" or "XL" in type(pipe).__name__
+    if is_sdxl and getattr(pipe, "vae", None) is not None:
         fix = _sdxl_fix_vae(dtype)
         if fix is not None:
             pipe.vae = fix
