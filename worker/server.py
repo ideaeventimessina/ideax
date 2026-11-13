@@ -1093,7 +1093,17 @@ def health():
         llm_ok = True
     except ImportError:
         llm_ok = False
-    return {**info, "demo": DEMO, "loaded": _loaded["key"], "llm_available": llm_ok, "offload": use_offload(_loaded.get("arch") or "")}
+    return {**info, "demo": DEMO, "loaded": _loaded["key"], "llm_available": llm_ok,
+            "offload": use_offload(_loaded.get("arch") or ""), "version": os.environ.get("IDEAX_VERSION", "")}
+
+
+@app.post("/shutdown")
+def shutdown():
+    """Node spegne un worker di VERSIONE VECCHIA (sopravvissuto a un aggiornamento) per lanciarne uno col codice nuovo.
+    Senza, un worker vecchio resta sulla porta e node lo riusa: ogni correzione al motore (es. il VAE SDXL) non arriva."""
+    import threading
+    threading.Timer(0.3, lambda: os._exit(0)).start()
+    return {"ok": True}
 
 
 if __name__ == "__main__":
