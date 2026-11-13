@@ -278,11 +278,13 @@ def load_base(spec: ModelSpec):
         fix = _sdxl_fix_vae(dtype)
         if fix is not None:
             pipe.vae = fix
-        else:
-            try:
-                pipe.vae.config.force_upcast = True
-            except Exception as err:  # noqa: BLE001
-                print(f"[ideax] né VAE di riserva né force_upcast ({err}): SDXL potrebbe uscire rumorosa", flush=True)
+        # force_upcast SEMPRE, anche quando il VAE è stato sostituito: su una cartella diffusers lo scambio a volte NON
+        # prende (gli hook del pipe tengono il VAE vecchio), e allora il bundled fp16 andava comunque in NaN → rumore.
+        # force_upcast decodifica il VAE in fp32 ed è la difesa definitiva, indipendente dal device e dallo scambio.
+        try:
+            pipe.vae.config.force_upcast = True
+        except Exception as err:  # noqa: BLE001
+            print(f"[ideax] force_upcast non impostato ({err}): SDXL potrebbe uscire rumorosa", flush=True)
     elif spec.arch == "sd3" and getattr(pipe, "vae", None) is not None:
         try:
             pipe.vae.config.force_upcast = True
