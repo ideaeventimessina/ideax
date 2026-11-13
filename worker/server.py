@@ -121,7 +121,9 @@ def dtype_for(arch: str):
     dev = device_info()["device"]
     if dev == "cpu":
         return t.float32
-    if dev == "cuda" and arch in ("flux", "sd3", "diffusers") and t.cuda.is_bf16_supported():
+    # bf16 anche per SDXL dove la scheda lo supporta: a differenza di fp16 NON va in overflow numerico, quindi il VAE
+    # (e l'UNET) non producono il RUMORE colorato. Dove manca il bf16 si resta su fp16 col fix del VAE (force_upcast).
+    if dev == "cuda" and arch in ("flux", "sd3", "diffusers", "sdxl") and t.cuda.is_bf16_supported():
         return t.bfloat16
     return t.float16
 
