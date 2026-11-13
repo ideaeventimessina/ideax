@@ -259,20 +259,22 @@ def load_base(spec: ModelSpec):
         # Flux da file singolo, completo o solo transformer, FP8 o GGUF: stessa strada
         pipe = load_flux(spec, dtype)
     elif spec.format == "diffusers":
-        # SDXL a cartella (i modelli adulti Pony: BigLust, cyberrealistic, pony-realism): il loro VAE bundled va in NaN e
-        # decodifica RUMORE. Sostituirlo DOPO il caricamento (pipe.vae = fix) su un pipe from_pretrained spesso NON prende
-        # (gli hook di offload/registrazione tengono il VAE vecchio): per questo il rumore resisteva. La via sicura è
-        # passare il VAE fp16-safe GIÀ IN COSTRUZIONE, così il pipe nasce con quello giusto. (I file non sono in variante
-        # fp16: verificato sul repo, quindi niente variant=.)
+        # RUMORE sui modelli SDXL a cartella (big-lust, cyberrealistic, pony-realism) mentre i file singoli (realityvision,
+        # Flux) vanno: NON è il VAE (provato in 5 modi). La differenza è il caricamento. from_pretrained usa di default
+        # low_cpu_mem_usage=True → i pesi passano da un "meta device" e si materializzano con accelerate: su alcune
+        # macchine un componente resta VUOTO (pesi casuali) e la generazione è rumore puro. Con low_cpu_mem_usage=False
+        # i pesi si caricano normalmente, come fa from_single_file che qui funziona. Il VAE fp16-safe resta, in costruzione.
         extra = {}
         if spec.arch == "sdxl":
             fix = _sdxl_fix_vae(dtype)
             if fix is not None:
                 extra["vae"] = fix
-                print("[ideax] cartella SDXL: VAE fp16-safe passato in costruzione", flush=True)
-            else:
-                print("[ideax] VAE fp16-safe non disponibile: la cartella SDXL potrebbe uscire rumorosa", flush=True)
-        pipe = d.DiffusionPipeline.from_pretrained(spec.path, torch_dtype=dtype, **extra)
+        try:
+            pipe = d.DiffusionPipeline.from_pretrained(spec.path, torch_dtype=dtype, low_cpu_mem_usage=False, **extra)
+            print("[ideax] cartella diffusers caricata (low_cpu_mem_usage=False)", flush=True)
+        except Exception as err:  # noqa: BLE001
+            print(f"[ideax] caricamento normale non riuscito ({type(err).__name__}): riprovo col default", flush=True)
+            pipe = d.DiffusionPipeline.from_pretrained(spec.path, torch_dtype=dtype, **extra)
     elif spec.arch in ("sd15", "sd2"):
         pipe = d.StableDiffusionPipeline.from_single_file(spec.path, torch_dtype=dtype)
     elif spec.arch == "sdxl":
