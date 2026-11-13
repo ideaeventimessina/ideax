@@ -80,9 +80,10 @@ let baseJob = { status: 'idle', done: 0, total: 0, error: null };
 // Modelli per adulti (OnlyFans, esplicito fotorealistico): SDXL base Pony (sanno fare gli atti) + addestramento realistico,
 // formato diffusers col VAE incluso (niente rumore). Pubblici, scaricabili con un clic. Si installano in una cartella sotto models/.
 const MODELLI_ADULTI = [
+  { id: 'lustify', repo: 'John6666/lustify-sdxl-nsfwsfw-v1-sdxl', nome: 'Lustify (fotoreale)', desc: 'Esplicito e FOTOREALISTICO, NON Pony: pelle vera senza plastica. Il migliore per il realismo.', gb: 6.9 },
   { id: 'pony-realism', repo: 'John6666/pony-realism-v22main-sdxl', nome: 'Pony Realism', desc: 'Fotorealistico ed esplicito, base Pony. Il più usato per contenuti realistici OnlyFans.', gb: 6.9 },
   { id: 'cyberrealistic-pony', repo: 'John6666/cyberrealistic-pony-v65-sdxl', nome: 'CyberRealistic Pony', desc: 'Fotorealistico, pelle molto curata, atti espliciti.', gb: 6.9 },
-  { id: 'big-lust', repo: 'John6666/big-lust-v16-sdxl', nome: 'BigLust', desc: 'Esplicito SDXL, stile vario.', gb: 6.9 },
+  { id: 'big-lust', repo: 'John6666/big-lust-v16-sdxl', nome: 'BigLust', desc: 'Esplicito SDXL, stile vario (più stilizzato).', gb: 6.9 },
 ];
 const PATTERNS_DIFFUSERS = ['model_index.json', '*/*.json', '*/*.txt', '*/*.safetensors'];
 const adultJobs = {}; // id → { status, done, total, error }
