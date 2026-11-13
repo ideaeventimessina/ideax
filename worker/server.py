@@ -259,7 +259,15 @@ def load_base(spec: ModelSpec):
         # Flux da file singolo, completo o solo transformer, FP8 o GGUF: stessa strada
         pipe = load_flux(spec, dtype)
     elif spec.format == "diffusers":
-        pipe = d.DiffusionPipeline.from_pretrained(spec.path, torch_dtype=dtype)
+        # I modelli convertiti da John6666 (BigLust, Pony Realism, cyberrealistic) salvano i pesi in VARIANTE "fp16"
+        # (file *.fp16.safetensors). Senza variant="fp16", diffusers può NON trovare/caricare i pesi giusti e la
+        # generazione esce RUMORE. Si prova prima con la variante, poi senza (per le cartelle senza variante).
+        try:
+            pipe = d.DiffusionPipeline.from_pretrained(spec.path, torch_dtype=dtype, variant="fp16")
+            print("[ideax] cartella diffusers caricata con variante fp16", flush=True)
+        except Exception as err:  # noqa: BLE001
+            print(f"[ideax] variante fp16 non disponibile ({type(err).__name__}): carico senza variante", flush=True)
+            pipe = d.DiffusionPipeline.from_pretrained(spec.path, torch_dtype=dtype)
     elif spec.arch in ("sd15", "sd2"):
         pipe = d.StableDiffusionPipeline.from_single_file(spec.path, torch_dtype=dtype)
     elif spec.arch == "sdxl":
