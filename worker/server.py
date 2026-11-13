@@ -259,15 +259,20 @@ def load_base(spec: ModelSpec):
         # Flux da file singolo, completo o solo transformer, FP8 o GGUF: stessa strada
         pipe = load_flux(spec, dtype)
     elif spec.format == "diffusers":
-        # I modelli convertiti da John6666 (BigLust, Pony Realism, cyberrealistic) salvano i pesi in VARIANTE "fp16"
-        # (file *.fp16.safetensors). Senza variant="fp16", diffusers può NON trovare/caricare i pesi giusti e la
-        # generazione esce RUMORE. Si prova prima con la variante, poi senza (per le cartelle senza variante).
-        try:
-            pipe = d.DiffusionPipeline.from_pretrained(spec.path, torch_dtype=dtype, variant="fp16")
-            print("[ideax] cartella diffusers caricata con variante fp16", flush=True)
-        except Exception as err:  # noqa: BLE001
-            print(f"[ideax] variante fp16 non disponibile ({type(err).__name__}): carico senza variante", flush=True)
-            pipe = d.DiffusionPipeline.from_pretrained(spec.path, torch_dtype=dtype)
+        # SDXL a cartella (i modelli adulti Pony: BigLust, cyberrealistic, pony-realism): il loro VAE bundled va in NaN e
+        # decodifica RUMORE. Sostituirlo DOPO il caricamento (pipe.vae = fix) su un pipe from_pretrained spesso NON prende
+        # (gli hook di offload/registrazione tengono il VAE vecchio): per questo il rumore resisteva. La via sicura è
+        # passare il VAE fp16-safe GIÀ IN COSTRUZIONE, così il pipe nasce con quello giusto. (I file non sono in variante
+        # fp16: verificato sul repo, quindi niente variant=.)
+        extra = {}
+        if spec.arch == "sdxl":
+            fix = _sdxl_fix_vae(dtype)
+            if fix is not None:
+                extra["vae"] = fix
+                print("[ideax] cartella SDXL: VAE fp16-safe passato in costruzione", flush=True)
+            else:
+                print("[ideax] VAE fp16-safe non disponibile: la cartella SDXL potrebbe uscire rumorosa", flush=True)
+        pipe = d.DiffusionPipeline.from_pretrained(spec.path, torch_dtype=dtype, **extra)
     elif spec.arch in ("sd15", "sd2"):
         pipe = d.StableDiffusionPipeline.from_single_file(spec.path, torch_dtype=dtype)
     elif spec.arch == "sdxl":
