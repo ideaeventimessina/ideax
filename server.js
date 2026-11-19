@@ -252,9 +252,9 @@ async function liberaPerImmagini() {
   engines.stop('music');
 }
 async function liberaPerVoce() {
-  engines.stop('music');
-  // Il worker immagini può tenere ~12 GB caricati: gli chiediamo di scaricare il modello per fare posto alla voce.
-  await fetch(`${store.getSettings().workerUrl}/unload`, { method: 'POST', signal: AbortSignal.timeout(5000) }).catch(() => {});
+  // Libera per la voce: ferma gli altri motori pesanti (stessa scheda) e, solo su una scheda sola, scarica il worker
+  // immagini (~12 GB) per fare posto. Su due schede la voce sta sull'altra scheda e il worker resta carico.
+  await engines.freeForEngine('voice');
 }
 // "Tieni la voce pronta": dopo un lavoro, se la scheda è libera, riscalda la voce in sottofondo così la prossima
 // lettura parte subito. Non lo fa se c'è ancora un lavoro in corso (non le ruba la memoria mentre serve altrove).
@@ -410,9 +410,7 @@ async function runMusic(job, log) {
   job.status = 'running';
   const out = await inGpuQueue(job, log, async () => {
     job.backend = 'music';
-    await fetch(`${store.getSettings().workerUrl}/unload`, { method: 'POST', signal: AbortSignal.timeout(5000) }).catch(() => {});
-    engines.stop('voice');
-    llama.stop();
+    await engines.freeForEngine('music'); // su due schede il worker immagini resta acceso sull'altra
     log('Accendo il motore musica (la prima volta carica i modelli: può servire qualche minuto)…');
     return music.generate({ ...m, prompt: job.prompt }, {
       isCancelled: () => job.cancelled,
