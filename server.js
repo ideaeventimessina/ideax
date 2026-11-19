@@ -25,6 +25,7 @@ import * as visione from './lib/vision.js';
 import * as personaggi from './lib/personaggi.js';
 import * as webdemo from './lib/webdemo.js';
 import * as operatore from './lib/operatore.js';
+import * as siti from './lib/siti.js';
 import { fallbackTitle } from './lib/router.js';
 import * as runtime from './lib/runtime.js';
 import * as updater from './lib/updater.js';
@@ -802,6 +803,12 @@ const server = http.createServer(async (req, res) => {
       if (mo && req.method === 'POST') { const b = await readJson(req); return send(res, 200, operatore.rispondi(mo[1], b.ok === true)); } }
     { const mo = p.match(/^\/api\/operatore\/([\w-]+)\/ferma$/);
       if (mo && req.method === 'POST') return send(res, 200, operatore.ferma(mo[1])); }
+    // Code: genera/modifica una pagina web col cervello, pubblicala (ideax la serve a /siti/<slug>/)
+    if (p === '/api/code/genera' && req.method === 'POST') return send(res, 200, await siti.genera(await readJson(req)));
+    if (p === '/api/code/pubblica' && req.method === 'POST') return send(res, 200, siti.pubblica(await readJson(req)));
+    if (p === '/api/code/siti' && req.method === 'GET') return send(res, 200, { siti: siti.elenca() });
+    { const ms = p.match(/^\/api\/code\/siti\/([\w-]+)$/);
+      if (ms && req.method === 'DELETE') return send(res, 200, siti.elimina(ms[1])); }
     if (p === '/api/catena/montatore' && req.method === 'GET') return send(res, 200, await catena.montatoreStato());
     if (p === '/v1/catena' && req.method === 'POST') {
       const b = await readJson(req);
@@ -1403,6 +1410,8 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/history' && req.method === 'GET') return send(res, 200, store.listHistory());
 
     if (p.startsWith('/outputs/')) return serveFile(res, store.OUTPUT_DIR, p.slice('/outputs/'.length));
+    // I siti pubblicati dalla pagina Code. Una cartella (…/slug/) serve il suo index.html.
+    if (p.startsWith('/siti/')) { const rel = p.slice('/siti/'.length) || ''; return serveFile(res, siti.SITI_DIR, rel.endsWith('/') || rel === '' ? rel + 'index.html' : rel); }
     if (p.startsWith('/api/') || p.startsWith('/v1/')) return send(res, 404, { error: 'Percorso sconosciuto' });
     return serveFile(res, path.join(store.APP_ROOT, 'public'), p === '/' ? 'index.html' : p.slice(1));
   } catch (err) {

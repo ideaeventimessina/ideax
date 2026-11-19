@@ -2240,10 +2240,78 @@ function setStudioMode(mode) {
   $$('[data-studio-mode]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.studioMode === mode)));
   $('#chat-wrap').hidden = mode !== 'chat';
   $('#studio-crea').hidden = mode !== 'crea';
+  $('#studio-code').hidden = mode !== 'code';
   if (mode === 'chat') setTimeout(() => $('#chat-input').focus(), 50);
+  if (mode === 'code') loadCode();
 }
 $$('[data-studio-mode]').forEach((b) => b.addEventListener('click', () => setStudioMode(b.dataset.studioMode)));
 const chatMode = () => !$('#chat-wrap').hidden;
+
+// ======================= Studio: Code (genera pagine web) =======================
+
+function codeAnteprima() {
+  const html = $('#code-sorgente').value;
+  $('#code-anteprima').srcdoc = html;
+}
+
+let codePronto = false;
+function loadCode() {
+  if (codePronto) { loadCodeElenco(); return; }
+  codePronto = true;
+
+  $('#code-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const descrizione = $('#code-prompt').value.trim();
+    if (!descrizione) return;
+    const btn = $('.create', $('#code-form'));
+    btn.disabled = true; $('#code-stato').textContent = 'Il cervello sta scrivendo la pagina…';
+    try {
+      const html = $('#code-editor').hidden ? '' : $('#code-sorgente').value; // se c'è già, è una modifica
+      const v = await api('/api/code/genera', { method: 'POST', body: { descrizione, html } });
+      $('#code-sorgente').value = v.html;
+      $('#code-editor').hidden = false;
+      codeAnteprima();
+      $('#code-stato').textContent = 'Fatto. Ritocca il codice o pubblica.';
+      $('#code-prompt').value = '';
+    } catch (err) { $('#code-stato').innerHTML = `<span class="error-text">${esc(err.message || 'errore')}</span>`; }
+    finally { btn.disabled = false; }
+  });
+
+  $('#code-aggiorna').addEventListener('click', codeAnteprima);
+  $('#code-sorgente').addEventListener('input', () => { clearTimeout(codeAnteprima._t); codeAnteprima._t = setTimeout(codeAnteprima, 600); });
+
+  $('#code-pubblica').addEventListener('click', async () => {
+    const nome = $('#code-nome').value.trim();
+    if (!nome) { $('#code-nome').focus(); return; }
+    const btn = $('#code-pubblica'); btn.disabled = true;
+    try {
+      const v = await api('/api/code/pubblica', { method: 'POST', body: { nome, html: $('#code-sorgente').value } });
+      const el = $('#code-pubblicato'); el.hidden = false;
+      el.innerHTML = `In produzione: <a href="${esc(v.url)}" target="_blank">${esc(v.url)}</a>`;
+      loadCodeElenco();
+    } catch (err) { const el = $('#code-pubblicato'); el.hidden = false; el.innerHTML = `<span class="error-text">${esc(err.message || 'errore')}</span>`; }
+    finally { btn.disabled = false; }
+  });
+
+  $('#code-elenco').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-code-del]'); if (!b) return;
+    if (!confirm('Tolgo dalla produzione questo sito?')) return;
+    await api(`/api/code/siti/${b.dataset.codeDel}`, { method: 'DELETE' }).catch(() => {});
+    loadCodeElenco();
+  });
+
+  loadCodeElenco();
+}
+
+async function loadCodeElenco() {
+  let v;
+  try { v = await api('/api/code/siti'); } catch { return; }
+  const lista = v.siti || [];
+  $('#code-elenco-card').hidden = lista.length === 0;
+  $('#code-elenco').innerHTML = lista.map((s) => `<div style="display:flex;gap:.5rem;align-items:center;justify-content:space-between">
+    <a href="${esc(s.url)}" target="_blank"><strong>${esc(s.nome)}</strong> <span class="muted small">${esc(s.url)}</span></a>
+    <button class="btn small danger" data-code-del="${esc(s.slug)}">Togli</button></div>`).join('');
+}
 
 // Markdown essenziale e sicuro: prima si fa l'escape, poi si aggiunge la formattazione
 function md(text) {

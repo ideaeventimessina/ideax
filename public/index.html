@@ -40,6 +40,7 @@
         <div class="formats studio-modes" role="tablist" aria-label="Modalità dello Studio">
           <button role="tab" data-studio-mode="chat" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Conversa</button>
           <button role="tab" data-studio-mode="crea"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>Crea direttamente</button>
+          <button role="tab" data-studio-mode="code"><svg viewBox="0 0 24 24"><path d="M8 9l-4 3 4 3M16 9l4 3-4 3M13 6l-2 12"/></svg>Code</button>
         </div>
         <span class="pill"><i class="dot on"></i>Tutto sul tuo PC</span>
       </div>
@@ -138,6 +139,41 @@
         </div>
         <div id="gallery" class="gallery"></div>
       </section>
+
+      <!-- ===== CODE: genera una pagina web col cervello, anteprima, pubblica ===== -->
+      <div class="studio" id="studio-code" hidden>
+        <div class="card">
+          <h2>Genera una pagina web</h2>
+          <p class="muted small">Descrivi la pagina o la web app. La scrive il cervello locale, la vedi qui sotto, la ritocchi e la pubblichi. Resta tutto sul tuo PC.</p>
+          <form id="code-form" class="stack-sm">
+            <textarea id="code-prompt" rows="3" placeholder="Es. Una landing page per uno studio fotografico: titolo grande, tre servizi con icone, una galleria a griglia e un form di contatto. Colori scuri ed eleganti."></textarea>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+              <button class="btn primary create" type="submit"><span>Genera</span></button>
+              <span class="muted small" id="code-stato"></span>
+            </div>
+          </form>
+        </div>
+
+        <div class="card" id="code-editor" hidden>
+          <div class="section-head"><div><h2>La pagina</h2><p class="muted small">Puoi modificare il codice a mano: l'anteprima si aggiorna.</p></div>
+            <button class="btn" id="code-aggiorna" type="button">Aggiorna anteprima</button></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem" id="code-split">
+            <textarea id="code-sorgente" spellcheck="false" style="font-family:ui-monospace,monospace;font-size:12px;min-height:50vh;white-space:pre;overflow:auto"></textarea>
+            <iframe id="code-anteprima" title="Anteprima" style="width:100%;min-height:50vh;border:1px solid #333;border-radius:8px;background:#fff"></iframe>
+          </div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-top:.75rem">
+            <input id="code-nome" placeholder="Nome del sito (es. studio-foto)" style="flex:1;min-width:180px">
+            <button class="btn primary" id="code-pubblica" type="button">Metti in produzione</button>
+          </div>
+          <p class="muted small" id="code-pubblicato" hidden></p>
+        </div>
+
+        <div class="card" id="code-elenco-card" hidden>
+          <h2>Pubblicati</h2>
+          <div id="code-elenco" class="stack-sm"></div>
+          <p class="muted small">Sono serviti da ideax su questo PC (e sulla rete locale se l'hai accesa in Impostazioni → Rete). Per un indirizzo pubblico su internet serve un passo di deploy a parte.</p>
+        </div>
+      </div>
     </section>
 
     <!-- ================= REGIA ================= -->
