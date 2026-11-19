@@ -1,5 +1,10 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.36.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.37.exe** e aprilo.
+
+## Pipeline: iniezione a marcatore e validazione PRIMA di salvare
+- Nuova azione "inserisci" nella modalità Pipeline: aggiunge codice **subito dopo una riga-marcatore** (es. `// [MODULO_START]`), **senza cancellare** il resto del file — il modo per aggiungere una funzione a un file esistente.
+- La sintassi ora si controlla **prima** della scrittura definitiva: il nuovo contenuto va in un file temporaneo, si valida, e **solo se è buono** prende il posto del file vero. Così un'iniezione sbagliata non sporca il file che modifichi; se è rotta, il modello riceve l'errore e corregge da solo.
+- Resta vero il resto: il controllo è di **sintassi, non di correttezza**, e il commit/push su GitHub **non è automatico** (si conferma a mano).
 
 ## Operatore: modalità Pipeline (codice in JSON, senza chiacchiere)
 - Nuova spunta nell'Operatore: un comando → un file. Il modello risponde **solo in JSON** (file, azione, codice, commit_msg), ideax scrive il file nella cartella di lavoro, **controlla la sintassi** (py_compile per .py, node --check per .js) e, se è sbagliata, **si ri-prompta da solo** per correggere — senza che tu intervenga.
