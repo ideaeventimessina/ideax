@@ -215,7 +215,12 @@ def _br_stato(page) -> dict:
         testo = page.inner_text("body")
     except Exception:  # noqa: BLE001
         testo = ""
-    return {"url": page.url, "titolo": titolo, "cliccabili": cliccabili[:40], "testo": testo[:6000]}
+    # Uno screenshot della pagina visibile: il cervello che "vede" (VL) decide guardando, come farebbe una persona.
+    try:
+        schermata = base64.b64encode(page.screenshot(type="jpeg", quality=55, full_page=False)).decode()
+    except Exception:  # noqa: BLE001
+        schermata = None
+    return {"url": page.url, "titolo": titolo, "cliccabili": cliccabili[:40], "testo": testo[:6000], "schermata": schermata}
 
 
 def _br_loop():

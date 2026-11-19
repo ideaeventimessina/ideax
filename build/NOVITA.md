@@ -1,5 +1,10 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.33.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.35.exe** e aprilo.
+
+## Operatore: ora GUARDA la pagina (non indovina da una lista)
+- Se hai un cervello che vede (Qwen3-VL, dalla pagina Cervello), l'Operatore fa uno **screenshot** a ogni passo e decide dove cliccare **guardando** la pagina — come una persona. Molto più affidabile sulle pagine dinamiche.
+- Un passo browser che fallisce non ferma più tutto: l'errore torna al cervello, che riprova o conclude. In semi-autonoma anche clic e compilazioni partono da soli (il pagamento resta sempre bloccato).
+- Onesto: serve il cervello VL installato ed è pesante su 16 GB (lento). Vede e clicca meglio di prima, ma un modello locale piccolo non è un modello di frontiera; per quella qualità il cervello va puntato a un'API esterna (Cervello → Server), con i dati che però escono dal PC.
 
 ## Scarica LoRA da Civitai (anche di movimento per i video Wan)
 - In **Modelli** c'è "Scarica una LoRA da Civitai": incolli il link, metti la tua chiave API, e il file va nella cartella loras (lo scanner riconosce anche l'architettura: una LoRA Wan si accende sul video). Spunta "per adulti" e si accende da sola sui contenuti espliciti compatibili.
