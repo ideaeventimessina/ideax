@@ -2241,6 +2241,9 @@ function setStudioMode(mode) {
   $('#chat-wrap').hidden = mode !== 'chat';
   $('#studio-crea').hidden = mode !== 'crea';
   $('#studio-code').hidden = mode !== 'code';
+  // La galleria "Le tue creazioni" è un fratello sempre visibile: nel modo Code non c'entra, la nascondo.
+  const creazioni = $('.creations');
+  if (creazioni) creazioni.hidden = mode === 'code';
   if (mode === 'chat') setTimeout(() => $('#chat-input').focus(), 50);
   if (mode === 'code') loadCode();
 }
