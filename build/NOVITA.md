@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.37.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.38.exe** e aprilo.
+
+## Operatore: Orchestratore (obiettivo grande → sotto-task automatici)
+- Nuova spunta "Orchestratore": scrivi un obiettivo generale, ideax lo **scompone in sotto-task tecnici atomici** (normalizzando i termini generici in istruzioni precise: cosa, in quale file, come) e li **esegue uno alla volta** con la Pipeline — ogni task viene scritto e validato PRIMA di passare al successivo.
+- Se un task fallisce, si ferma lì e te lo dice (non va avanti alla cieca). Come sempre: cartella di lavoro confinata, niente push automatico.
 
 ## Pipeline: iniezione a marcatore e validazione PRIMA di salvare
 - Nuova azione "inserisci" nella modalità Pipeline: aggiunge codice **subito dopo una riga-marcatore** (es. `// [MODULO_START]`), **senza cancellare** il resto del file — il modo per aggiungere una funzione a un file esistente.

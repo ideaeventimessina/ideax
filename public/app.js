@@ -872,7 +872,7 @@ function loadOperatore() {
       if (!obiettivo) return;
       const btn = $('.create', form); btn.disabled = true;
       try {
-        const modalita = form.pipeline?.checked ? 'pipeline' : form.semi?.checked ? 'semi' : 'strict';
+        const modalita = form.orchestratore?.checked ? 'orchestratore' : form.pipeline?.checked ? 'pipeline' : form.semi?.checked ? 'semi' : 'strict';
         const v = await api('/api/operatore', { method: 'POST', body: { obiettivo, modalita } });
         operatore.id = v.id;
         $('#operatore-stato').hidden = false;
