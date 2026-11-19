@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.31.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.32.exe** e aprilo.
+
+## Ricerca web: ora il cervello apre le pagine, non cerca a vuoto
+- Prima, a "quante recensioni ha X", ripeteva la stessa ricerca e si arrendeva. Ora dopo aver cercato **apre la pagina più adatta** per leggere il dato, e non ripete la stessa ricerca.
+- Chiaro il limite: un numero che sta su **Google Maps o Instagram** (pagine fatte col JavaScript) la lettura pagina non lo vede — per quello serve il browser vero dell'**Operatore**, o il sito ufficiale dell'attività.
 
 ## Due schede video: ora lavorano in parallelo
 - Se hai due schede NVIDIA, le immagini stanno su una scheda e i lavori pesanti (addestramento, video, voce, musica) sull'altra: così puoi **generare mentre addestri**, senza che si rubino la scheda. Con una scheda sola non cambia niente.
