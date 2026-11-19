@@ -832,7 +832,8 @@ function loadOperatore() {
       if (!obiettivo) return;
       const btn = $('.create', form); btn.disabled = true;
       try {
-        const v = await api('/api/operatore', { method: 'POST', body: { obiettivo } });
+        const modalita = form.semi?.checked ? 'semi' : 'strict';
+        const v = await api('/api/operatore', { method: 'POST', body: { obiettivo, modalita } });
         operatore.id = v.id;
         $('#operatore-stato').hidden = false;
         $('#operatore-risultato').hidden = true;

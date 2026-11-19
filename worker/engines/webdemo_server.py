@@ -190,5 +190,138 @@ def progress():
     return PROGRESS
 
 
+# ---------------------------------------------------------------- Browser pilotato passo-passo (/br/*)
+# L'operatore di ideax guida un browser vero, un passo alla volta. L'API sync di Playwright è legata al thread
+# che la crea, mentre FastAPI serve le richieste su thread diversi: perciò il browser vive su UN thread dedicato
+# e gli endpoint gli passano i comandi via coda e aspettano la risposta. Una sessione per "sessione" (il run).
+import threading  # noqa: E402
+import queue  # noqa: E402
+
+_BR: dict = {"q": queue.Queue(), "thread": None}
+
+
+def _br_stato(page) -> dict:
+    try:
+        titolo = page.title()
+    except Exception:  # noqa: BLE001
+        titolo = ""
+    try:
+        cliccabili = page.eval_on_selector_all(
+            "a,button,[role=button],input[type=submit],input[type=button]",
+            "els => els.slice(0,40).map(e => (e.innerText||e.value||e.getAttribute('aria-label')||'').trim()).filter(Boolean)")
+    except Exception:  # noqa: BLE001
+        cliccabili = []
+    try:
+        testo = page.inner_text("body")
+    except Exception:  # noqa: BLE001
+        testo = ""
+    return {"url": page.url, "titolo": titolo, "cliccabili": cliccabili[:40], "testo": testo[:6000]}
+
+
+def _br_loop():
+    from playwright.sync_api import sync_playwright
+    pw = sync_playwright().start()
+    sessioni: dict = {}
+
+    def apri(ses):
+        exe = os.environ.get("IDEAX_CHROMIUM") or None
+        browser = pw.chromium.launch(executable_path=exe, args=["--no-sandbox"])
+        context = browser.new_context()
+        sessioni[ses] = {"browser": browser, "page": context.new_page()}
+        return sessioni[ses]
+
+    while True:
+        azione, a, resp = _BR["q"].get()
+        ses = a.get("sessione") or "default"
+        try:
+            if azione == "chiudi":
+                s = sessioni.pop(ses, None)
+                if s:
+                    try:
+                        s["browser"].close()
+                    except Exception:  # noqa: BLE001
+                        pass
+                resp.put(("ok", {"chiuso": True}))
+                continue
+            s = sessioni.get(ses) or apri(ses)
+            page = s["page"]
+            if azione == "vai":
+                page.goto(a["url"], wait_until="domcontentloaded", timeout=30000)
+                page.wait_for_timeout(600)
+                resp.put(("ok", _br_stato(page)))
+            elif azione == "clicca":
+                if a.get("selettore"):
+                    page.click(a["selettore"], timeout=12000)
+                else:
+                    page.get_by_text(a.get("testo") or "", exact=False).first.click(timeout=12000)
+                page.wait_for_timeout(600)
+                resp.put(("ok", _br_stato(page)))
+            elif azione == "compila":
+                if a.get("selettore"):
+                    page.fill(a["selettore"], a.get("valore") or "", timeout=12000)
+                else:
+                    page.get_by_label(a.get("testo") or "").first.fill(a.get("valore") or "", timeout=12000)
+                resp.put(("ok", {"ok": True}))
+            elif azione == "estrai":
+                dato = page.inner_text(a["selettore"], timeout=12000) if a.get("selettore") else page.inner_text("body")
+                resp.put(("ok", {"dato": dato[:8000]}))
+            else:
+                resp.put(("err", f"azione sconosciuta: {azione}"))
+        except Exception as e:  # noqa: BLE001 — l'errore torna all'operatore, che riprova o si ferma
+            resp.put(("err", str(e)[:300]))
+
+
+def _br_call(azione: str, a: dict, timeout: float = 120.0):
+    if _BR["thread"] is None or not _BR["thread"].is_alive():
+        _BR["thread"] = threading.Thread(target=_br_loop, daemon=True)
+        _BR["thread"].start()
+    resp: queue.Queue = queue.Queue()
+    _BR["q"].put((azione, a, resp))
+    try:
+        stato, dato = resp.get(timeout=timeout)
+    except queue.Empty:
+        raise HTTPException(504, "il browser non ha risposto in tempo")
+    if stato == "err":
+        raise HTTPException(500, dato)
+    return dato
+
+
+class BrReq(BaseModel):
+    sessione: str = "default"
+    url: Optional[str] = None
+    selettore: Optional[str] = None
+    testo: Optional[str] = None
+    valore: Optional[str] = None
+
+
+@app.post("/br/vai")
+def br_vai(r: BrReq):
+    if not _chromium_ok():
+        raise HTTPException(503, "Chromium non è installato: chiama prima /warmup.")
+    if not r.url:
+        raise HTTPException(400, "manca l'indirizzo (url)")
+    return _br_call("vai", {"sessione": r.sessione, "url": r.url})
+
+
+@app.post("/br/clicca")
+def br_clicca(r: BrReq):
+    return _br_call("clicca", {"sessione": r.sessione, "selettore": r.selettore, "testo": r.testo})
+
+
+@app.post("/br/compila")
+def br_compila(r: BrReq):
+    return _br_call("compila", {"sessione": r.sessione, "selettore": r.selettore, "testo": r.testo, "valore": r.valore or ""})
+
+
+@app.post("/br/estrai")
+def br_estrai(r: BrReq):
+    return _br_call("estrai", {"sessione": r.sessione, "selettore": r.selettore})
+
+
+@app.post("/br/chiudi")
+def br_chiudi(r: BrReq):
+    return _br_call("chiudi", {"sessione": r.sessione}, timeout=20.0)
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=args.port)

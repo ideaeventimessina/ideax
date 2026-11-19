@@ -570,10 +570,11 @@
       <header class="page-head"><div><h1>Operatore</h1><p>Gli dai un obiettivo; scrive ed esegue codice sul tuo PC, guidato dal cervello locale, e ti risponde qui. Prima di ogni scrittura o esecuzione si ferma e ti chiede il sì. Non naviga il web e non paga.</p></div></header>
       <div class="card">
         <form id="operatore-form" class="stack-sm">
-          <label>Cosa deve fare <textarea name="obiettivo" rows="3" required placeholder="Es. Scrivi uno script che legge tutti i .csv in una cartella, somma la colonna 'importo' e stampa il totale per ciascun file."></textarea></label>
+          <label>Cosa deve fare <textarea name="obiettivo" rows="3" required placeholder="Es. Scrivi uno script che legge tutti i .csv in una cartella e stampa il totale della colonna 'importo'. Oppure: apri questo sito e trova gli organizzatori di eventi a Messina."></textarea></label>
+          <label class="check"><input type="checkbox" name="semi"> Modalità semi-autonoma: correzioni del codice da sole (si ferma dopo 3 tentativi falliti). Clic, compilazioni e pagamento chiedono sempre conferma.</label>
           <button class="btn primary create"><span>Avvia</span></button>
         </form>
-        <p class="muted small">Il cervello (pagina Cervello) deve essere acceso: è lui che pianifica. Gli script stanno in una cartella di lavoro di ideax e non toccano il resto del PC.</p>
+        <p class="muted small">Il cervello (pagina Cervello) deve essere acceso: è lui che pianifica. Gli script stanno in una cartella di lavoro di ideax. Per navigare serve il motore <strong>Regista web</strong> (Modelli → Motori). Il pagamento non è mai automatico: l'operatore arriva al checkout e si ferma.</p>
       </div>
       <div class="card" id="operatore-conferma" hidden>
         <h2>Serve il tuo sì</h2>
