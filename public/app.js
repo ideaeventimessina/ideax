@@ -93,7 +93,7 @@ function showPage() {
   if (page === 'cervello') loadBrainPage();
   if (page === 'collega') { loadSystems(); loadAccessi(); loadFarm(); }
   if (page === 'regia') loadRegia();
-  if (page === 'modelli') { loadEngines(); loadFixes(); loadBaseFotoreale(); loadFluxGguf(); loadModelliAdulti(); refreshSetup().then(() => { renderLlmSupport(); if (state.engines) renderEngines(); }); }
+  if (page === 'modelli') { loadEngines(); loadFixes(); loadBaseFotoreale(); loadFluxGguf(); loadModelliAdulti(); loadCivitai(); refreshSetup().then(() => { renderLlmSupport(); if (state.engines) renderEngines(); }); }
   if (page === 'gemello') { loadEngines(); loadTwin(); loadPersonaggi(); }
   if (page === 'operatore') loadOperatore();
   window.scrollTo({ top: 0 });
@@ -817,6 +817,46 @@ $('#flux-gguf-card')?.addEventListener('click', async (e) => {
   await api('/api/models/flux-gguf', { method: 'POST' }).catch(() => {});
   loadFluxGguf();
 });
+
+// ---------- Scarico LoRA da Civitai ----------
+let civitaiTimer = null;
+let civitaiPronto = false;
+async function loadCivitai() {
+  const card = $('#civitai-card'); if (!card) return;
+  if (!civitaiPronto) {
+    civitaiPronto = true;
+    $('#civitai-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = e.target;
+      const url = f.url.value.trim();
+      if (!url) { f.url.focus(); return; }
+      const btn = $('.create', f); btn.disabled = true;
+      try {
+        await api('/api/models/civitai', { method: 'POST', body: { url, token: f.token.value.trim() || undefined, adulto: f.adulto.checked } });
+        f.token.value = ''; // salvata lato server, non la tengo in pagina
+        seguiCivitai();
+      } catch (err) { $('#civitai-stato').innerHTML = `<span class="error-text">${esc(err.message || 'errore')}</span>`; }
+      finally { btn.disabled = false; }
+    });
+  }
+  seguiCivitai();
+}
+async function seguiCivitai() {
+  clearTimeout(civitaiTimer);
+  let s; try { s = await api('/api/models/civitai'); } catch { return; }
+  const el = $('#civitai-stato'); if (!el) return;
+  if (s.haChiave && $('#civitai-form')) $('#civitai-form').token.placeholder = 'chiave salvata · incollane una nuova per cambiarla';
+  if (s.status === 'downloading') {
+    const pct = s.total ? Math.round((s.done / s.total) * 100) : null;
+    el.textContent = pct != null ? `Scarico ${s.nome || ''}: ${pct}%` : `Scarico ${s.nome || ''}…`;
+    civitaiTimer = setTimeout(seguiCivitai, 1000);
+  } else if (s.status === 'error') {
+    el.innerHTML = `<span class="error-text">${esc(s.error || 'errore')}</span>`;
+  } else if (s.status === 'done') {
+    el.textContent = `Fatto: ${s.nome || 'LoRA'} è nella cartella loras.`;
+    loadModels();
+  } else el.textContent = '';
+}
 
 // ---------- Operatore autonomo ----------
 let operatore = { id: null, timer: null };

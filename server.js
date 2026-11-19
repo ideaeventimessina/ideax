@@ -26,6 +26,7 @@ import * as personaggi from './lib/personaggi.js';
 import * as webdemo from './lib/webdemo.js';
 import * as operatore from './lib/operatore.js';
 import * as siti from './lib/siti.js';
+import * as civitai from './lib/civitai.js';
 import { fallbackTitle } from './lib/router.js';
 import * as runtime from './lib/runtime.js';
 import * as updater from './lib/updater.js';
@@ -1197,6 +1198,15 @@ const server = http.createServer(async (req, res) => {
           .catch((err) => { baseJob = { status: 'error', done: 0, total: 0, error: err.message }; });
       }
       return send(res, 202, { ...baseJob, ...BASE_FOTOREALE });
+    }
+    // Civitai: scarica una LoRA (anche per adulti, es. movimento Wan) da un link, nella cartella loras
+    if (p === '/api/models/civitai' && req.method === 'GET') return send(res, 200, { ...civitai.civitaiJob, haChiave: !!store.getSettings().civitaiToken });
+    if (p === '/api/models/civitai' && req.method === 'POST') {
+      const b = await readJson(req);
+      if (b.token != null) store.saveSettings({ civitaiToken: String(b.token).trim() });
+      if (!b.url) return send(res, 400, { error: 'Incolla il link del modello su Civitai' });
+      await civitai.scarica({ url: b.url, adulto: b.adulto === true });
+      return send(res, 202, civitai.civitaiJob);
     }
     // Flux Q8 (leggero): stesso meccanismo della base fotoreale, ma è un file singolo .gguf
     if (p === '/api/models/flux-gguf' && req.method === 'GET') {

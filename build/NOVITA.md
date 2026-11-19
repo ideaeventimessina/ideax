@@ -1,5 +1,11 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.32.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.33.exe** e aprilo.
+
+## Scarica LoRA da Civitai (anche di movimento per i video Wan)
+- In **Modelli** c'è "Scarica una LoRA da Civitai": incolli il link, metti la tua chiave API, e il file va nella cartella loras (lo scanner riconosce anche l'architettura: una LoRA Wan si accende sul video). Spunta "per adulti" e si accende da sola sui contenuti espliciti compatibili.
+
+## Se il PC si impalla quando parte una generazione
+- Succede quando l'unica scheda (la 4080) fa **sia lo schermo sia il modello**: un lavoro pesante blocca il desktop. Se hai la **grafica integrata** sulla scheda madre, collega il **monitor alla presa della scheda madre** (non alla 4080) e attiva l'integrata nel BIOS: così la 4080 resta solo per l'IA e lo schermo non si blocca più (e la 4080 guadagna ~1 GB di memoria libera).
 
 ## Ricerca web: ora il cervello apre le pagine, non cerca a vuoto
 - Prima, a "quante recensioni ha X", ripeteva la stessa ricerca e si arrendeva. Ora dopo aver cercato **apre la pagina più adatta** per leggere il dato, e non ripete la stessa ricerca.

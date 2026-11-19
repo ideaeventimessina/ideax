@@ -317,6 +317,19 @@
             <p class="muted">Per contenuti espliciti fotorealistici (OnlyFans). Sono SDXL base Pony addestrati sul realismo: sanno fare gli atti e girano puliti (VAE incluso, niente rumore). Scaricali con un clic. Si accendono da soli quando chiedi contenuto esplicito.</p></div></div>
           <div id="modelli-adulti-list" class="stack-sm"></div>
         </div>
+        <div class="card" id="civitai-card">
+          <div class="section-head"><div><h2>Scarica una LoRA da Civitai</h2>
+            <p class="muted">Incolla il link di una LoRA su Civitai e la metto nella cartella loras. È la via per le <strong>LoRA di movimento per Wan</strong> (anche esplicite, per i video). Serve la tua chiave API di Civitai (Account → API Keys); la maggior parte dei file non si scarica senza.</p></div></div>
+          <form id="civitai-form" class="stack-sm">
+            <label>Link del modello <input name="url" placeholder="https://civitai.com/models/123456"></label>
+            <label>Chiave API di Civitai <input name="token" type="password" placeholder="la lasci salvata; incollala la prima volta"></label>
+            <label class="check"><input type="checkbox" name="adulto"> È una LoRA per adulti (si accende da sola sui contenuti espliciti compatibili)</label>
+            <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+              <button class="btn primary create" type="submit"><span>Scarica</span></button>
+              <span class="muted small" id="civitai-stato"></span>
+            </div>
+          </form>
+        </div>
         <div id="model-warnings"></div>
         <div id="model-groups"></div>
         <div class="card" id="models-engines"></div>
