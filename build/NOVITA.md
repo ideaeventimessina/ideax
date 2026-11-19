@@ -1,5 +1,10 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.38.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.39.exe** e aprilo.
+
+## Orchestratore: Target Router, anteprima progetti, zip, cartella scelta da te
+- L'Orchestratore ora **classifica** l'obiettivo: EXTERNAL (uno strumento isolato, in `tools/`), PROJECT (app/sito completo, in `progetti/`), SELF (una PROPOSTA di modifica da rivedere, in `proposte-self/` — **non** tocca il codice vivo di ideax).
+- Per i PROJECT: **anteprima locale** (ideax li serve a `/progetti/<nome>/`) e **scarica lo zip** del progetto.
+- **Percorso dinamico:** puoi indicare una **cartella di destinazione** tua (anche fuori dal workspace); i file restano **dentro** quella cartella. La base la scegli tu: il modello scrive solo nomi relativi, non percorsi assoluti suoi.
 
 ## Operatore: Orchestratore (obiettivo grande → sotto-task automatici)
 - Nuova spunta "Orchestratore": scrivi un obiettivo generale, ideax lo **scompone in sotto-task tecnici atomici** (normalizzando i termini generici in istruzioni precise: cosa, in quale file, come) e li **esegue uno alla volta** con la Pipeline — ogni task viene scritto e validato PRIMA di passare al successivo.

@@ -797,7 +797,9 @@ const server = http.createServer(async (req, res) => {
     if (/^\/api\/personaggi\/[\w-]+\/riprova$/.test(p) && req.method === 'POST') return send(res, 200, await personaggi.riprova(p.split('/')[3]));
     if (/^\/api\/personaggi\/[\w-]+$/.test(p) && req.method === 'DELETE') return send(res, 200, { ok: personaggi.del(p.split('/').pop()) });
     // Operatore autonomo: avvia un obiettivo, segui l'avanzamento, rispondi alle conferme, fermalo.
-    if (p === '/api/operatore' && req.method === 'POST') { const b = await readJson(req); return send(res, 200, operatore.avvia(b.obiettivo, b.modalita)); }
+    if (p === '/api/operatore' && req.method === 'POST') { const b = await readJson(req); return send(res, 200, operatore.avvia(b.obiettivo, b.modalita, b.cartella)); }
+    { const mz = p.match(/^\/api\/operatore\/([\w-]+)\/zip$/);
+      if (mz && req.method === 'POST') return send(res, 200, await operatore.zip(mz[1])); }
     { const mo = p.match(/^\/api\/operatore\/([\w-]+)$/);
       if (mo && req.method === 'GET') return send(res, 200, operatore.stato(mo[1])); }
     { const mo = p.match(/^\/api\/operatore\/([\w-]+)\/conferma$/);
@@ -1430,6 +1432,8 @@ const server = http.createServer(async (req, res) => {
     if (p.startsWith('/outputs/')) return serveFile(res, store.OUTPUT_DIR, p.slice('/outputs/'.length));
     // I siti pubblicati dalla pagina Code. Una cartella (…/slug/) serve il suo index.html.
     if (p.startsWith('/siti/')) { const rel = p.slice('/siti/'.length) || ''; return serveFile(res, siti.SITI_DIR, rel.endsWith('/') || rel === '' ? rel + 'index.html' : rel); }
+    // Anteprima locale dei progetti dell'Operatore (tipo PROJECT). Una cartella serve il suo index.html.
+    if (p.startsWith('/progetti/')) { const rel = p.slice('/progetti/'.length) || ''; return serveFile(res, operatore.PROGETTI_DIR, rel.endsWith('/') || rel === '' ? rel + 'index.html' : rel); }
     if (p.startsWith('/api/') || p.startsWith('/v1/')) return send(res, 404, { error: 'Percorso sconosciuto' });
     return serveFile(res, path.join(store.APP_ROOT, 'public'), p === '/' ? 'index.html' : p.slice(1));
   } catch (err) {

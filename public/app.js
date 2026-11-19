@@ -873,7 +873,8 @@ function loadOperatore() {
       const btn = $('.create', form); btn.disabled = true;
       try {
         const modalita = form.orchestratore?.checked ? 'orchestratore' : form.pipeline?.checked ? 'pipeline' : form.semi?.checked ? 'semi' : 'strict';
-        const v = await api('/api/operatore', { method: 'POST', body: { obiettivo, modalita } });
+        const cartella = form.cartella?.value.trim() || undefined;
+        const v = await api('/api/operatore', { method: 'POST', body: { obiettivo, modalita, cartella } });
         operatore.id = v.id;
         $('#operatore-stato').hidden = false;
         $('#operatore-risultato').hidden = true;
@@ -884,6 +885,13 @@ function loadOperatore() {
     $('#page-operatore').addEventListener('click', async (e) => {
       const b = e.target.closest('[data-operatore]'); if (!b || !operatore.id) return;
       const azione = b.dataset.operatore;
+      if (azione === 'zip') {
+        b.disabled = true; b.textContent = 'Preparo…';
+        try { const r = await api(`/api/operatore/${operatore.id}/zip`, { method: 'POST' }); window.open(r.url, '_blank'); b.textContent = 'Scarica zip'; }
+        catch (err) { b.textContent = 'Zip non riuscito'; alert(err.message || 'errore'); }
+        finally { b.disabled = false; }
+        return;
+      }
       if (azione === 'si' || azione === 'no') await api(`/api/operatore/${operatore.id}/conferma`, { method: 'POST', body: { ok: azione === 'si' } }).catch(() => {});
       else if (azione === 'ferma') await api(`/api/operatore/${operatore.id}/ferma`, { method: 'POST' }).catch(() => {});
       seguiOperatore();
@@ -919,7 +927,13 @@ function renderOperatore(v) {
   const ris = $('#operatore-risultato');
   if (v.risultato || v.errore) {
     ris.hidden = false;
-    ris.innerHTML = v.errore ? `<span class="error-text">${esc(v.errore)}</span>` : `<strong>Risultato:</strong> ${esc(v.risultato)}`;
+    if (v.errore) { ris.innerHTML = `<span class="error-text">${esc(v.errore)}</span>`; }
+    else {
+      let extra = '';
+      if (v.pipeline?.anteprima) extra += ` <a href="${esc(v.pipeline.anteprima)}" target="_blank">apri l'anteprima</a>`;
+      if (v.pipeline?.zippabile) extra += ` <button class="btn small" data-operatore="zip">Scarica zip</button>`;
+      ris.innerHTML = `<strong>Risultato:</strong> ${esc(v.risultato)}${extra}`;
+    }
   } else ris.hidden = true;
 }
 
