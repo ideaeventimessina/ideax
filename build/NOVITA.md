@@ -1,5 +1,26 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.2.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.31.exe** e aprilo.
+
+## Due schede video: ora lavorano in parallelo
+- Se hai due schede NVIDIA, le immagini stanno su una scheda e i lavori pesanti (addestramento, video, voce, musica) sull'altra: così puoi **generare mentre addestri**, senza che si rubino la scheda. Con una scheda sola non cambia niente.
+- In **Impostazioni** sotto "Motore pronto" ora vedi **tutte** le schede e chi fa cosa (prima ne vedevi una sola: era il worker immagini, è normale).
+
+## Flux Q8: la qualità di Flux, leggera (12,5 GB invece di 24)
+- In **Modelli** c'è "Flux Q8": un clic e lo scarichi. Sta in una scheda da 16 GB e resta caricato mentre genera, quindi è veloce. Pubblico, niente chiavi.
+
+## Il cervello ora va online (ricerca web)
+- Nella **chat** il cervello può **cercare su internet** e **aprire pagine** per leggerle. Prima, a "cerca pagine di organizzatori eventi", provava GitHub (l'unica ricerca che aveva) e falliva. Ora cerca davvero sul web. (Instagram e le pagine tutte-JavaScript restano fuori: lì serve il browser vero dell'Operatore.)
+
+## Nuova pagina "Operatore"
+- Gli dai un obiettivo; scrive ed esegue codice sul tuo PC e ora **naviga un browser vero** (apre pagine, clicca, estrae dati), guidato dal cervello. Ti risponde nella pagina.
+- Ogni azione con effetti **chiede il tuo sì**. C'è una **modalità semi-autonoma**: le correzioni del codice partono da sole (si ferma dopo 3 tentativi falliti), ma clic, compilazioni e pagamento chiedono sempre conferma.
+- **Il pagamento non è mai automatico:** l'Operatore arriva al checkout e si ferma — paghi tu.
+
+## Nuova pagina "Code"
+- Nello Studio, accanto a *Conversa* e *Crea direttamente*, c'è **Code**: descrivi una pagina web, il cervello la genera, la vedi in **anteprima** e la **pubblichi** (ideax la serve sul PC / in rete locale).
+
+---
+# Versioni precedenti
 
 ## Decorazioni laser: sagome piene e nere, non cuori di linee storte
 - Il tema ora si traduce sempre in inglese prima di disegnare: "cuore sagoma semplice nero" arrivava al modello in italiano, che SDXL non capisce
