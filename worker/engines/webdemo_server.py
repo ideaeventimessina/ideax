@@ -251,19 +251,19 @@ def _br_loop():
                 resp.put(("ok", _br_stato(page)))
             elif azione == "clicca":
                 if a.get("selettore"):
-                    page.click(a["selettore"], timeout=12000)
+                    page.click(a["selettore"], timeout=6000)
                 else:
-                    page.get_by_text(a.get("testo") or "", exact=False).first.click(timeout=12000)
+                    page.get_by_text(a.get("testo") or "", exact=False).first.click(timeout=6000)
                 page.wait_for_timeout(600)
                 resp.put(("ok", _br_stato(page)))
             elif azione == "compila":
                 if a.get("selettore"):
-                    page.fill(a["selettore"], a.get("valore") or "", timeout=12000)
+                    page.fill(a["selettore"], a.get("valore") or "", timeout=6000)
                 else:
-                    page.get_by_label(a.get("testo") or "").first.fill(a.get("valore") or "", timeout=12000)
+                    page.get_by_label(a.get("testo") or "").first.fill(a.get("valore") or "", timeout=6000)
                 resp.put(("ok", {"ok": True}))
             elif azione == "estrai":
-                dato = page.inner_text(a["selettore"], timeout=12000) if a.get("selettore") else page.inner_text("body")
+                dato = page.inner_text(a["selettore"], timeout=6000) if a.get("selettore") else page.inner_text("body")
                 resp.put(("ok", {"dato": dato[:8000]}))
             else:
                 resp.put(("err", f"azione sconosciuta: {azione}"))
