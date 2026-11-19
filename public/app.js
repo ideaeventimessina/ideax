@@ -93,7 +93,7 @@ function showPage() {
   if (page === 'cervello') loadBrainPage();
   if (page === 'collega') { loadSystems(); loadAccessi(); loadFarm(); }
   if (page === 'regia') loadRegia();
-  if (page === 'modelli') { loadEngines(); loadFixes(); loadBaseFotoreale(); loadModelliAdulti(); refreshSetup().then(() => { renderLlmSupport(); if (state.engines) renderEngines(); }); }
+  if (page === 'modelli') { loadEngines(); loadFixes(); loadBaseFotoreale(); loadFluxGguf(); loadModelliAdulti(); refreshSetup().then(() => { renderLlmSupport(); if (state.engines) renderEngines(); }); }
   if (page === 'gemello') { loadEngines(); loadTwin(); loadPersonaggi(); }
   window.scrollTo({ top: 0 });
 }
@@ -778,6 +778,43 @@ $('#base-fotoreale-card')?.addEventListener('click', async (e) => {
   e.target.disabled = true; e.target.textContent = 'Avvio…';
   await api('/api/models/base-fotoreale', { method: 'POST' }).catch(() => {});
   loadBaseFotoreale();
+});
+
+let fluxTimer = null;
+async function loadFluxGguf() {
+  const card = $('#flux-gguf-card');
+  if (!card) return;
+  const btn = $('[data-flux-gguf]', card);
+  const out = $('.flux-gguf-stato', card);
+  clearTimeout(fluxTimer);
+  let s;
+  try { s = await api('/api/models/flux-gguf'); } catch { return; }
+  if (s.installata) {
+    btn.textContent = 'Già nella libreria ✓'; btn.disabled = true; btn.classList.remove('primary');
+    out.hidden = false; out.textContent = `${s.nome} è pronto: scrivi un prompt e si usa come gli altri modelli Flux.`;
+    return;
+  }
+  if (s.status === 'downloading') {
+    btn.disabled = true; btn.textContent = 'Scarico…';
+    const pct = s.total ? Math.round((s.done / s.total) * 100) : null;
+    out.hidden = false; out.textContent = pct != null ? `Scarico ${s.nome}: ${pct}% di ${s.gb} GB (una volta sola)` : `Scarico ${s.nome}…`;
+    fluxTimer = setTimeout(loadFluxGguf, 1200);
+    return;
+  }
+  if (s.status === 'error') {
+    btn.disabled = false; btn.textContent = 'Riprova';
+    out.hidden = false; out.innerHTML = `<span class="error-text">Download non riuscito: ${esc(s.error || '')}</span>`;
+    return;
+  }
+  if (s.status === 'done') { await loadModels(); fluxTimer = setTimeout(loadFluxGguf, 300); return; }
+  btn.disabled = false; btn.textContent = 'Scarica Flux Q8'; out.hidden = true;
+}
+
+$('#flux-gguf-card')?.addEventListener('click', async (e) => {
+  if (!e.target.closest('[data-flux-gguf]')) return;
+  e.target.disabled = true; e.target.textContent = 'Avvio…';
+  await api('/api/models/flux-gguf', { method: 'POST' }).catch(() => {});
+  loadFluxGguf();
 });
 
 let adultiTimer = null;

@@ -77,6 +77,13 @@ const jobs = new Map();
 const BASE_FOTOREALE = { repo: 'SG161222/Realistic_Vision_V6.0_B1_noVAE', file: 'Realistic_Vision_V6.0_NV_B1_fp16.safetensors', nome: 'Realistic Vision 6.0', gb: 2.1 };
 let baseJob = { status: 'idle', done: 0, total: 0, error: null };
 
+// Flux.1-dev in formato GGUF Q8: la qualità del Flux grande ma "leggero" (~12,5 GB invece di ~24), così il
+// transformer sta tutto in una scheda da 16 GB e resta caricato mentre genera (l'encoder del testo cicla una volta
+// sola). Repo pubblico, NON gated (è una riquantizzazione): niente token né licenza da accettare. Il worker lo carica
+// con GGUFQuantizationConfig e prende VAE/encoder dal base pubblico (FLUX.1-schnell), senza scaricare il repo protetto.
+const BASE_FLUX = { repo: 'city96/FLUX.1-dev-gguf', file: 'flux1-dev-Q8_0.gguf', nome: 'Flux.1-dev Q8 (leggero)', gb: 12.5 };
+let fluxJob = { status: 'idle', done: 0, total: 0, error: null };
+
 // Modelli per adulti (OnlyFans, esplicito fotorealistico): SDXL base Pony (sanno fare gli atti) + addestramento realistico,
 // formato diffusers col VAE incluso (niente rumore). Pubblici, scaricabili con un clic. Si installano in una cartella sotto models/.
 const MODELLI_ADULTI = [
@@ -1166,6 +1173,21 @@ const server = http.createServer(async (req, res) => {
           .catch((err) => { baseJob = { status: 'error', done: 0, total: 0, error: err.message }; });
       }
       return send(res, 202, { ...baseJob, ...BASE_FOTOREALE });
+    }
+    // Flux Q8 (leggero): stesso meccanismo della base fotoreale, ma è un file singolo .gguf
+    if (p === '/api/models/flux-gguf' && req.method === 'GET') {
+      const gia = scanModels().some((m) => path.basename(m.path) === BASE_FLUX.file);
+      return send(res, 200, { ...fluxJob, ...BASE_FLUX, installata: gia });
+    }
+    if (p === '/api/models/flux-gguf' && req.method === 'POST') {
+      if (scanModels().some((m) => path.basename(m.path) === BASE_FLUX.file)) return send(res, 200, { status: 'done', installata: true });
+      if (fluxJob.status !== 'downloading') {
+        fluxJob = { status: 'downloading', done: 0, total: 0, error: null };
+        snapshot(BASE_FLUX.repo, store.MODELS_DIR, [BASE_FLUX.file], { onProgress: (pr) => { fluxJob.done = pr.done; fluxJob.total = pr.total; } })
+          .then(() => { fluxJob.status = 'done'; })
+          .catch((err) => { fluxJob = { status: 'error', done: 0, total: 0, error: err.message }; });
+      }
+      return send(res, 202, { ...fluxJob, ...BASE_FLUX });
     }
     // Modelli per adulti: lista con stato/avanzamento, e avvio del download (uno per volta per modello)
     if (p === '/api/models/adulti' && req.method === 'GET') {
