@@ -20,6 +20,7 @@
       <a href="#gemello" data-page="gemello"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><circle cx="16" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0M10.5 20a5.5 5.5 0 0 1 10 0"/></svg>Gemello</a>
       <a href="#voce" data-page="voce"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Voce</a>
       <a href="#musica" data-page="musica"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>Musica</a>
+      <a href="#operatore" data-page="operatore"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M8 21h8M12 17v4M9 9h.01M15 9h.01M9 13h6"/></svg>Operatore</a>
       <a href="#impostazioni" data-page="impostazioni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Impostazioni</a>
       <a href="#collega" data-page="collega"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>Collega app</a>
     </nav>
@@ -529,6 +530,31 @@
     </section>
 
     <!-- ================= IMPOSTAZIONI ================= -->
+    <section class="page" id="page-operatore">
+      <header class="page-head"><div><h1>Operatore</h1><p>Gli dai un obiettivo; scrive ed esegue codice sul tuo PC, guidato dal cervello locale, e ti risponde qui. Prima di ogni scrittura o esecuzione si ferma e ti chiede il sì. Non naviga il web e non paga.</p></div></header>
+      <div class="card">
+        <form id="operatore-form" class="stack-sm">
+          <label>Cosa deve fare <textarea name="obiettivo" rows="3" required placeholder="Es. Scrivi uno script che legge tutti i .csv in una cartella, somma la colonna 'importo' e stampa il totale per ciascun file."></textarea></label>
+          <button class="btn primary create"><span>Avvia</span></button>
+        </form>
+        <p class="muted small">Il cervello (pagina Cervello) deve essere acceso: è lui che pianifica. Gli script stanno in una cartella di lavoro di ideax e non toccano il resto del PC.</p>
+      </div>
+      <div class="card" id="operatore-conferma" hidden>
+        <h2>Serve il tuo sì</h2>
+        <p id="operatore-conferma-azione" class="small"></p>
+        <pre id="operatore-conferma-dettaglio" class="small" style="white-space:pre-wrap;overflow:auto;max-height:40vh"></pre>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="btn primary" data-operatore="si">Procedo</button>
+          <button class="btn" data-operatore="no">No, fermati</button>
+        </div>
+      </div>
+      <div class="card" id="operatore-stato" hidden>
+        <div class="section-head"><div><h2>Avanzamento</h2><p class="muted small" id="operatore-riga"></p></div>
+          <button class="btn" data-operatore="ferma">Ferma</button></div>
+        <pre id="operatore-log" class="small" style="white-space:pre-wrap;overflow:auto;max-height:50vh"></pre>
+        <div id="operatore-risultato" class="small" hidden></div>
+      </div>
+    </section>
     <section class="page" id="page-impostazioni">
       <header class="page-head"><div><h1>Impostazioni</h1><p>Un ambiente locale, configurato come vuoi tu.</p></div></header>
       <div class="card" id="about-card"></div>

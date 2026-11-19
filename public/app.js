@@ -95,6 +95,7 @@ function showPage() {
   if (page === 'regia') loadRegia();
   if (page === 'modelli') { loadEngines(); loadFixes(); loadBaseFotoreale(); loadFluxGguf(); loadModelliAdulti(); refreshSetup().then(() => { renderLlmSupport(); if (state.engines) renderEngines(); }); }
   if (page === 'gemello') { loadEngines(); loadTwin(); loadPersonaggi(); }
+  if (page === 'operatore') loadOperatore();
   window.scrollTo({ top: 0 });
 }
 window.addEventListener('hashchange', showPage);
@@ -816,6 +817,70 @@ $('#flux-gguf-card')?.addEventListener('click', async (e) => {
   await api('/api/models/flux-gguf', { method: 'POST' }).catch(() => {});
   loadFluxGguf();
 });
+
+// ---------- Operatore autonomo ----------
+let operatore = { id: null, timer: null };
+
+function loadOperatore() {
+  // Non ri-aggancia i listener due volte: una guardia sul form.
+  const form = $('#operatore-form');
+  if (form && !form.dataset.pronto) {
+    form.dataset.pronto = '1';
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const obiettivo = form.obiettivo.value.trim();
+      if (!obiettivo) return;
+      const btn = $('.create', form); btn.disabled = true;
+      try {
+        const v = await api('/api/operatore', { method: 'POST', body: { obiettivo } });
+        operatore.id = v.id;
+        $('#operatore-stato').hidden = false;
+        $('#operatore-risultato').hidden = true;
+        seguiOperatore();
+      } catch (err) { alert(err.message || 'Avvio non riuscito'); }
+      finally { btn.disabled = false; }
+    });
+    $('#page-operatore').addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-operatore]'); if (!b || !operatore.id) return;
+      const azione = b.dataset.operatore;
+      if (azione === 'si' || azione === 'no') await api(`/api/operatore/${operatore.id}/conferma`, { method: 'POST', body: { ok: azione === 'si' } }).catch(() => {});
+      else if (azione === 'ferma') await api(`/api/operatore/${operatore.id}/ferma`, { method: 'POST' }).catch(() => {});
+      seguiOperatore();
+    });
+  }
+}
+
+async function seguiOperatore() {
+  clearTimeout(operatore.timer);
+  if (!operatore.id) return;
+  let v;
+  try { v = await api(`/api/operatore/${operatore.id}`); } catch { return; }
+  renderOperatore(v);
+  const vivo = v.stato === 'in corso' || v.inAttesa;
+  if (vivo) operatore.timer = setTimeout(seguiOperatore, 1200);
+}
+
+function renderOperatore(v) {
+  const conf = $('#operatore-conferma');
+  if (v.inAttesa) {
+    conf.hidden = false;
+    $('#operatore-conferma-azione').textContent = `${v.inAttesa.categoria.toUpperCase()}: ${v.inAttesa.azione}`;
+    $('#operatore-conferma-dettaglio').textContent = v.inAttesa.dettaglio || '';
+    $('#operatore-conferma-dettaglio').hidden = !v.inAttesa.dettaglio;
+  } else {
+    conf.hidden = true;
+  }
+  $('#operatore-stato').hidden = false;
+  const etichette = { 'in corso': 'Al lavoro…', finito: 'Finito', errore: 'Errore', fermato: 'Fermato', esaurito: 'Fermato (troppi passi)' };
+  $('#operatore-riga').textContent = etichette[v.stato] || v.stato;
+  $('#operatore-log').textContent = (v.log || []).map((r) => r.msg).join('\n');
+  $('#operatore-log').scrollTop = $('#operatore-log').scrollHeight;
+  const ris = $('#operatore-risultato');
+  if (v.risultato || v.errore) {
+    ris.hidden = false;
+    ris.innerHTML = v.errore ? `<span class="error-text">${esc(v.errore)}</span>` : `<strong>Risultato:</strong> ${esc(v.risultato)}`;
+  } else ris.hidden = true;
+}
 
 let adultiTimer = null;
 async function loadModelliAdulti() {
