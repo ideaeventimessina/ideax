@@ -585,6 +585,7 @@
         <form id="operatore-form" class="stack-sm">
           <label>Cosa deve fare <textarea name="obiettivo" rows="3" required placeholder="Es. Scrivi uno script che legge tutti i .csv in una cartella e stampa il totale della colonna 'importo'. Oppure: apri questo sito e trova gli organizzatori di eventi a Messina."></textarea></label>
           <label class="check"><input type="checkbox" name="semi"> Modalità semi-autonoma: fa tutto da solo (codice e web, clic compresi) senza chiedere a ogni passo; si ferma dopo 3 tentativi falliti di fila. Il pagamento resta sempre bloccato.</label>
+          <label class="check"><input type="checkbox" name="pipeline"> Modalità Pipeline (codice): un comando → un file. Il modello risponde solo in JSON, scrivo il file, controllo la sintassi e se è sbagliata correggo da solo. Il commit/push su GitHub NON è automatico (si conferma a mano).</label>
           <button class="btn primary create"><span>Avvia</span></button>
         </form>
         <p class="muted small">Il cervello (pagina Cervello) deve essere acceso: è lui che pianifica. Gli script stanno in una cartella di lavoro di ideax. Per navigare serve il motore <strong>Regista web</strong> (Modelli → Motori). Il pagamento non è mai automatico: l'operatore arriva al checkout e si ferma.</p>

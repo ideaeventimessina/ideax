@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.35.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.36.exe** e aprilo.
+
+## Operatore: modalità Pipeline (codice in JSON, senza chiacchiere)
+- Nuova spunta nell'Operatore: un comando → un file. Il modello risponde **solo in JSON** (file, azione, codice, commit_msg), ideax scrive il file nella cartella di lavoro, **controlla la sintassi** (py_compile per .py, node --check per .js) e, se è sbagliata, **si ri-prompta da solo** per correggere — senza che tu intervenga.
+- **Il commit/push su GitHub NON è automatico**, per scelta: è un'azione verso l'esterno (e il repo di ideax, a ogni push, spedisce un .exe agli utenti), e il controllo di sintassi dice "compila", non "è giusto". Quindi si conferma a mano. Tutto il resto è silenzioso come deve.
 
 ## Operatore: ora GUARDA la pagina (non indovina da una lista)
 - Se hai un cervello che vede (Qwen3-VL, dalla pagina Cervello), l'Operatore fa uno **screenshot** a ogni passo e decide dove cliccare **guardando** la pagina — come una persona. Molto più affidabile sulle pagine dinamiche.

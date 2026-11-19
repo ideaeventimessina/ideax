@@ -872,7 +872,7 @@ function loadOperatore() {
       if (!obiettivo) return;
       const btn = $('.create', form); btn.disabled = true;
       try {
-        const modalita = form.semi?.checked ? 'semi' : 'strict';
+        const modalita = form.pipeline?.checked ? 'pipeline' : form.semi?.checked ? 'semi' : 'strict';
         const v = await api('/api/operatore', { method: 'POST', body: { obiettivo, modalita } });
         operatore.id = v.id;
         $('#operatore-stato').hidden = false;
@@ -912,7 +912,7 @@ function renderOperatore(v) {
     conf.hidden = true;
   }
   $('#operatore-stato').hidden = false;
-  const etichette = { 'in corso': 'Al lavoro…', finito: 'Finito', errore: 'Errore', fermato: 'Fermato', esaurito: 'Fermato (troppi passi)' };
+  const etichette = { 'in corso': 'Al lavoro…', finito: 'Finito', pronto: 'Codice pronto (sintassi OK)', errore: 'Errore', fermato: 'Fermato', esaurito: 'Fermato (troppi passi)' };
   $('#operatore-riga').textContent = etichette[v.stato] || v.stato;
   $('#operatore-log').textContent = (v.log || []).map((r) => r.msg).join('\n');
   $('#operatore-log').scrollTop = $('#operatore-log').scrollHeight;
