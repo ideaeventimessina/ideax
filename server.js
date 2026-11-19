@@ -804,6 +804,14 @@ const server = http.createServer(async (req, res) => {
     { const mo = p.match(/^\/api\/operatore\/([\w-]+)\/ferma$/);
       if (mo && req.method === 'POST') return send(res, 200, operatore.ferma(mo[1])); }
     // Code: genera/modifica una pagina web col cervello, pubblicala (ideax la serve a /siti/<slug>/)
+    // Tutte le schede video viste da ideax + chi fa cosa (il Node vede tutte le schede, il worker solo la sua).
+    if (p === '/api/gpu' && req.method === 'GET') {
+      const schede = (await runtime.detectGpus()).filter((g) => g.vendor === 'nvidia');
+      const immagini = await runtime.deviceForRole('image');
+      const motori = await runtime.deviceForRole('engine');
+      const split = store.getSettings().gpu?.split || 'auto';
+      return send(res, 200, { schede, split, immagini, motori, attivo: schede.length >= 2 && split !== 'off' && immagini !== motori });
+    }
     if (p === '/api/code/genera' && req.method === 'POST') return send(res, 200, await siti.genera(await readJson(req)));
     if (p === '/api/code/pubblica' && req.method === 'POST') return send(res, 200, siti.pubblica(await readJson(req)));
     if (p === '/api/code/siti' && req.method === 'GET') return send(res, 200, { siti: siti.elenca() });

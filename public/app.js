@@ -86,7 +86,7 @@ function showPage() {
   $$('.page').forEach((p) => p.classList.toggle('active', p === (exists || $('#page-studio'))));
   $$('.nav a').forEach((a) => (a.dataset.page === page ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
   if (page === 'primi-passi') renderOnboarding();
-  if (page === 'impostazioni') { renderEngine($('#engine-card')); loadNetwork(); loadEngines(); loadHfToken(); }
+  if (page === 'impostazioni') { renderEngine($('#engine-card')); loadGpu(); loadNetwork(); loadEngines(); loadHfToken(); }
   if (page === 'voce') { loadEngines(); loadVoices(); loadVoiceLib(); }
   if (page === 'musica') loadEngines();
   if (page === 'reel') { loadReelForm(); loadCatena(); }
@@ -1146,7 +1146,27 @@ function renderEngine(el) {
       ${w.offload ? '<span class="chip">Risparmio memoria attivo</span>' : ''}
       ${w.loadedName ? `<span class="chip">Modello caricato: ${esc(w.loadedName)}</span>` : ''}
     </div>
+    ${gpuSchede()}
     ${w.log?.length ? `<details><summary class="muted small">Registro del worker</summary><div class="log">${w.log.map(esc).join('\n')}</div></details>` : ''}`;
+}
+
+// Tutte le schede video viste da ideax e chi fa cosa. La card qui sopra mostra la scheda del WORKER immagini
+// (una sola, è giusto): questo blocco mostra che la seconda c'è e a cosa è assegnata.
+function gpuSchede() {
+  const g = state.gpu;
+  if (!g || !(g.schede || []).length) return '';
+  const chips = g.schede.map((s, i) => `<span class="chip">Scheda ${i}: ${esc(s.name)} · ${s.vramGb} GB</span>`).join('');
+  let riga;
+  if (g.schede.length < 2) riga = 'ideax vede una sola scheda NVIDIA. Se ne hai due, controlla che la seconda sia accesa e rilevata (nvidia-smi).';
+  else if (g.attivo) riga = `Due schede, in parallelo: <strong>immagini → scheda ${g.immagini}</strong>, <strong>motori pesanti (addestramento, video) → scheda ${g.motori}</strong>. La card qui sopra mostra solo la scheda delle immagini: è normale.`;
+  else if (g.split === 'off') riga = 'Divisione spenta (impostazione): tutto sulla scheda 0.';
+  else riga = 'Due schede rilevate ma non divise.';
+  return `<div class="facts" style="margin-top:.4rem">${chips}</div><p class="muted small">${riga}</p>`;
+}
+
+async function loadGpu() {
+  try { state.gpu = await api('/api/gpu'); } catch { return; }
+  if ($('#page-impostazioni')?.classList.contains('active')) renderEngine($('#engine-card'));
 }
 
 document.addEventListener('click', async (e) => {
