@@ -1,5 +1,10 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.45.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.46.exe** e aprilo.
+
+## Memoria eterna: ideax comincia ad accumulare conoscenza (Pilastro 1)
+- Un database vettoriale **LOCALE** (ChromaDB, sul tuo PC — niente cloud) dove ideax archivia ciò che impara e lo ritrova per **significato**, non per parola esatta. Due collezioni separate: **tech_core** (snippet, fix, pattern di codice) e **creative_assets** (prompt, stili, configurazioni di modelli). Il motore sceglie la collezione dal contesto.
+- **Si auto-apprende:** ogni soluzione scritta e validata dalla Pipeline dell'Operatore finisce da sola in memoria (tech_core). Un problema simile, domani, la ritrova senza richiederla. Si spegne con `memoria.auto=false`.
+- Gli embedding li calcola un modello locale (all-MiniLM, ~80 MB): la conoscenza non esce di casa, costo zero. Si installa da solo al primo uso. Se non è disponibile, ideax lavora lo stesso e lo dice (non si blocca).
 
 ## Modelli per adulti a FILE SINGOLO: niente più neve
 - I modelli espliciti "a un clic" ora si scaricano come **file singolo** `.safetensors` dalle fonti giuste (Lustify, Pony Realism con VAE, CyberRealistic Pony dal repo ufficiale), **non più come cartelle** John6666: i file singoli si caricano in modo pulito, senza il bug del rumore.

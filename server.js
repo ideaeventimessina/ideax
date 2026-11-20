@@ -27,6 +27,7 @@ import * as webdemo from './lib/webdemo.js';
 import * as operatore from './lib/operatore.js';
 import * as siti from './lib/siti.js';
 import * as civitai from './lib/civitai.js';
+import * as memoria from './lib/memoria.js';
 import { fallbackTitle } from './lib/router.js';
 import * as runtime from './lib/runtime.js';
 import * as updater from './lib/updater.js';
@@ -1273,6 +1274,11 @@ const server = http.createServer(async (req, res) => {
       else store.saveOverride(m.id, { enabled: false });
       return send(res, 200, { ok: true });
     }
+    // ----- Memoria eterna (ChromaDB locale, due collezioni: tech_core, creative_assets) -----
+    if (p === '/api/memoria/stato' && req.method === 'GET') return send(res, 200, await memoria.stato());
+    if (p === '/api/memoria/ricorda' && req.method === 'POST') { const b = await readJson(req); return send(res, 200, await memoria.ricorda(b.testo, b)); }
+    if (p === '/api/memoria/ricava' && req.method === 'POST') { const b = await readJson(req); return send(res, 200, await memoria.ricava(b.query, b)); }
+
     // ----- Cervelli: principale veloce + riserva grande -----
     if (p === '/api/brains' && req.method === 'GET') {
       const all = scanModels();

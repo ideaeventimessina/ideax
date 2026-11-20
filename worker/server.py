@@ -1143,6 +1143,38 @@ def health():
             "offload": use_offload(_loaded.get("arch") or ""), "version": os.environ.get("IDEAX_VERSION", "")}
 
 
+# ---------- Memoria eterna (ChromaDB locale, due collezioni) ----------
+class RicordaRequest(BaseModel):
+    testo: str
+    ambito: Optional[str] = None            # 'tech_core' | 'creative_assets' | None (dal contesto)
+    metadati: dict[str, Any] = {}
+    id: Optional[str] = None
+
+
+class RicavaRequest(BaseModel):
+    query: str
+    ambito: Optional[str] = None
+    quanti: int = 4
+
+
+@app.get("/memoria/stato")
+def memoria_stato():
+    import memoria
+    return memoria.stato()
+
+
+@app.post("/memoria/ricorda")
+def memoria_ricorda(req: RicordaRequest):
+    import memoria
+    return memoria.ricorda(req.testo, ambito=req.ambito, metadati=req.metadati, id_=req.id)
+
+
+@app.post("/memoria/ricava")
+def memoria_ricava(req: RicavaRequest):
+    import memoria
+    return memoria.ricava(req.query, ambito=req.ambito, quanti=req.quanti)
+
+
 @app.post("/shutdown")
 def shutdown():
     """Node spegne un worker di VERSIONE VECCHIA (sopravvissuto a un aggiornamento) per lanciarne uno col codice nuovo.
