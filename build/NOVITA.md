@@ -1,5 +1,10 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.39.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.40.exe** e aprilo.
+
+## Gemello: non resta più fermo per ore in silenzio, e ti dice perché
+- **Cane da guardia sull'addestramento.** Su una scheda da 16 GB, FLUX in addestramento può restare a corto di memoria e strisciare (un passo da secondi diventa minuti): prima la barra restava ferma per ore senza un errore. Ora, se i passi sono troppo lenti o la barra è congelata, l'addestramento **si ferma da solo entro ~20 minuti** e ti dice cosa fare, invece di farti perdere la notte.
+- **Si vede quale motore è partito:** "motore FLUX" per il gemello foto (il tuo viso, con consenso), "motore SDXL · base …" per i personaggi inventati. Non lo indovini più.
+- **Avviso prima di partire:** se uno schermo è acceso sulla scheda che addestra, un banco in cima a Gemello te lo dice e suggerisce di ridurre a un solo monitor per le ~2 ore dell'addestramento (più monitor accesi, più memoria tolta al calcolo). Avvisa, non blocca.
 
 ## Orchestratore: Target Router, anteprima progetti, zip, cartella scelta da te
 - L'Orchestratore ora **classifica** l'obiettivo: EXTERNAL (uno strumento isolato, in `tools/`), PROJECT (app/sito completo, in `progetti/`), SELF (una PROPOSTA di modifica da rivedere, in `proposte-self/` — **non** tocca il codice vivo di ideax).
