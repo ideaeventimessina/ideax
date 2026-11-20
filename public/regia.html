@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#9fb6d4">
+<title>IDEAX</title>
+<style>
+  * { box-sizing: border-box; }
+  :root { --inchiostro:#142941; --vetro:rgba(255,255,255,.72); --vetro-scuro:rgba(20,41,65,.08); font-family:Inter,"Segoe UI",system-ui,sans-serif; }
+  html,body { height:100%; margin:0; }
+  body { color:var(--inchiostro); background:#cdd9ea url("/cielo.jpg") center/cover no-repeat fixed;
+         display:flex; flex-direction:column; align-items:center; }
+  /* una velatura morbida così il testo si legge sul cielo */
+  body::before { content:""; position:fixed; inset:0; background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.42) 60%, rgba(255,255,255,.66)); pointer-events:none; }
+  .alto { position:fixed; top:16px; width:100%; max-width:860px; display:flex; align-items:center; justify-content:space-between; padding:0 18px; z-index:3; }
+  .marchio svg { height:26px; width:auto; filter:drop-shadow(0 1px 2px rgba(20,41,65,.25)); }
+  .rotella { width:40px; height:40px; border:none; border-radius:50%; background:var(--vetro); color:var(--inchiostro);
+             font-size:18px; cursor:pointer; box-shadow:0 2px 10px rgba(20,41,65,.12); display:grid; place-items:center; text-decoration:none; }
+  .rotella:hover { background:#fff; }
+
+  main { position:relative; z-index:2; width:100%; max-width:720px; flex:1; display:flex; flex-direction:column;
+         justify-content:flex-end; padding:84px 16px 150px; gap:14px; overflow-y:auto; }
+  /* a vuoto: logo grande al centro e un invito */
+  .benvenuto { margin:auto; text-align:center; opacity:.9; }
+  .benvenuto svg { height:54px; margin-bottom:14px; filter:drop-shadow(0 2px 6px rgba(20,41,65,.25)); }
+  .benvenuto p { margin:0; font-size:17px; color:#2b476b; }
+
+  .bolla { max-width:88%; padding:12px 15px; border-radius:16px; line-height:1.5; box-shadow:0 2px 12px rgba(20,41,65,.08); white-space:pre-wrap; word-wrap:break-word; }
+  .io { align-self:flex-end; background:rgba(130,155,189,.9); color:#fff; border-bottom-right-radius:5px; }
+  .lui { align-self:flex-start; background:var(--vetro); border-bottom-left-radius:5px; backdrop-filter:blur(6px); }
+  .lui .fase { font-size:13px; opacity:.6; }
+  .media { align-self:flex-start; max-width:88%; }
+  .media img, .media video { width:100%; border-radius:14px; box-shadow:0 4px 18px rgba(20,41,65,.18); display:block; }
+  .pensa { align-self:flex-start; font-size:14px; color:#2b476b; opacity:.8; }
+  .allegati { align-self:flex-end; display:flex; gap:6px; flex-wrap:wrap; }
+  .allegati .chip { background:var(--vetro); border-radius:10px; padding:4px 8px; font-size:12px; display:flex; gap:6px; align-items:center; }
+  .allegati img { width:34px; height:34px; object-fit:cover; border-radius:7px; }
+
+  .barra { position:fixed; bottom:20px; z-index:3; width:100%; max-width:720px; padding:0 16px; }
+  .campo { display:flex; align-items:flex-end; gap:8px; background:var(--vetro); backdrop-filter:blur(10px);
+           border-radius:22px; padding:8px 8px 8px 10px; box-shadow:0 8px 30px rgba(20,41,65,.18); }
+  .campo textarea { flex:1; border:none; background:transparent; resize:none; outline:none; font:inherit; color:var(--inchiostro);
+                    max-height:140px; padding:8px 4px; line-height:1.4; }
+  .campo textarea::placeholder { color:#5a79a0; }
+  .tondo { width:40px; height:40px; min-width:40px; border:none; border-radius:50%; cursor:pointer; font-size:18px;
+           display:grid; place-items:center; background:var(--vetro-scuro); color:var(--inchiostro); transition:.15s; }
+  .tondo:hover { background:rgba(20,41,65,.16); }
+  .tondo.invia { background:#4f7bb0; color:#fff; } .tondo.invia:hover { background:#3f6a9d; }
+  .tondo.rec { background:#d2544f; color:#fff; animation:pulsa 1.2s infinite; }
+  @keyframes pulsa { 0%,100%{box-shadow:0 0 0 0 rgba(210,84,79,.5)} 50%{box-shadow:0 0 0 8px rgba(210,84,79,0)} }
+  .tondo.muto { opacity:.45; }
+  .anteprime { display:flex; gap:6px; padding:6px 10px 0; flex-wrap:wrap; }
+  .anteprime .t { position:relative; }
+  .anteprime img { width:40px; height:40px; object-fit:cover; border-radius:8px; }
+  .anteprime .x { position:absolute; top:-6px; right:-6px; background:#142941; color:#fff; border:none; border-radius:50%; width:18px; height:18px; font-size:11px; cursor:pointer; }
+  .riga-stato { text-align:center; font-size:12px; color:#2b476b; opacity:.75; padding:6px 0 0; min-height:18px; }
+  @media (max-width:520px){ main{padding-bottom:160px;} }
+</style>
+</head>
+<body>
+  <div class="alto">
+    <span class="marchio" aria-label="IDEAX">
+      <svg viewBox="0 0 360 72" role="img"><g fill="none" stroke="#17365b" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 12v48 M53 60V12h18a24 24 0 0 1 0 48H53Z M158 12h-36v48h36 M122 36h28 M183 60l27-48 27 48 M194 43h32"/>
+        <path d="M266 12l49 48 M289 36l26-24 M266 60l16-16"/>
+        <path d="M340 26c0-10-5-15-15-15 10 0 15-5 15-15 0 10 5 15 15 15-10 0-15 5-15 15Z" transform="translate(0 7)" fill="#17365b" stroke="none"/>
+      </g></svg>
+    </span>
+    <a class="rotella" href="/" title="Impostazioni, regia, motori, discussioni">⚙</a>
+  </div>
+
+  <main id="filo">
+    <div class="benvenuto" id="benvenuto">
+      <svg viewBox="0 0 360 72" role="img" aria-label="IDEAX"><g fill="none" stroke="#17365b" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 12v48 M53 60V12h18a24 24 0 0 1 0 48H53Z M158 12h-36v48h36 M122 36h28 M183 60l27-48 27 48 M194 43h32"/>
+        <path d="M266 12l49 48 M289 36l26-24 M266 60l16-16"/>
+        <path d="M340 26c0-10-5-15-15-15 10 0 15-5 15-15 0 10 5 15 15 15-10 0-15 5-15 15Z" transform="translate(0 7)" fill="#17365b" stroke="none"/>
+      </g></svg>
+      <p>Parlami o scrivi. Penso io a cosa serve.</p>
+    </div>
+  </main>
+
+  <div class="barra">
+    <div class="anteprime" id="anteprime"></div>
+    <div class="campo">
+      <button class="tondo" id="piu" title="Aggiungi una foto/video di riferimento" aria-label="Aggiungi media">＋</button>
+      <input type="file" id="file" accept="image/*,video/*,audio/*" multiple hidden>
+      <textarea id="ingresso" rows="1" placeholder="Scrivi un comando…" aria-label="Comando per IDEAX"></textarea>
+      <button class="tondo" id="mic" title="Parla" aria-label="Parla">🎙</button>
+      <button class="tondo" id="voce" title="Risposta a voce (tocca per zittire)" aria-label="Risposta a voce">🔊</button>
+      <button class="tondo invia" id="invia" title="Invia" aria-label="Invia comando">↑</button>
+    </div>
+    <div class="riga-stato" id="stato"></div>
+  </div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const filo = $('#filo'), ingresso = $('#ingresso'), stato = $('#stato'), anteprime = $('#anteprime');
+let chatId = null, allegati = [], vocePub = true, registra = null, occupato = false;
+
+// ---- utilità ----
+const esc = (t) => (t||'').replace(/[&<>]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function aggiungi(html, cls) { $('#benvenuto')?.remove(); const d = document.createElement('div'); d.className = cls; d.innerHTML = html; filo.appendChild(d); filo.scrollTop = filo.scrollHeight; return d; }
+function leggiFile(f) { return new Promise((ok) => { const r = new FileReader(); r.onload = () => ok({ name:f.name, type:f.type, dataUrl:r.result }); r.readAsDataURL(f); }); }
+function disegnaAllegati() { anteprime.innerHTML = allegati.map((a,i) => `<span class="t">${a.type.startsWith('image')?`<img src="${a.dataUrl}">`:`<span class="chip">${esc(a.name)}</span>`}<button class="x" data-i="${i}">✕</button></span>`).join(''); }
+
+// textarea che cresce
+ingresso.addEventListener('input', () => { ingresso.style.height='auto'; ingresso.style.height = Math.min(140, ingresso.scrollHeight)+'px'; });
+ingresso.addEventListener('keydown', (e) => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); invia(); } });
+
+// "+": media di riferimento
+$('#piu').onclick = () => $('#file').click();
+$('#file').onchange = async (e) => { for (const f of e.target.files) allegati.push(await leggiFile(f)); disegnaAllegati(); e.target.value=''; };
+anteprime.onclick = (e) => { const i = e.target.dataset?.i; if (i!=null) { allegati.splice(+i,1); disegnaAllegati(); } };
+
+// 🔊 risposta a voce on/off
+$('#voce').onclick = () => { vocePub = !vocePub; $('#voce').classList.toggle('muto', !vocePub); };
+
+// 🎙 parla → trascrivi → invia
+$('#mic').onclick = async () => {
+  if (registra) { registra.stop(); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+    const mr = new MediaRecorder(stream); const pezzi = [];
+    mr.ondataavailable = (ev) => pezzi.push(ev.data);
+    mr.onstop = async () => {
+      stream.getTracks().forEach((t)=>t.stop()); $('#mic').classList.remove('rec'); registra = null;
+      stato.textContent = 'Ti ascolto…';
+      const blob = new Blob(pezzi, { type:'audio/webm' });
+      const dataUrl = await new Promise((ok)=>{ const r=new FileReader(); r.onload=()=>ok(r.result); r.readAsDataURL(blob); });
+      try {
+        const r = await fetch('/v1/trascrivi', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ audio:dataUrl, lingua:'it' }) });
+        const d = await r.json(); stato.textContent='';
+        if (d.testo) { ingresso.value = d.testo.trim(); invia(); } else stato.textContent = 'Non ho capito, riprova.';
+      } catch { stato.textContent = 'Trascrizione non disponibile.'; }
+    };
+    registra = mr; mr.start(); $('#mic').classList.add('rec'); stato.textContent = 'Parla… (tocca di nuovo per fermare)';
+  } catch { stato.textContent = 'Microfono non disponibile.'; }
+};
+
+// risposta a voce: testo → /v1/audio/speech → riproduci
+async function parla(testo) {
+  if (!vocePub || !testo) return;
+  try {
+    const r = await fetch('/v1/audio/speech', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ input: testo.slice(0,1000), response_format:'mp3' }) });
+    if (!r.ok) return; // motore voce non installato: resta il testo, senza rumore
+    const url = URL.createObjectURL(await r.blob()); new Audio(url).play().catch(()=>{});
+  } catch {}
+}
+
+// i media creati arrivano come "jobs": si seguono e si mostrano
+async function seguiLavoro(id) {
+  const box = aggiungi('<div class="pensa">Lo sto creando…</div>', 'media');
+  for (let i=0; i<600; i++) {
+    await new Promise((r)=>setTimeout(r, 1500));
+    let j; try { j = await (await fetch(`/v1/jobs/${id}`)).json(); } catch { continue; }
+    if (j.progress?.phase) box.innerHTML = `<div class="pensa">${esc(j.progress.phase)}${j.progress.total?` · ${j.progress.step}/${j.progress.total}`:''}</div>`;
+    if (j.status==='done') {
+      box.innerHTML = (j.results||[]).map((m)=> /^video\//.test(m.type)?`<video src="${m.url}" controls playsinline></video>` : /^audio\//.test(m.type)?`<audio src="${m.url}" controls></audio>` : `<img src="${m.url}">`).join('') || '<div class="pensa">Fatto.</div>';
+      filo.scrollTop = filo.scrollHeight; return;
+    }
+    if (j.status==='error' || j.status==='cancelled') { box.innerHTML = `<div class="pensa">Non è riuscito: ${esc(j.error||'errore')}</div>`; return; }
+  }
+}
+
+// il cuore: parli → il cervello risponde → appare (e parla)
+async function invia() {
+  const testo = ingresso.value.trim();
+  if ((!testo && !allegati.length) || occupato) return;
+  occupato = true; $('#invia').disabled = true;
+  if (allegati.length) aggiungi(allegati.map((a)=> a.type.startsWith('image')?`<img src="${a.dataUrl}" style="width:60px;height:60px;object-fit:cover;border-radius:8px">`:`<span class="chip">${esc(a.name)}</span>`).join(''), 'allegati');
+  if (testo) aggiungi(esc(testo), 'bolla io');
+  const inviati = allegati.slice(); allegati = []; disegnaAllegati();
+  ingresso.value=''; ingresso.style.height='auto';
+  const pensando = aggiungi('<span class="pensa">…</span>', 'pensa');
+  try {
+    const r = await fetch('/v1/chat', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ chat_id: chatId, message: testo, attachments: inviati }) });
+    const d = await r.json(); pensando.remove();
+    chatId = d.chat_id || chatId;
+    if (d.reply) { aggiungi(esc(d.reply), 'bolla lui'); parla(d.reply); }
+    for (const j of (d.jobs||[])) seguiLavoro(j.id);
+    if (!d.reply && !(d.jobs||[]).length) aggiungi('<span class="pensa">(nessuna risposta)</span>', 'pensa');
+  } catch (e) {
+    pensando.remove(); aggiungi('Non sono riuscito a rispondere: ' + esc(e.message), 'bolla lui');
+  } finally { occupato = false; $('#invia').disabled = false; ingresso.focus(); }
+}
+$('#invia').onclick = invia;
+ingresso.focus();
+</script>
+</body>
+</html>

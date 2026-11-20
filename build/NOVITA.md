@@ -1,5 +1,11 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.47.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.48.exe** e aprilo.
+
+## La Regia: una barra sola a cui parli (anche a voce)
+- Nuova schermata **Regia** (link in alto a sinistra, o apri `/regia.html`): una barra unica al centro. Scrivi o **parli** (🎙 microfono → trascrizione), ideax capisce cosa serve e l'output **appare lì** — testo, immagini, video. Se gli servono dati te li chiede nella stessa barra.
+- **Ti risponde parlando** (🔊, si può zittire): la risposta esce anche a voce (serve il motore Voce installato; se manca, resta il testo).
+- **"+"** per trascinare una **foto/video di riferimento** (per il volto, lo stile, una scena da cui partire).
+- La **rotella ⚙** porta a tutto il resto (Studio, motori, gemello, sistemi collegati, discussioni): niente è sparito, è solo dietro l'ingranaggio. La Regia è la nuova casa; il cockpit completo resta com'è.
 
 ## La memoria ora si LEGGE: ideax parte da ciò che sa
 - Il brain, prima di rispondere o di risolvere un task, **cerca nella memoria** cose simili già imparate e ci parte. È l'anello che chiude l'auto-apprendimento: la Pipeline dell'Operatore scrive le soluzioni riuscite E legge quelle vecchie prima di scriverne una nuova (impara dai propri fix).
