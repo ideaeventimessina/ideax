@@ -30,13 +30,18 @@ POST {url}/api/ponte/ideax/lavori/{id}
 | tipo | dati | risultato |
 |---|---|---|
 | `json` | `sistema`, `richiesta`, `schema`, `temperatura`, `maxToken` | l'oggetto JSON secondo lo schema |
-| `chat` | `messaggio`, `utente`, `chat_id` | `{ chat_id, risposta, lavori, ricordati }` |
+| `chat` | `messaggio`, `utente`, `chat_id`, `soloLettura` | `{ chat_id, risposta, lavori, ricordati }` |
 | `genera` | come `POST /v1/generate` | `{ titolo, modello, prompt, risultati: [{ tipo, base64, secondi }] }` |
 | `musica` | come `POST /v1/music` | come `genera` |
 | `voce` | `testo`, `voice`, `language` | come `genera` |
 | `reel` | come `POST /v1/reels` | come `genera` |
 | `decorazione` | `tema`, `operazione` (taglio/incisione), `larghezzaMm`, `altezzaMm`, `varianti` | `{ proposte: [{ d, w, h, svg, immagine }] }` |
 | `vettorizza` | `immagine` (base64), `larghezzaMm`, `altezzaMm`, `operazione` | `{ d, w, h, svg }` |
+
+`soloLettura: true` nei dati di `chat`: il cervello non vede e non può usare gli strumenti che scrivono su
+GitHub (`github_scrivi_file`, `github_crea_ramo`, `github_crea_issue`, `github_commenta`, `github_crea_pr`),
+anche se in ideax "Permetti modifiche" è acceso. Jarvis lo manda sempre. Senza il campo vale l'impostazione
+di ideax, come per la chat locale.
 
 Le decorazioni: il modello di immagini (Flux, se c'è) disegna una sagoma nera su bianco, il worker la
 vettorizza con vtracer in millimetri. Per il taglio toglie le parti più sottili di 3 mm e chiude i varchi

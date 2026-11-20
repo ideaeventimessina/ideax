@@ -161,7 +161,12 @@ e la gestione di chiavi e webhook. La specifica completa è in `/v1/openapi.json
 
 ### Autenticazione
 
-- **Dallo stesso PC** non serve nulla.
+- **Dallo stesso PC** non serve nulla: vale per la pagina di ideax (http://localhost:7800) e per script e app che
+  non mandano l'intestazione `Origin` (Node, Python, curl). Non valgono come "stesso PC" (dal 20/11/2026):
+  le pagine di altri siti aperte nel browser (anche `localhost` su un'altra porta), le richieste arrivate da un
+  tunnel o proxy (`X-Forwarded-For`, `CF-Connecting-IP`…). Per loro serve la chiave API. Un'app web che deve
+  chiamare ideax dal browser va ammessa per nome: `IDEAX_ORIGINI=http://localhost:3000` (separate da virgola)
+  oppure `network.origini` in `settings.json`; solo quelle origini (e ideax stesso) ricevono i permessi CORS.
 - **Da altri computer o server**: attiva *Impostazioni → Accesso dalla rete locale*, riavvia ideax e crea una
   **chiave API** per ogni sistema in *Collega app* (la chiave si vede una volta sola; si può revocare quando vuoi).
   Va inviata come `Authorization: Bearer <chiave>`, oppure `X-API-Key: <chiave>`, oppure `?key=<chiave>` (comodo per scaricare i file).

@@ -1,3 +1,4 @@
+/* Questo codice è stato progettato, scritto e generato da Andrea Gentile C.f GNTNDR88S28F158M */
 // Crea la versione Windows pronta da estrarre: dist/ideax/ (con ideax.exe) e dist/ideax-windows.zip.
 // ideax.exe contiene Node.js e tutto il server: sul PC dell'utente non serve installare Node.
 // Uso: npm install && npm run build:exe
@@ -50,7 +51,7 @@ console.log('1a/5 Banco di prova');
 {
   const { execFileSync } = await import('node:child_process');
   try {
-    execFileSync(process.execPath, ['--test', path.join(ROOT, 'test', 'banco.mjs'), path.join(ROOT, 'test', 'farm.mjs')], { stdio: 'pipe' });
+    execFileSync(process.execPath, ['--test', path.join(ROOT, 'test', 'banco.mjs'), path.join(ROOT, 'test', 'farm.mjs'), path.join(ROOT, 'test', 'sicurezza.mjs')], { stdio: 'pipe' });
     console.log('   tutte le scelte giuste: ok');
   } catch (err) {
     throw new Error(`Il banco di prova non passa.\n${String(err.stdout || '').split('\n').filter((l) => /not ok|expected|actual|Error/.test(l)).join('\n').slice(0, 3000)}`);

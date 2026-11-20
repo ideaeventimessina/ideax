@@ -48,6 +48,7 @@ import * as brains from './lib/brains.js';
 import { blockedReason, adultGuard } from './lib/safety.js';
 import * as regia from './lib/regia.js';
 import { brainPair } from './lib/brain.js';
+import { richiestaLocale, origineAmmessa, originiExtra } from './lib/locale.js';
 
 process.title = 'ideax';
 
@@ -153,7 +154,6 @@ function serveFile(res, root, rel) {
   fs.createReadStream(full).pipe(res);
 }
 
-const isLoopback = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
 
 // Confronto a tempo costante di due chiavi (la farm). Lunghezze diverse → subito false, senza far crollare timingSafeEqual.
 function sameKey(a, b) {
@@ -649,7 +649,8 @@ async function chatForSystem(d, sys) {
     chat.externalKey = key;
     chats.saveChat(chat);
   }
-  const msg = await agent.send(chat, { text: d.messaggio || d.message, ctx: { client: sys.name } });
+  // soloLettura: il sistema chiede che questo lavoro non possa scrivere su GitHub (Jarvis lo manda sempre)
+  const msg = await agent.send(chat, { text: d.messaggio || d.message, ctx: { client: sys.name, soloLettura: d.soloLettura === true } });
   const out = { chat_id: chat.id, risposta: msg.content, lavori: msg.jobs || [], ricordati: msg.remembered || [] };
   // Chi chiede da lontano (es. Jarvis) vuole anche i file: si aspetta che le creazioni finiscano e si rimandano
   if (d.attendi_media && msg.jobs?.length) {
@@ -695,12 +696,21 @@ const server = http.createServer(async (req, res) => {
   const p = url.pathname;
   const origin = `http://${req.headers.host}`;
 
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  // CORS (20/11/2026): non più "*". Il permesso va solo alla pagina di ideax stessa e alle origini
+  // ammesse esplicitamente (IDEAX_ORIGINI o settings.json → network.origini): vedi lib/locale.js.
+  const origini = originiExtra(store.getSettings());
+  res.setHeader('Vary', 'Origin');
+  if (origineAmmessa(req.headers.origin, PORT, origini)) {
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  }
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+  // "Da questo PC" = loopback, senza inoltri (tunnel/proxy) e senza Origin di altri siti
+  const locale = richiestaLocale(req, PORT, origini);
 
-  // Autenticazione: da questo PC non serve; dagli altri dispositivi serve una chiave API.
+  // Autenticazione: da questo PC non serve (solo se è davvero locale: lib/locale.js); dagli altri dispositivi,
+  // dai tunnel e dalle pagine di altri siti serve una chiave API.
   // Una chiave sbagliata viene rifiutata sempre, così gli errori di configurazione si notano subito.
   const PUBLIC = ['/v1/health', '/v1/openapi.json'];
   // Il ponte della farm (gli altri PC che vengono a prendere i lavori) ha la sua chiave: salta l'autenticazione generica.
@@ -711,7 +721,7 @@ const server = http.createServer(async (req, res) => {
     client = apikeys.verifyKey(key) || (LEGACY_TOKEN && key === LEGACY_TOKEN ? { id: 'token', name: 'Token di rete' } : null);
     if (!client && protectedPath) return send(res, 401, { error: 'Chiave API non valida o revocata' });
   }
-  if (protectedPath && !client && !isLoopback(req)) {
+  if (protectedPath && !client && !locale) {
     return send(res, 401, { error: 'Serve una chiave API: intestazione "Authorization: Bearer <chiave>" (si crea in ideax → Collega app)' });
   }
   const ctx = { client: client?.name || (p.startsWith('/v1/') ? 'App su questo PC' : 'ideax'), origin };
@@ -1289,7 +1299,7 @@ const server = http.createServer(async (req, res) => {
       if (b.consent !== true) return send(res, 400, { error: 'Serve la tua conferma di accettare la licenza' });
       const r = await (await import('./lib/hfcheck.js')).requestAccess(b.repo, b.values || {});
       // Se Hugging Face vuole il clic dal sito, apriamo la pagina giusta nel browser di questo PC
-      if (!r.ok && isLoopback(req)) openBrowser(r.url);
+      if (!r.ok && locale) openBrowser(r.url);
       if (r.ok) fixes.autoFix();
       return send(res, 200, r);
     }
@@ -1309,7 +1319,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/ping') { lastPing = Date.now(); return send(res, 200, { ok: true, version: store.VERSION }); }
     // Esci da ideax (dal pulsante della barra laterale: non c'è più la finestra del terminale da chiudere)
     if (p === '/api/quit' && req.method === 'POST') {
-      if (!isLoopback(req)) return send(res, 403, { error: 'Si può chiudere ideax solo da questo PC' });
+      if (!locale) return send(res, 403, { error: 'Si può chiudere ideax solo da questo PC' });
       send(res, 200, { ok: true });
       setTimeout(() => process.exit(0), 400);
       return;
