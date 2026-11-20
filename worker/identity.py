@@ -29,6 +29,49 @@ FACEID_LORA = "ip-adapter-faceid_sdxl_lora.safetensors"
 FACEID_LORA_ADAPTER = "faceid_lora"
 
 _app = None  # insightface FaceAnalysis, una volta sola
+_provato_install = False
+
+
+def _assicura_insightface() -> bool:
+    """Rende disponibile insightface NELL'AMBIENTE DEL WORKER, una volta sola. Best-effort: non solleva mai.
+
+    FaceID gira nel worker principale, non nel motore del labiale, quindi insightface va installato qui. Si riusa
+    l'installatore che c'e' gia' (copia il pacchetto senza compilare, worker/engines/install_insightface.py) piu'
+    onnxruntime e le dipendenze Python. Se non riesce, si genera con la sola LoRA.
+    """
+    global _provato_install
+    try:
+        import insightface  # noqa: F401
+        return True
+    except Exception:  # noqa: BLE001
+        pass
+    if _provato_install:
+        return False
+    _provato_install = True
+    try:
+        import subprocess
+        try:
+            import onnxruntime  # noqa: F401
+        except Exception:  # noqa: BLE001
+            print("[ideax] FaceID: installo onnxruntime…", flush=True)
+            subprocess.run([sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "onnxruntime-gpu"], check=False)
+            try:
+                import onnxruntime  # noqa: F401
+            except Exception:  # noqa: BLE001
+                subprocess.run([sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "onnxruntime"], check=False)
+        subprocess.run([sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "onnx", "scikit-image"], check=False)
+        installer = os.path.join(HERE, "engines", "install_insightface.py")
+        if os.path.exists(installer):
+            print("[ideax] FaceID: installo insightface (la prima volta)…", flush=True)
+            subprocess.run([sys.executable, installer], check=False)
+        import importlib
+        importlib.invalidate_caches()
+        import insightface  # noqa: F401
+        return True
+    except Exception as err:  # noqa: BLE001
+        print(f"[ideax] FaceID: insightface non installabile ({err}); genero con la sola LoRA. "
+              "Installa il motore Gemello video per averlo stabile.", flush=True)
+        return False
 
 
 def _insightface(gpu: bool):
@@ -36,6 +79,8 @@ def _insightface(gpu: bool):
     global _app
     if _app is not None:
         return _app
+    if not _assicura_insightface():
+        return None
     try:
         from insightface.app import FaceAnalysis
     except Exception as err:  # noqa: BLE001

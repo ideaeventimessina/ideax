@@ -1,5 +1,11 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.41.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.42.exe** e aprilo.
+
+## Il volto resta LO STESSO: FaceID per gemelli e personaggi
+- Una LoRA cattura l'aria di un volto ma non lo blocca: a ogni scena ne esce uno "simile ma non lui". **FaceID** chiude il buco — prende le foto di riferimento del personaggio e **impone il volto** alla generazione, così resta identico in venti scene diverse. Si accende da solo quando generi con un gemello o un personaggio su un modello SDXL; vedi "Blocco il volto (FaceID)" durante la generazione.
+- **Regola di sicurezza:** su un **viso reale** (gemello) FaceID si **spegne** se il contenuto è esplicito. Su un **personaggio inventato** resta sempre acceso — è la strada giusta per i contenuti per adulti (nessuna persona reale).
+- Usa **insightface** (lo stesso del Gemello video): se non c'è, prova a installarlo da solo alla prima generazione; se non riesce, genera con la sola LoRA e lo dice (non si blocca mai). Il modello FaceID si scarica una volta al primo uso.
+- Forza della somiglianza regolabile con la variabile `faceidScale` (0.65 di base).
 
 ## Gemello: su schede da 16 GB si addestra su SDXL (FLUX non ci entra)
 - **Il motore si sceglie dalla scheda.** FLUX dà la somiglianza migliore ma in addestramento il suo picco di memoria sfora i 16 GB e si pianta prima ancora di cominciare. Ora, sotto i ~20 GB, il gemello si addestra su **SDXL** — molto più leggero, ci sta comodo sui 16 GB anche con più monitor accesi, e con tante tue foto la somiglianza è ottima. Su schede grandi (24 GB+) resta FLUX.
