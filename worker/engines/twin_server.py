@@ -37,17 +37,19 @@ proc: Optional[subprocess.Popen] = None
 STEP = re.compile(r"(\d+)/(\d+) \[")
 FASE_ADDESTRO = "Addestro il gemello"
 
-# Cane da guardia: su una scheda da 16 GB FLUX in addestramento sta sopra il limite e scarica su disco; un passo
-# sano è di secondi, uno "a corto di memoria" è di minuti, e la barra resta ferma per ore senza un errore (il motivo:
-# lo stato avanza solo quando ai-toolkit stampa un passo nuovo — se si impianta, nessuno parla). Qui, SOLO dopo che
-# l'addestramento vero è partito (non durante il download/caching, che sono lenti per natura), si ferma da soli se:
-#   - i passi sono cronicamente lenti (stima del tempo totale oltre il tetto, o oltre il secondi-a-passo limite), o
-#   - la barra è congelata (nessun passo nuovo per oltre il silenzio massimo).
-# Così, invece di dodici ore a 10%, si ferma in ~20 minuti dicendo COSA fare.
+# Cane da guardia: su una scheda da 16 GB FLUX può non entrare già nel CARICAMENTO (prima di addestrare) o strisciare
+# in addestramento scaricando su disco; in tutt'e due i casi la barra resta ferma per ore senza un errore, perché lo
+# stato avanza solo quando ai-toolkit stampa qualcosa — se si impianta, nessuno parla. Si ferma da soli se:
+#   - PREPARAZIONE (passo 0): nessuna riga di log per troppo tempo. Qui niente è lungo per natura — il download vero di
+#     FLUX lo fa ideax PRIMA, in un'altra fase; questo è solo caricamento dal disco, pochi minuti. Un silenzio lungo =
+#     bloccato nel caricare il modello (quasi sempre memoria). Questo è il buco della prima versione: copriva solo...
+#   - ADDESTRAMENTO: ...i passi, cronicamente lenti (stima oltre il tetto o oltre il secondi-a-passo), o congelati.
+# Così, invece di dodici ore a 10% o un passo 0 eterno, si ferma in minuti dicendo COSA fare.
 PASSO_LENTO_S = 120      # oltre 2 minuti a passo (sano < 10 s) è patologico
 MIN_PASSI = 5            # servono alcuni passi prima di stimare, per saltare il riscaldamento
 STIMA_CAP_H = 10         # se a questo ritmo non finisce entro 10 ore è di fatto morto; sotto resta una corsa lenta ma viva
-SILENZIO_S = 1200        # 20 minuti senza avanzare di un passo = bloccato
+SILENZIO_S = 1200        # 20 minuti senza avanzare di un passo (in addestramento) = bloccato
+CARICAMENTO_FERMO_S = 600  # 10 minuti senza NESSUNA riga di log in preparazione = bloccato nel caricare il modello
 VEGLIA_S = 30            # ogni quanto il cane da guardia controlla
 
 
@@ -72,9 +74,20 @@ def _cane_da_guardia() -> None:
         time.sleep(VEGLIA_S)
         if state["status"] != "running":
             return
-        if state.get("phase") != FASE_ADDESTRO or not state.get("train_started"):
-            continue    # download/caching: lento per natura, non è uno stallo
         now = time.time()
+        if not state.get("train_started"):
+            # PREPARAZIONE (passo 0): il modello si carica. Non ci sono fasi lunghe qui (il download di FLUX è altrove),
+            # quindi un lungo silenzio nei log = bloccato nel caricare, quasi sempre per memoria sulla 16 GB.
+            if state.get("log_at") and now - state["log_at"] > CARICAMENTO_FERMO_S:
+                mins = int((now - state["log_at"]) / 60)
+                _ferma_bloccato(
+                    f"Bloccato nel preparare il modello da {mins} minuti, fermo al passo 0 senza un segnale: su una "
+                    "scheda da 16 GB FLUX può non entrare già nel caricamento, prima ancora di addestrare. L'ho "
+                    "annullato. Per il tuo gemello conviene SDXL: è molto più leggero e ci sta anche con i monitor "
+                    "accesi. Se vuoi restare su FLUX, tieni un solo monitor attivo durante l'addestramento.")
+                return
+            continue
+        # ADDESTRAMENTO vero partito: si guardano i passi.
         passo = state.get("step") or 0
         if passo > visto:
             visto, visto_a = passo, now
@@ -159,6 +172,7 @@ def log(line: str) -> None:
         return
     state["log"].append(line[-300:])
     del state["log"][:-60]
+    state["log_at"] = time.time()   # il cane da guardia usa questo per capire se la preparazione è bloccata
 
 
 def run(req: TrainRequest, cfg_path: Path, out: Path) -> None:
@@ -235,7 +249,7 @@ def train(req: TrainRequest):
     # Il JSON è YAML valido: niente dipendenze in più
     cfg_path.write_text(json.dumps(config_for(req, dataset, out), indent=2), encoding="utf-8")
     state.update(status="running", step=0, total=req.steps, phase="Avvio", log=[], output=None, error=None,
-                 name=req.name, started=time.time(), train_started=None)
+                 name=req.name, started=time.time(), train_started=None, log_at=time.time())
     threading.Thread(target=run, args=(req, cfg_path, out), daemon=True).start()
     threading.Thread(target=_cane_da_guardia, daemon=True).start()
     return {"ok": True}
