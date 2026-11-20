@@ -167,8 +167,15 @@ def run(req: TrainRequest, cfg_path: Path, out: Path) -> None:
         env = {**os.environ, "PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1"}
         proc = subprocess.Popen([sys.executable, "run.py", str(cfg_path)], cwd=APP, env=env,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace", bufsize=1)
-        state["phase"] = ("Preparo il modello SDXL su cui addestrare" if req.arch == "sdxl"
-                          else "Preparo il modello (la prima volta scarica FLUX.1-dev, circa 30 GB)")
+        # ideax passa --model come CARTELLA già scaricata (una volta sola, all'installazione del motore): lì il modello
+        # si CARICA dal disco, non si scarica. La scritta diceva "scarica" sempre, anche a modello già presente: falso.
+        # Si scarica davvero solo se la cartella non c'è (es. avvio standalone con un repo di Hugging Face).
+        if req.arch == "sdxl":
+            state["phase"] = "Preparo il modello SDXL su cui addestrare"
+        elif os.path.isdir(args.model):
+            state["phase"] = "Preparo il modello (lo carico in memoria, non riscarica)"
+        else:
+            state["phase"] = "Scarico il modello (solo la prima volta, circa 30 GB)"
         buf = ""
         while True:
             ch = proc.stdout.read(1)
