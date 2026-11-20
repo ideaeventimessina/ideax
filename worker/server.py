@@ -81,6 +81,11 @@ class RunRequest(BaseModel):
     loras: list[Lora] = []
     motion: Optional[str] = None
     params: dict[str, Any] = {}
+    # FaceID: una o piu' foto di riferimento del volto del personaggio (data-URL o base64). Tiene lo stesso viso fra
+    # una generazione e l'altra. Solo SDXL. ip_scale 0=spento .. ~0.8=molto forte. Il Node lo spegne per contenuti
+    # espliciti su un VISO REALE (gemello); su un personaggio inventato resta sempre acceso.
+    ip_face: list[str] = []
+    ip_scale: float = 0.65
 
 
 class LlmRequest(BaseModel):
@@ -503,6 +508,22 @@ def run_real(req: RunRequest) -> list[dict]:
             pipe.load_lora_weights(lora.path, adapter_name=name)
             adapters.append((name, lora.weight))
         pipe.set_adapters([a for a, _ in adapters], adapter_weights=[w for _, w in adapters])
+
+    # FaceID: blocca il volto del personaggio dalle foto di riferimento. Solo SDXL, solo in generazione da testo (non ha
+    # senso su un video o su un img2img, dove il volto arriva gia' dall'immagine). Se non si applica, pulizia_faceid e'
+    # un no-op e la generazione prosegue con la sola LoRA — mai uno schermo nero per un volto mancante.
+    pulizia_faceid = lambda: None  # noqa: E731
+    faceid_on = False
+    if req.ip_face and float(req.ip_scale) > 0 and req.task == "image_generate" and getattr(req.model, "arch", "") == "sdxl":
+        try:
+            import identity
+            embeds, pulizia_faceid = identity.applica(pipe, req.ip_face, req.ip_scale, pipe.device, pipe.dtype)
+            if embeds is not None:
+                kwargs["ip_adapter_image_embeds"] = [embeds]
+                faceid_on = True
+                PROGRESS.update(phase="Blocco il volto del personaggio (FaceID)")
+        except Exception as err:  # noqa: BLE001
+            print(f"[ideax] FaceID saltato ({err}); genero con la sola LoRA", flush=True)
     try:
         with t.inference_mode():
             result = pipe(**kwargs)
@@ -514,7 +535,10 @@ def run_real(req: RunRequest) -> list[dict]:
                 if face_fix:
                     result.images = [refine_faces(img, base, req, params, seed) for img in result.images]
     finally:
-        if adapters:
+        pulizia_faceid()   # scarica l'IP-Adapter FaceID (no-op se non era stato applicato)
+        # Scarico le LoRA se ce n'erano dell'utente O se FaceID ha caricato la sua di accompagnamento: altrimenti quella
+        # resterebbe sulla pipe in cache e sporcherebbe la generazione successiva.
+        if adapters or faceid_on:
             pipe.unload_lora_weights()
     return encode_result(result, req.task, fps)
 
