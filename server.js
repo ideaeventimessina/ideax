@@ -90,13 +90,14 @@ let fluxJob = { status: 'idle', done: 0, total: 0, error: null };
 
 // Modelli per adulti (OnlyFans, esplicito fotorealistico): SDXL base Pony (sanno fare gli atti) + addestramento realistico,
 // formato diffusers col VAE incluso (niente rumore). Pubblici, scaricabili con un clic. Si installano in una cartella sotto models/.
+// A FILE SINGOLO (.safetensors), non più cartelle diffusers John6666: le cartelle su alcune macchine escono RUMORE (bug
+// del meta-device, vedi worker/server.py), i file singoli no (si caricano con from_single_file). Stesso modello, stessa
+// qualità, ma pulito. L'id resta lo stesso dei vecchi, così l'installazione nuova toglie da sola la cartella rotta.
 const MODELLI_ADULTI = [
-  { id: 'lustify', repo: 'John6666/lustify-sdxl-nsfwsfw-v1-sdxl', nome: 'Lustify (fotoreale)', desc: 'Esplicito e FOTOREALISTICO, NON Pony: pelle vera senza plastica. Il migliore per il realismo.', gb: 6.9 },
-  { id: 'pony-realism', repo: 'John6666/pony-realism-v22main-sdxl', nome: 'Pony Realism', desc: 'Fotorealistico ed esplicito, base Pony. Il più usato per contenuti realistici OnlyFans.', gb: 6.9 },
-  { id: 'cyberrealistic-pony', repo: 'John6666/cyberrealistic-pony-v65-sdxl', nome: 'CyberRealistic Pony', desc: 'Fotorealistico, pelle molto curata, atti espliciti.', gb: 6.9 },
-  { id: 'big-lust', repo: 'John6666/big-lust-v16-sdxl', nome: 'BigLust', desc: 'Esplicito SDXL, stile vario (più stilizzato).', gb: 6.9 },
+  { id: 'lustify', repo: 'NSFW-API/Lustify', file: 'lustify.safetensors', nome: 'Lustify (fotoreale)', desc: 'Esplicito e FOTOREALISTICO, NON Pony: pelle vera senza plastica. Il migliore per il realismo.', gb: 6.9 },
+  { id: 'pony-realism', repo: 'JCTN/PonyRealism', file: 'ponyRealism_v22MainVAE.safetensors', nome: 'Pony Realism', desc: 'Fotorealistico ed esplicito, base Pony (VAE incluso). Il più usato per contenuti realistici OnlyFans.', gb: 7.1 },
+  { id: 'cyberrealistic-pony', repo: 'cyberdelia/CyberRealisticPony', file: 'CyberRealisticPony_V65.safetensors', nome: 'CyberRealistic Pony', desc: 'Fotorealistico, pelle molto curata, atti espliciti. Dal repo ufficiale del creatore.', gb: 6.9 },
 ];
-const PATTERNS_DIFFUSERS = ['model_index.json', '*/*.json', '*/*.txt', '*/*.safetensors'];
 const adultJobs = {}; // id → { status, done, total, error }
 
 const MIME = {
@@ -1237,18 +1238,23 @@ const server = http.createServer(async (req, res) => {
     }
     // Modelli per adulti: lista con stato/avanzamento, e avvio del download (uno per volta per modello)
     if (p === '/api/models/adulti' && req.method === 'GET') {
-      return send(res, 200, MODELLI_ADULTI.map((m) => ({ ...m, ...(adultJobs[m.id] || { status: 'idle' }), installato: fs.existsSync(path.join(store.MODELS_DIR, m.id, 'model_index.json')) })));
+      return send(res, 200, MODELLI_ADULTI.map((m) => ({ ...m, ...(adultJobs[m.id] || { status: 'idle' }), installato: fs.existsSync(path.join(store.MODELS_DIR, m.file)) })));
     }
     { const am = p.match(/^\/api\/models\/adulti\/([\w-]+)$/);
       if (am && req.method === 'POST') {
         const m = MODELLI_ADULTI.find((x) => x.id === am[1]);
         if (!m) return send(res, 404, { error: 'Modello sconosciuto' });
-        const dest = path.join(store.MODELS_DIR, m.id);
-        if (fs.existsSync(path.join(dest, 'model_index.json'))) return send(res, 200, { ...m, status: 'done', installato: true });
+        if (fs.existsSync(path.join(store.MODELS_DIR, m.file))) return send(res, 200, { ...m, status: 'done', installato: true });
         if (adultJobs[m.id]?.status !== 'downloading') {
           adultJobs[m.id] = { status: 'downloading', done: 0, total: 0, error: null };
-          snapshot(m.repo, dest, PATTERNS_DIFFUSERS, { onProgress: (pr) => { adultJobs[m.id].done = pr.done; adultJobs[m.id].total = pr.total; } })
-            .then(() => { adultJobs[m.id].status = 'done'; })
+          // File singolo (niente rumore). A fine download tolgo la VECCHIA cartella diffusers rotta con lo stesso id,
+          // se c'è: recupera i 6-7 GB e non lascia in giro la versione che faceva la neve.
+          snapshot(m.repo, store.MODELS_DIR, [m.file], { onProgress: (pr) => { adultJobs[m.id].done = pr.done; adultJobs[m.id].total = pr.total; } })
+            .then(() => {
+              const vecchia = path.join(store.MODELS_DIR, m.id);
+              try { if (fs.existsSync(path.join(vecchia, 'model_index.json'))) fs.rmSync(vecchia, { recursive: true, force: true }); } catch { /* la teneva aperta qualcosa: si toglie a mano */ }
+              adultJobs[m.id].status = 'done';
+            })
             .catch((err) => { adultJobs[m.id] = { status: 'error', done: 0, total: 0, error: err.message }; });
         }
         return send(res, 202, { ...m, ...adultJobs[m.id] });

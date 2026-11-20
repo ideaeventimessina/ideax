@@ -1,5 +1,10 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.44.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.45.exe** e aprilo.
+
+## Modelli per adulti a FILE SINGOLO: niente più neve
+- I modelli espliciti "a un clic" ora si scaricano come **file singolo** `.safetensors` dalle fonti giuste (Lustify, Pony Realism con VAE, CyberRealistic Pony dal repo ufficiale), **non più come cartelle** John6666: i file singoli si caricano in modo pulito, senza il bug del rumore.
+- Scaricando la versione nuova, ideax **rimuove da solo la vecchia cartella rotta** con lo stesso nome: recuperi 6-7 GB a modello senza fare niente.
+- **BigLust** è stato tolto dalla lista a un clic (non ha una versione a file singolo affidabile, ed era il più stilizzato): se ce l'hai installato e vuoi lo spazio, premi **Elimina** sulla sua scheda in Modelli.
 
 ## Basta neve: non sceglie più da solo un modello che fa rumore
 - I modelli SDXL **a cartella** (big-lust, cyberrealistic-pony, lustify, pony-realism) su alcune macchine escono RUMORE. Ora la generazione **non li sceglie più da sola** se c'è un SDXL file-singolo pulito (es. realityvision): la scelta automatica li penalizza E il guardiano corregge il cervello se prova a sceglierne uno. Per un viso/gemello non esplicito esce pulito, senza che tu debba disattivare niente.
