@@ -35,6 +35,67 @@ app = FastAPI()
 state: dict = {"status": "idle", "step": 0, "total": 0, "phase": None, "log": [], "output": None, "error": None, "name": None}
 proc: Optional[subprocess.Popen] = None
 STEP = re.compile(r"(\d+)/(\d+) \[")
+FASE_ADDESTRO = "Addestro il gemello"
+
+# Cane da guardia: su una scheda da 16 GB FLUX in addestramento sta sopra il limite e scarica su disco; un passo
+# sano è di secondi, uno "a corto di memoria" è di minuti, e la barra resta ferma per ore senza un errore (il motivo:
+# lo stato avanza solo quando ai-toolkit stampa un passo nuovo — se si impianta, nessuno parla). Qui, SOLO dopo che
+# l'addestramento vero è partito (non durante il download/caching, che sono lenti per natura), si ferma da soli se:
+#   - i passi sono cronicamente lenti (stima del tempo totale oltre il tetto, o oltre il secondi-a-passo limite), o
+#   - la barra è congelata (nessun passo nuovo per oltre il silenzio massimo).
+# Così, invece di dodici ore a 10%, si ferma in ~20 minuti dicendo COSA fare.
+PASSO_LENTO_S = 120      # oltre 2 minuti a passo (sano < 10 s) è patologico
+MIN_PASSI = 5            # servono alcuni passi prima di stimare, per saltare il riscaldamento
+STIMA_CAP_H = 10         # se a questo ritmo non finisce entro 10 ore è di fatto morto; sotto resta una corsa lenta ma viva
+SILENZIO_S = 1200        # 20 minuti senza avanzare di un passo = bloccato
+VEGLIA_S = 30            # ogni quanto il cane da guardia controlla
+
+
+def _ferma_bloccato(motivo: str) -> None:
+    """Ferma un addestramento impiantato con un messaggio che dice cosa fare, non una barra che mente."""
+    global proc
+    if state["status"] != "running":
+        return
+    state.update(status="error", error=motivo, phase=None)
+    p = proc
+    if p:
+        try:
+            p.kill()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _cane_da_guardia() -> None:
+    visto = 0           # ultimo passo visto avanzare
+    visto_a = time.time()
+    while state["status"] == "running":
+        time.sleep(VEGLIA_S)
+        if state["status"] != "running":
+            return
+        if state.get("phase") != FASE_ADDESTRO or not state.get("train_started"):
+            continue    # download/caching: lento per natura, non è uno stallo
+        now = time.time()
+        passo = state.get("step") or 0
+        if passo > visto:
+            visto, visto_a = passo, now
+        if visto >= 1 and now - visto_a > SILENZIO_S:
+            mins = int((now - visto_a) / 60)
+            _ferma_bloccato(
+                f"Addestramento fermo da {mins} minuti senza avanzare di un passo (al passo {passo}): quasi "
+                "certamente la scheda è a corto di memoria con FLUX. L'ho annullato. Per un personaggio inventato "
+                "usa SDXL (più leggero, già supportato); in ogni caso libera la GPU spostando il monitor sulla "
+                "scheda integrata.")
+            return
+        if passo >= MIN_PASSI:
+            sps = (now - state["train_started"]) / passo
+            ore = sps * (state.get("total") or passo) / 3600
+            if sps > PASSO_LENTO_S or ore > STIMA_CAP_H:
+                _ferma_bloccato(
+                    f"Troppo lento per questa scheda: ~{sps:.0f} secondi a passo, stimate {ore:.0f} ore per finire "
+                    "(un addestramento sano fa un passo in pochi secondi). FLUX a 16 GB scarica su disco e non "
+                    "finirà mai: l'ho annullato. Usa SDXL per un personaggio inventato (più leggero, già "
+                    "supportato), e sposta il monitor sulla scheda integrata così la GPU è tutta per il calcolo.")
+                return
 
 
 class TrainRequest(BaseModel):
@@ -117,7 +178,9 @@ def run(req: TrainRequest, cfg_path: Path, out: Path) -> None:
                 if buf:
                     m = STEP.search(buf)
                     if m and int(m.group(2)) == req.steps:
-                        state.update(step=int(m.group(1)), total=int(m.group(2)), phase="Addestro il gemello")
+                        if not state.get("train_started"):
+                            state["train_started"] = time.time()   # arma il cane da guardia: da qui i passi vanno veloci
+                        state.update(step=int(m.group(1)), total=int(m.group(2)), phase=FASE_ADDESTRO)
                     elif "cach" in buf.lower() and "latent" in buf.lower():
                         state["phase"] = "Preparo le foto"
                     log(buf)
@@ -125,8 +188,8 @@ def run(req: TrainRequest, cfg_path: Path, out: Path) -> None:
             else:
                 buf += ch
         code = proc.wait()
-        if state["status"] == "cancelled":
-            return
+        if state["status"] in ("cancelled", "error"):
+            return   # annullato a mano, o fermato dal cane da guardia: il suo messaggio non si sovrascrive
         final = out / req.name / f"{req.name}.safetensors"
         if code != 0 or not final.exists():
             tail = " · ".join(state["log"][-5:])
@@ -164,8 +227,10 @@ def train(req: TrainRequest):
     cfg_path = base / "config.yaml"
     # Il JSON è YAML valido: niente dipendenze in più
     cfg_path.write_text(json.dumps(config_for(req, dataset, out), indent=2), encoding="utf-8")
-    state.update(status="running", step=0, total=req.steps, phase="Avvio", log=[], output=None, error=None, name=req.name, started=time.time())
+    state.update(status="running", step=0, total=req.steps, phase="Avvio", log=[], output=None, error=None,
+                 name=req.name, started=time.time(), train_started=None)
     threading.Thread(target=run, args=(req, cfg_path, out), daemon=True).start()
+    threading.Thread(target=_cane_da_guardia, daemon=True).start()
     return {"ok": True}
 
 
