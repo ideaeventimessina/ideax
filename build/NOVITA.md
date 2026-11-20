@@ -1,5 +1,10 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.43.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.44.exe** e aprilo.
+
+## Basta neve: non sceglie più da solo un modello che fa rumore
+- I modelli SDXL **a cartella** (big-lust, cyberrealistic-pony, lustify, pony-realism) su alcune macchine escono RUMORE. Ora la generazione **non li sceglie più da sola** se c'è un SDXL file-singolo pulito (es. realityvision): la scelta automatica li penalizza E il guardiano corregge il cervello se prova a sceglierne uno. Per un viso/gemello non esplicito esce pulito, senza che tu debba disattivare niente.
+- Per i contenuti espliciti quei modelli restano la scelta (il realistico pulito rifiuta l'esplicito): se lì esce rumore, la cura è la versione **a file singolo** (.safetensors da Civitai) dello stesso modello.
+- E se una cartella diffusers non si carica in modo sicuro, ora ideax **dà un errore chiaro** invece di consegnare neve in silenzio (prima un ripiego nascosto rimetteva il bug del rumore).
 
 ## Traccia del preventivo: si legge per cosa è ogni lavoro
 - Ogni lavoro che arriva da un sistema collegato (IDEAlab…) ora porta e **mostra** il suo riferimento — es. "preventivo-42/riga-7" — in "Collega app" e nei log. Così, invece di fidarti che il legame tenga, **lo leggi** a ogni immagine generata. Se un lavoro non porta il riferimento, il campo resta vuoto: anche quel vuoto dice che quel sistema non lo manda ancora.

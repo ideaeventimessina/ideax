@@ -278,8 +278,13 @@ def load_base(spec: ModelSpec):
             pipe = d.DiffusionPipeline.from_pretrained(spec.path, torch_dtype=dtype, low_cpu_mem_usage=False, **extra)
             print("[ideax] cartella diffusers caricata (low_cpu_mem_usage=False)", flush=True)
         except Exception as err:  # noqa: BLE001
-            print(f"[ideax] caricamento normale non riuscito ({type(err).__name__}): riprovo col default", flush=True)
-            pipe = d.DiffusionPipeline.from_pretrained(spec.path, torch_dtype=dtype, **extra)
+            # NIENTE ripiego sul default: quello usa low_cpu_mem_usage=True → meta-device → RUMORE. Un errore chiaro è
+            # meglio di una neve consegnata in silenzio. La via sicura è la versione a FILE SINGOLO di questo modello.
+            import os as _os
+            raise HTTPException(500,
+                f"Il modello a cartella «{_os.path.basename(spec.path.rstrip('/'))}» non si carica in modo sicuro "
+                f"({type(err).__name__}): caricarlo nell'altro modo darebbe RUMORE. Usa la versione a FILE SINGOLO "
+                f"(.safetensors, es. da Civitai) di questo modello, oppure un SDXL file-singolo come realityvision.") from err
     elif spec.arch in ("sd15", "sd2"):
         pipe = d.StableDiffusionPipeline.from_single_file(spec.path, torch_dtype=dtype)
     elif spec.arch == "sdxl":
