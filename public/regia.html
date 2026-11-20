@@ -98,6 +98,28 @@
 const $ = (s) => document.querySelector(s);
 const filo = $('#filo'), ingresso = $('#ingresso'), stato = $('#stato'), anteprime = $('#anteprime');
 let chatId = null, allegati = [], vocePub = true, registra = null, occupato = false;
+let voceId = null;                 // la voce donna scelta per rispondere
+const parlante = new Audio();      // un solo elemento audio, così lo "sblocco" una volta e poi parla sempre
+let audioSbloccato = false;
+
+// Il browser BLOCCA l'audio automatico finché non c'è un tuo gesto. Al primo tocco (invio o microfono) lo sblocco una
+// volta: faccio partire l'audio vuoto, e da lì in poi la voce può parlare da sola.
+function sbloccaAudio() { if (audioSbloccato) return; audioSbloccato = true; parlante.play().catch(()=>{}); parlante.pause(); }
+
+// Sceglie la voce con cui rispondere: una DONNA, e fra le donne una SINTETICA (Kokoro) che è molto più veloce di una
+// voce clonata. Se non trova una donna, usa la prima voce disponibile. Si fa una volta all'apertura.
+async function scegliVoce() {
+  try {
+    const d = await (await fetch('/v1/voices')).json();
+    const vs = d.voices || [];
+    const eDonna = (v) => /femmin|female|donna|\bf\b/i.test(v.gender||'') || /\b(af_|if_|bf_|bella|sarah|nicole|sky|aoede|kore|alice|donna|female)\b/i.test(`${v.name} ${v.origin||''}`);
+    const donne = vs.filter(eDonna);
+    const scelta = donne.find((v) => v.origin) || donne[0] || vs.find((v) => v.origin) || vs[0];
+    voceId = scelta?.id || scelta?.name || null;
+    if (!voceId) { $('#voce').classList.add('muto'); vocePub = false; }
+  } catch { /* lista voci non raggiungibile: la voce resta spenta, il testo c'è sempre */ }
+}
+scegliVoce();
 
 // ---- utilità ----
 const esc = (t) => (t||'').replace(/[&<>]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
@@ -119,6 +141,7 @@ $('#voce').onclick = () => { vocePub = !vocePub; $('#voce').classList.toggle('mu
 
 // 🎙 parla → trascrivi → invia
 $('#mic').onclick = async () => {
+  sbloccaAudio();
   if (registra) { registra.stop(); return; }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
@@ -143,10 +166,12 @@ $('#mic').onclick = async () => {
 async function parla(testo) {
   if (!vocePub || !testo) return;
   try {
-    const r = await fetch('/v1/audio/speech', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ input: testo.slice(0,1000), response_format:'mp3' }) });
-    if (!r.ok) return; // motore voce non installato: resta il testo, senza rumore
-    const url = URL.createObjectURL(await r.blob()); new Audio(url).play().catch(()=>{});
-  } catch {}
+    const r = await fetch('/v1/audio/speech', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ input: testo.slice(0,1000), voice: voceId || undefined, response_format:'mp3' }) });
+    if (!r.ok) { stato.textContent = 'La voce non è partita (motore Voce acceso?).'; return; }
+    parlante.src = URL.createObjectURL(await r.blob());
+    parlante.play().catch(() => { stato.textContent = 'Tocca lo schermo una volta e riprova: il browser chiede un gesto per la voce.'; });
+  } catch { stato.textContent = 'Voce non disponibile ora.'; }
 }
 
 // i media creati arrivano come "jobs": si seguono e si mostrano
@@ -166,6 +191,7 @@ async function seguiLavoro(id) {
 
 // il cuore: parli → il cervello risponde → appare (e parla)
 async function invia() {
+  sbloccaAudio();
   const testo = ingresso.value.trim();
   if ((!testo && !allegati.length) || occupato) return;
   occupato = true; $('#invia').disabled = true;

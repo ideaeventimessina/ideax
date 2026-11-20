@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.48.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.49.exe** e aprilo.
+
+## Regia: la voce ora parla, è una donna, ed è più veloce
+- La Regia ora sceglie da sola una **voce femminile** fra quelle installate, preferendo una **sintetica (Kokoro)** che è molto più rapida di una voce clonata.
+- Il browser blocca l'audio automatico finché non c'è un tuo gesto: ora al primo tocco (invio o microfono) l'audio si **sblocca**, così la voce parte. Se proprio non parte, la Regia **lo dice** invece di restare muta.
 
 ## La Regia: una barra sola a cui parli (anche a voce)
 - Nuova schermata **Regia** (link in alto a sinistra, o apri `/regia.html`): una barra unica al centro. Scrivi o **parli** (🎙 microfono → trascrizione), ideax capisce cosa serve e l'output **appare lì** — testo, immagini, video. Se gli servono dati te li chiede nella stessa barra.
