@@ -3104,11 +3104,12 @@ async function loadTwin() {
   // il modello nella RAM di sistema) e può metterci ore invece di ~2. Si avvisa, non si blocca: il lavoro resta libero.
   const pre = $('#twin-preflight');
   if (pre) pre.innerHTML = t.preflight?.display === true
-    ? `<div class="note warn"><h3>⚠ Il monitor è sulla scheda che addestra${t.preflight.gpu ? ` (${esc(t.preflight.gpu)})` : ''}</h3>
-        <p>Su Windows questo fa strisciare l'addestramento: il desktop si tiene la memoria e il driver scarica il modello
-        nella RAM, così un addestramento da ~2 ore può durarne 12. <strong>Sposta il cavo del monitor sull'uscita video
-        della scheda madre</strong> (la grafica integrata): la scheda video resta tutta per il calcolo. Puoi partire lo
-        stesso — ma se va a rilento, è questo.</p></div>`
+    ? `<div class="note warn"><h3>⚠ Lo schermo è sulla scheda che addestra${t.preflight.gpu ? ` (${esc(t.preflight.gpu)})` : ''}</h3>
+        <p>Su Windows il desktop si tiene la memoria della scheda e il driver scarica il modello nella RAM: un
+        addestramento da ~2 ore può durarne 12. L'addestramento dura poco ed è una volta sola, quindi per quelle ore
+        <strong>riduci a un solo monitor</strong> (<code>Win+P</code> → "Solo schermo PC", poi rimetti gli altri a
+        fine), oppure, se puoi, porta lo schermo sull'uscita della scheda madre. Più monitor accesi, più memoria tolta
+        al calcolo. Puoi partire lo stesso — ma se va a rilento, è questo.</p></div>`
     : '';
   const voiceOpts = vs.voices.length ? vs.voices.map((v) => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join('') : '<option value="">Nessuna voce: creala nella pagina Voce</option>';
   $$('#twin-video-form select[name=voice], #talk-form select[name=voice]').forEach((sel) => { const keep = sel.value; sel.innerHTML = voiceOpts; if (keep) sel.value = keep; });
