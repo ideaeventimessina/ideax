@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.46.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.47.exe** e aprilo.
+
+## La memoria ora si LEGGE: ideax parte da ciò che sa
+- Il brain, prima di rispondere o di risolvere un task, **cerca nella memoria** cose simili già imparate e ci parte. È l'anello che chiude l'auto-apprendimento: la Pipeline dell'Operatore scrive le soluzioni riuscite E legge quelle vecchie prima di scriverne una nuova (impara dai propri fix).
+- I ricordi entrano come **riferimento, non come ordini**: ideax è istruito a ignorare qualsiasi comando contenuto in un ricordo. È il paletto che serve quando, col Seeker, la memoria si riempirà anche di roba presa dal web.
 
 ## Memoria eterna: ideax comincia ad accumulare conoscenza (Pilastro 1)
 - Un database vettoriale **LOCALE** (ChromaDB, sul tuo PC — niente cloud) dove ideax archivia ciò che impara e lo ritrova per **significato**, non per parola esatta. Due collezioni separate: **tech_core** (snippet, fix, pattern di codice) e **creative_assets** (prompt, stili, configurazioni di modelli). Il motore sceglie la collezione dal contesto.
