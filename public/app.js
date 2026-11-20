@@ -3118,7 +3118,7 @@ async function loadTwin() {
     const pct = pr?.total ? Math.round((pr.step / pr.total) * 100) : null;
     const status = g.status === 'ready' ? '<span class="chip"><i class="dot on"></i> pronto</span>'
       : g.status === 'error' ? `<span class="error-text small">${esc(g.error || 'non riuscito')}</span>`
-        : `<span class="small">${esc(pr?.phase || 'In addestramento')}${pr?.total ? ` · passo ${pr.step} di ${pr.total}` : ''}${pr?.engine ? ` · motore ${esc(pr.engine)}` : ''}</span>`;
+        : `<span class="small">${esc(pr?.phase || 'In addestramento')}${pr?.total ? ` · passo ${pr.step} di ${pr.total}` : ''}${pr?.engine ? ` · motore ${esc(pr.engine)}${pr.engineBase ? ` · base ${esc(pr.engineBase)}` : ''}` : ''}</span>`;
     return `<div class="teacher" data-twin-photo="${esc(g.id)}"><strong>${esc(g.name)}</strong><span class="muted small">${g.photos} foto</span>${status}
       ${g.status === 'training' ? '<button class="btn small" type="button" data-twin-cancel>Annulla</button>' : ''}
       ${g.status === 'ready' ? `<a class="btn small primary" href="#studio" data-twin-try="${esc(g.name)}">Prova in Studio</a>` : ''}

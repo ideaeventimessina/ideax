@@ -1,5 +1,14 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.40.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.41.exe** e aprilo.
+
+## Gemello: su schede da 16 GB si addestra su SDXL (FLUX non ci entra)
+- **Il motore si sceglie dalla scheda.** FLUX dà la somiglianza migliore ma in addestramento il suo picco di memoria sfora i 16 GB e si pianta prima ancora di cominciare. Ora, sotto i ~20 GB, il gemello si addestra su **SDXL** — molto più leggero, ci sta comodo sui 16 GB anche con più monitor accesi, e con tante tue foto la somiglianza è ottima. Su schede grandi (24 GB+) resta FLUX.
+- La **base SDXL** la sceglie fra i tuoi modelli, preferendo un realistico (es. RealVisXL, Juggernaut) ed evitando quelli stilizzati. Se non ne hai nessuno, te lo dice invece di piantarsi. Puoi forzare il motore con la variabile `IDEAX_TWIN_ARCH=flux|sdxl`.
+- Si vede sempre quale motore e quale base sono partiti ("motore SDXL · base …").
+
+## Gemello: il cane da guardia copre anche il caricamento (passo 0)
+- La versione prima si attivava solo durante l'addestramento vero; uno stallo nel **caricamento del modello** (passo 0), prima dei passi, restava muto. Ora anche lì: se il modello non dà segni per 10 minuti, l'addestramento si ferma e ti dice perché (di solito memoria), invece di restare fermo per ore.
+- E la scritta non dice più "scarica FLUX.1-dev" quando in realtà lo **carica dal disco**: i 30 GB si scaricano una volta sola all'installazione, non a ogni gemello.
 
 ## Gemello: non resta più fermo per ore in silenzio, e ti dice perché
 - **Cane da guardia sull'addestramento.** Su una scheda da 16 GB, FLUX in addestramento può restare a corto di memoria e strisciare (un passo da secondi diventa minuti): prima la barra restava ferma per ore senza un errore. Ora, se i passi sono troppo lenti o la barra è congelata, l'addestramento **si ferma da solo entro ~20 minuti** e ti dice cosa fare, invece di farti perdere la notte.
