@@ -735,7 +735,7 @@ const server = http.createServer(async (req, res) => {
       if (!farm.isCapofila() || !fkey) return send(res, 503, { error: 'ponte_non_attivo', message: 'Questo ideax non è capofila di una farm (accendilo in Collega app → Più PC)' });
       const given = String(req.headers['x-ideax-key'] || '').trim();
       if (!sameKey(given, fkey)) return send(res, 401, { error: 'chiave_non_valida' });
-      const operaio = { id: String(req.headers['x-ideax-nome'] || req.socket.remoteAddress || 'operaio'), nome: String(req.headers['x-ideax-nome'] || '') || req.socket.remoteAddress, versione: req.headers['x-ideax-versione'] };
+      const operaio = { id: String(req.headers['x-ideax-nome'] || req.socket.remoteAddress || 'operaio'), nome: String(req.headers['x-ideax-nome'] || '') || req.socket.remoteAddress, versione: req.headers['x-ideax-versione'], vram: Number(req.headers['x-ideax-vram']) || 0 };
       if (p === '/api/ponte/ideax/stato' && req.method === 'GET') {
         farm.noteWorker(operaio);
         const s = farm.stato();
