@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.42.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.43.exe** e aprilo.
+
+## Traccia del preventivo: si legge per cosa è ogni lavoro
+- Ogni lavoro che arriva da un sistema collegato (IDEAlab…) ora porta e **mostra** il suo riferimento — es. "preventivo-42/riga-7" — in "Collega app" e nei log. Così, invece di fidarti che il legame tenga, **lo leggi** a ogni immagine generata. Se un lavoro non porta il riferimento, il campo resta vuoto: anche quel vuoto dice che quel sistema non lo manda ancora.
 
 ## Il volto resta LO STESSO: FaceID per gemelli e personaggi
 - Una LoRA cattura l'aria di un volto ma non lo blocca: a ogni scena ne esce uno "simile ma non lui". **FaceID** chiude il buco — prende le foto di riferimento del personaggio e **impone il volto** alla generazione, così resta identico in venti scene diverse. Si accende da solo quando generi con un gemello o un personaggio su un modello SDXL; vedi "Blocco il volto (FaceID)" durante la generazione.
