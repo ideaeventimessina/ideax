@@ -1026,7 +1026,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (/^\/api\/regia\/missions\/[\w-]+$/.test(p) && req.method === 'DELETE') { regia.deleteMission(p.split('/').pop()); return send(res, 200, { ok: true }); }
     // ----- Gemello -----
-    if (/^\/(api|v1)\/twin$/.test(p) && req.method === 'GET') return send(res, 200, { ...twin.list(), engines: engines.listEngines().filter((e) => ['twin', 'lipsync'].includes(e.id)) });
+    if (/^\/(api|v1)\/twin$/.test(p) && req.method === 'GET') return send(res, 200, { ...twin.list(), engines: engines.listEngines().filter((e) => ['twin', 'lipsync'].includes(e.id)), preflight: await runtime.displayOnEngineGpu().catch(() => ({ display: null })) });
     if (/^\/(api|v1)\/twin\/photo$/.test(p) && req.method === 'POST') {
       const body = await readBody(req);
       const consent = [true, 'true', '1', 'si', 'sì', 'yes'].includes(body.consent);

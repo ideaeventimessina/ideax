@@ -3100,6 +3100,16 @@ async function loadTwin() {
   clearTimeout(twinState.timer);
   const [t, vs] = await Promise.all([api('/api/twin').catch(() => null), api('/v1/voices').catch(() => ({ voices: [] }))]);
   if (!t) return;
+  // Avviso pre-volo: se il monitor è sulla scheda che addestra, su Windows l'addestramento striscia (il driver scarica
+  // il modello nella RAM di sistema) e può metterci ore invece di ~2. Si avvisa, non si blocca: il lavoro resta libero.
+  const pre = $('#twin-preflight');
+  if (pre) pre.innerHTML = t.preflight?.display === true
+    ? `<div class="note warn"><h3>⚠ Il monitor è sulla scheda che addestra${t.preflight.gpu ? ` (${esc(t.preflight.gpu)})` : ''}</h3>
+        <p>Su Windows questo fa strisciare l'addestramento: il desktop si tiene la memoria e il driver scarica il modello
+        nella RAM, così un addestramento da ~2 ore può durarne 12. <strong>Sposta il cavo del monitor sull'uscita video
+        della scheda madre</strong> (la grafica integrata): la scheda video resta tutta per il calcolo. Puoi partire lo
+        stesso — ma se va a rilento, è questo.</p></div>`
+    : '';
   const voiceOpts = vs.voices.length ? vs.voices.map((v) => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join('') : '<option value="">Nessuna voce: creala nella pagina Voce</option>';
   $$('#twin-video-form select[name=voice], #talk-form select[name=voice]').forEach((sel) => { const keep = sel.value; sel.innerHTML = voiceOpts; if (keep) sel.value = keep; });
   $('#twin-photo-list').innerHTML = t.photo.map((g) => {
@@ -3107,7 +3117,7 @@ async function loadTwin() {
     const pct = pr?.total ? Math.round((pr.step / pr.total) * 100) : null;
     const status = g.status === 'ready' ? '<span class="chip"><i class="dot on"></i> pronto</span>'
       : g.status === 'error' ? `<span class="error-text small">${esc(g.error || 'non riuscito')}</span>`
-        : `<span class="small">${esc(pr?.phase || 'In addestramento')}${pr?.total ? ` · passo ${pr.step} di ${pr.total}` : ''}</span>`;
+        : `<span class="small">${esc(pr?.phase || 'In addestramento')}${pr?.total ? ` · passo ${pr.step} di ${pr.total}` : ''}${pr?.engine ? ` · motore ${esc(pr.engine)}` : ''}</span>`;
     return `<div class="teacher" data-twin-photo="${esc(g.id)}"><strong>${esc(g.name)}</strong><span class="muted small">${g.photos} foto</span>${status}
       ${g.status === 'training' ? '<button class="btn small" type="button" data-twin-cancel>Annulla</button>' : ''}
       ${g.status === 'ready' ? `<a class="btn small primary" href="#studio" data-twin-try="${esc(g.name)}">Prova in Studio</a>` : ''}
@@ -3430,7 +3440,7 @@ async function loadPersonaggi() {
     const t = tr.id === p.id ? tr : null;
     const stato = p.status === 'ready' ? '<span class="ok-text">Pronto ✓</span>'
       : p.status === 'error' ? `<span class="error-text">${esc(p.error || 'errore')}</span>`
-      : t ? `${esc(t.phase || 'Preparo')}${t.total ? ` · ${Math.min(100, Math.round((t.step / t.total) * 100))}%` : ''}…` : 'In preparazione…';
+      : t ? `${esc(t.phase || 'Preparo')}${t.total ? ` · ${Math.min(100, Math.round((t.step / t.total) * 100))}%` : ''}${p.engine ? ` · motore ${esc(p.engine)}${p.engineBase ? ` · base ${esc(p.engineBase)}` : ''}` : ''}…` : 'In preparazione…';
     return `<article class="mcard"><div class="head"><span class="chip">${p.nsfw ? 'adulti' : 'generale'}</span><span class="state">${stato}</span></div>
       <h3>${esc(p.nome)}</h3><p class="meta">${esc(p.descrizione || '')}</p>
       ${p.status === 'ready' ? `<p class="muted small">Scrivi "${esc(p.nome)}" in Studio per usarlo in foto e video.</p>` : ''}
