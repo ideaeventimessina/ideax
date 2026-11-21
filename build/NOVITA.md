@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.8.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.9.exe**.
+
+## Flux su GPU con poca VRAM
+- Flux carica sulla GPU gruppi di blocchi alla volta quando è attivo l'offload. Anche l'encoder T5 trasferisce piccoli gruppi di pesi, così il primo passo non deve fare spazio all'intero componente.
+- La Regia mostra quando Flux sta preparando la prima iterazione e poi il numero di passi completati.
 
 ## Regia · Modalità Dio
 - Il logo IDEAX rimane al centro. L'orizzonte si anima e il portale si illumina quando scrivi.

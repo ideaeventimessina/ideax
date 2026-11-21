@@ -147,6 +147,8 @@ def use_offload(arch: str = "") -> bool:
 
 
 def place(pipe):
+    if _loaded["group_offload"]:
+        return pipe
     if use_offload(_loaded.get("arch") or ""):
         pipe.enable_model_cpu_offload()
     else:
@@ -156,12 +158,14 @@ def place(pipe):
 
 # ---------------------------------------------------------------- caricamento modelli
 
-_loaded: dict[str, Any] = {"key": None, "pipe": None, "derived": {}, "arch": None, "variant": None}
+_loaded: dict[str, Any] = {
+    "key": None, "pipe": None, "derived": {}, "arch": None, "variant": None, "group_offload": False,
+}
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def free_memory():
-    _loaded.update(key=None, pipe=None, derived={}, arch=None, variant=None)
+    _loaded.update(key=None, pipe=None, derived={}, arch=None, variant=None, group_offload=False)
     _whisper.update(path=None, pipe=None)
     gc.collect()
     if not DEMO and torch().cuda.is_available():
@@ -222,6 +226,30 @@ def load_flux(spec: ModelSpec, dtype):
             base_shift=0.5, max_shift=1.15, base_image_seq_len=256, max_image_seq_len=4096,
         )
     return pipe
+
+
+def place_flux_groups(pipe):
+    """Su CUDA con poca VRAM, mantieni in GPU solo i blocchi in esecuzione."""
+    if not hasattr(pipe, "enable_group_offload"):
+        return False
+
+    from diffusers.hooks import apply_group_offloading
+
+    t = torch()
+    options = {"onload_device": t.device("cuda:0"), "offload_device": t.device("cpu")}
+    for name, component in pipe.components.items():
+        if not isinstance(component, t.nn.Module):
+            continue
+        if name == "text_encoder_2":
+            # I blocchi T5 sono annidati sotto encoder. Raggrupparli al livello
+            # della pipeline trasferirebbe quasi tutto T5 in un colpo solo.
+            apply_group_offloading(component, **options, offload_type="leaf_level")
+        else:
+            apply_group_offloading(component, **options, offload_type="block_level", num_blocks_per_group=2)
+
+    free, total = t.cuda.mem_get_info()
+    print(f"[ideax] Flux: offload a blocchi (VRAM libera {free / 1024**3:.1f}/{total / 1024**3:.1f} GiB)", flush=True)
+    return True
 
 
 _fix_vae = {"vae": None, "tried": False}
@@ -332,7 +360,8 @@ def load_base(spec: ModelSpec):
             print("[ideax] ATTENZIONE: SDXL in fp16 SENZA force_upcast → rischio RUMORE. Segnala questa riga.", flush=True)
     except Exception as err:  # noqa: BLE001
         print(f"[ideax] diagnosi non riuscita: {err}", flush=True)
-    _loaded.update(key=spec.path, pipe=pipe, derived={})
+    group_offload = spec.arch == "flux" and use_offload(spec.arch) and place_flux_groups(pipe)
+    _loaded.update(key=spec.path, pipe=pipe, derived={}, group_offload=group_offload)
     return pipe
 
 
@@ -504,10 +533,14 @@ def run_real(req: RunRequest) -> list[dict]:
         kwargs["video"] = load_video_frames(req.video)
 
     sig = inspect.signature(pipe.__call__).parameters
-    PROGRESS.update(step=0, total=int(kwargs.get("num_inference_steps") or 0), phase="Genero")
+    flux_grouped = _loaded["group_offload"]
+    PROGRESS.update(
+        step=0, total=int(kwargs.get("num_inference_steps") or 0),
+        phase="Preparo la prima iterazione Flux" if flux_grouped else "Genero",
+    )
     if "callback_on_step_end" in sig:
         def on_step(_pipe, i, _t, cb_kwargs):
-            PROGRESS["step"] = i + 1
+            PROGRESS.update(step=i + 1, phase="Genero")
             if PROGRESS["cancel"]:
                 raise Cancelled()
             return cb_kwargs
