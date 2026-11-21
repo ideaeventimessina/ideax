@@ -1,6 +1,6 @@
 {
   "name": "ideax",
-  "version": "1.27.18",
+  "version": "1.27.19",
   "description": "Gateway locale per modelli AI di immagini, video e animazioni: drag & drop dei modelli, instradamento automatico dei prompt, API unica per tutte le app",
   "type": "module",
   "main": "server.js",
@@ -18,6 +18,8 @@
     "resedit": "^2.0.0"
   },
   "dependencies": {
-    "acorn": "8.15.0"
+    "@jitl/quickjs-singlefile-cjs-release-sync": "0.32.0",
+    "acorn": "8.15.0",
+    "quickjs-emscripten-core": "0.32.0"
   }
 }

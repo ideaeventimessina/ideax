@@ -589,6 +589,19 @@
           <label class="check"><input type="checkbox" name="semi"> Modalità semi-autonoma: fa tutto da solo (codice e web, clic compresi) senza chiedere a ogni passo; si ferma dopo 3 tentativi falliti di fila. Il pagamento resta sempre bloccato.</label>
           <label class="check"><input type="checkbox" name="pipeline"> Modalità Pipeline (codice): un comando → un file. Il modello risponde solo in JSON, scrivo il file, controllo la sintassi e se è sbagliata correggo da solo. Il commit/push su GitHub NON è automatico (si conferma a mano).</label>
           <label class="check"><input type="checkbox" name="orchestratore"> Orchestratore: scompongo un obiettivo grande in sotto-task tecnici e li eseguo uno alla volta con la Pipeline (ognuno validato prima del successivo). Classifica SELF/EXTERNAL/PROJECT e per i PROJECT puoi vederne l'anteprima e scaricare lo zip.</label>
+          <fieldset id="operatore-gioco" hidden>
+            <legend>Come vuoi il gioco?</legend>
+            <label>Vista <select name="vistaGioco"><option value="3D">3D</option><option value="2D">2D</option></select></label>
+            <label>Stile <select name="stileGioco"><option value="realistico">Realistico</option><option value="stilizzato">Stilizzato</option><option value="retro">Retrò</option></select></label>
+            <label>Difficoltà <select name="livelliGioco"><option value="facile, media e difficile">Tre livelli</option><option value="adattiva">Adattiva</option><option value="un solo livello">Un livello</option></select></label>
+            <label>Modalità <select name="modoGioco"><option value="contro la CPU e due giocatori locali">CPU e due giocatori</option><option value="contro la CPU">Contro la CPU</option><option value="due giocatori locali">Due giocatori</option></select></label>
+          </fieldset>
+          <details>
+            <summary>Test funzionali per una funzione JavaScript</summary>
+            <label>Usa Pipeline e inserisci i casi JSON
+              <textarea name="collaudo" rows="3" placeholder='{"funzione":"somma","casi":[{"argomenti":[2,3],"atteso":5}]}'></textarea>
+            </label>
+          </details>
           <label>Cartella di destinazione <span class="muted small">(facoltativa: vuota = cartella di lavoro di ideax; i file restano DENTRO quella che indichi)</span>
             <input name="cartella" placeholder="C:\Users\Utente\miei-progetti"></label>
           <button class="btn primary create"><span>Avvia</span></button>

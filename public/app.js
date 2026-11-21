@@ -866,15 +866,23 @@ function loadOperatore() {
   const form = $('#operatore-form');
   if (form && !form.dataset.pronto) {
     form.dataset.pronto = '1';
+    const gioco = $('#operatore-gioco');
+    const rilevaGioco = () => { gioco.hidden = !/\b(gioco|videogioc\w*|game|scacchi)\b/i.test(form.obiettivo.value); };
+    form.obiettivo.addEventListener('input', rilevaGioco);
+    rilevaGioco();
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const obiettivo = form.obiettivo.value.trim();
+      let obiettivo = form.obiettivo.value.trim();
       if (!obiettivo) return;
       const btn = $('.create', form); btn.disabled = true;
       try {
         const modalita = form.orchestratore?.checked ? 'orchestratore' : form.pipeline?.checked ? 'pipeline' : form.semi?.checked ? 'semi' : 'strict';
         const cartella = form.cartella?.value.trim() || undefined;
-        const v = await api('/api/operatore', { method: 'POST', body: { obiettivo, modalita, cartella } });
+        if (!gioco.hidden) {
+          obiettivo += `\nPreferenze di gioco: vista ${form.vistaGioco.value}, stile ${form.stileGioco.value}, difficoltà ${form.livelliGioco.value}, modalità ${form.modoGioco.value}. Cura estetica, feedback delle mosse e accessibilità.`;
+        }
+        const collaudo = form.collaudo.value.trim() ? JSON.parse(form.collaudo.value) : undefined;
+        const v = await api('/api/operatore', { method: 'POST', body: { obiettivo, modalita, cartella, collaudo } });
         operatore.id = v.id;
         $('#operatore-stato').hidden = false;
         $('#operatore-risultato').hidden = true;
@@ -921,7 +929,7 @@ function renderOperatore(v) {
   }
   $('#operatore-stato').hidden = false;
   const etichette = { 'in corso': 'Al lavoro…', finito: 'Finito', pronto: 'Codice pronto (sintassi OK)', errore: 'Errore', fermato: 'Fermato', esaurito: 'Fermato (troppi passi)' };
-  $('#operatore-riga').textContent = etichette[v.stato] || v.stato;
+  $('#operatore-riga').textContent = v.pipeline?.testSuperati ? `Codice pronto · ${v.pipeline.testSuperati} test superati` : (etichette[v.stato] || v.stato);
   $('#operatore-log').textContent = (v.log || []).map((r) => r.msg).join('\n');
   $('#operatore-log').scrollTop = $('#operatore-log').scrollHeight;
   const ris = $('#operatore-risultato');

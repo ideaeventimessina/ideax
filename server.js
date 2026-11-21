@@ -822,7 +822,7 @@ const server = http.createServer(async (req, res) => {
     if (/^\/api\/personaggi\/[\w-]+\/riprova$/.test(p) && req.method === 'POST') return send(res, 200, await personaggi.riprova(p.split('/')[3]));
     if (/^\/api\/personaggi\/[\w-]+$/.test(p) && req.method === 'DELETE') return send(res, 200, { ok: personaggi.del(p.split('/').pop()) });
     // Operatore autonomo: avvia un obiettivo, segui l'avanzamento, rispondi alle conferme, fermalo.
-    if (p === '/api/operatore' && req.method === 'POST') { const b = await readJson(req); return send(res, 200, operatore.avvia(b.obiettivo, b.modalita, b.cartella)); }
+    if (p === '/api/operatore' && req.method === 'POST') { const b = await readJson(req); return send(res, 200, operatore.avvia(b.obiettivo, b.modalita, b.cartella, b.collaudo)); }
     { const mz = p.match(/^\/api\/operatore\/([\w-]+)\/zip$/);
       if (mz && req.method === 'POST') return send(res, 200, await operatore.zip(mz[1])); }
     { const mo = p.match(/^\/api\/operatore\/([\w-]+)$/);

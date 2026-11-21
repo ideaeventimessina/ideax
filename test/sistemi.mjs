@@ -10,6 +10,17 @@ import { setTimeout as wait } from 'node:timers/promises';
 process.env.IDEAX_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'ideax-sistemi-'));
 const { saveSystem, deleteSystem } = await import('../lib/systems.js');
 const { validaSintassi } = await import('../lib/operatore.js');
+const { collauda, preparaCollaudo } = await import('../lib/collaudo.js');
+
+test('i test JS distinguono sorgenti eseguibili, risposte errate e calcoli fuori tempo', async () => {
+  const verifica = preparaCollaudo({ funzione: 'doppio', casi: [{ argomenti: [4], atteso: 8 }] });
+  assert.deepEqual(await collauda('function doppio(x) { return x * 2 }', verifica), { ok: true, casi: 1 });
+  const fallito = await collauda('function doppio(x) { return x }', verifica);
+  assert.match(fallito.errore, /input \[4\].*atteso 8.*ottenuto 4/);
+  assert.equal((await collauda('function doppio() { while (true) {} }', verifica)).ok, false);
+  assert.equal((await collauda('function doppio() { return process.pid }', verifica)).ok, false);
+  assert.throws(() => preparaCollaudo({ funzione: 'x(); y', casi: verifica.casi }));
+});
 
 test('la Pipeline valida moduli in una cartella esterna senza avviare il codice', async (t) => {
   const cartella = fs.mkdtempSync(path.join(os.tmpdir(), 'ideax-progetto esterno-'));

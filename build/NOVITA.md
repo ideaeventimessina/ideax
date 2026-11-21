@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.18.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.19.exe**.
+
+## Operatore
+- Per le richieste di gioco puoi scegliere vista 3D o 2D, stile, difficoltà e modalità prima di avviare il lavoro.
+- La Pipeline può eseguire casi JSON per una funzione JavaScript in isolamento. Usa gli esiti dei test per correggere il codice e salva nella memoria tecnica soltanto i candidati che superano il collaudo. I file privi di test restano disponibili come codice generato.
 
 ## Voce, musica e reel
 - La scelta «Immagini generate · veloce» usa SDXL locale per creare un’immagine per scena. IDEAX la seleziona anche in automatico per i reel a elenco illustrati se è disponibile un modello adatto. Ogni punto ha la sua scena, con voce pacata, sottotitoli sincronizzati e sottofondo discreto.
