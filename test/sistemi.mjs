@@ -11,6 +11,16 @@ process.env.IDEAX_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'ideax-sistemi-')
 const { saveSystem, deleteSystem } = await import('../lib/systems.js');
 const { validaSintassi } = await import('../lib/operatore.js');
 const { collauda, preparaCollaudo } = await import('../lib/collaudo.js');
+const { letturaGitHub } = await import('../lib/github-regia.js');
+
+test('una lettura GitHub ha precedenza sullo scrittore, senza intercettare richieste di modifica', () => {
+  assert.equal(letturaGitHub('Potresti collegarti al mio repo su GitHub, Andrea Gentile, e leggere le mie memorie').memorie, true);
+  assert.deepEqual(letturaGitHub('Leggi https://github.com/example/project/blob/main/docs/memorie.md'), {
+    repo: 'example/project', ref: 'main', percorso: 'docs/memorie.md', memorie: true,
+  });
+  assert.equal(letturaGitHub('Apri il repo su GitHub e modifica il README'), null);
+  assert.equal(letturaGitHub('Racconta una storia su GitHub'), null);
+});
 const { apriAnteprima, elencaGiochi, salvaGioco, leggiGioco } = await import('../lib/progetti-guida.js');
 
 test('il gioco usa un backend isolato e risponde solo sulla propria origine', async (t) => {
