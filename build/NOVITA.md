@@ -1,5 +1,14 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.5.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.6.exe** e aprilo.
+
+## Un cervello più forte (e senza filtri): Qwen3 14B
+- L'8B andava in **loop** (ripeteva la stessa frase), **non usava gli strumenti** e si inventava le risposte. Il problema era alla base: modello troppo debole. In **Cervello → Scarica** ora c'è, in cima, **«Qwen3 14B senza censure · CONSIGLIATO»** (~9 GB, entra nei 16 GB): molto migliore con gli strumenti (cerca sul web, legge le pagine, usa le capacità imparate), non va in loop, ottimo italiano, senza filtri. Scaricalo e impostalo come cervello principale; per «vedere» le immagini tieni acceso anche Qwen3-VL. *Trovato e verificato sul vero Hugging Face, non a memoria.*
+
+## Corretto il LOOP (la frase che si ripeteva all'infinito)
+- `llama-server` partiva **senza penalità di ripetizione** (default 1.0), così i modelli piccoli ripetevano la stessa riga all'infinito — la barzelletta che non finiva mai. Ora parte con `--repeat-penalty 1.1` (e lo passa a ogni richiesta): vale per **qualunque** modello.
+
+## La guardia «prima cerca» ora copre anche il meteo
+- Oltre a follower/recensioni/numeri sui social, la regola che **obbliga ideax a cercare** invece di inventare ora scatta anche su **meteo e previsioni** (es. «che tempo fa a Messina»): cerca il dato, e se non lo trova lo dice, invece di rimandarti a un'app.
 
 ## Basta risposte inventate: sui dati online ideax CERCA, non immagina
 - Alla domanda "quanti follower ha … sui social" il cervello locale a volte si **inventava** un'identità o un numero (es. "è un sistema legacy di gestione contabile"). Ora c'è una **guardia**: quando la domanda chiede un dato online (follower, iscritti, recensioni, numeri sui social o su Google), ideax è **obbligato a cercarlo** (cerca_web → leggi_pagina_dinamica) invece di rispondere a memoria, e se non lo trova **lo dice** invece di inventarlo. Più una regola dura: non inventare mai identità, numeri o descrizioni di aziende, account o progetti. *Provato dal vivo: una risposta inventata viene soppressa e sostituita da una ricerca + una risposta onesta.*
