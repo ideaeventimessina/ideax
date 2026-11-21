@@ -8,6 +8,7 @@ Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.13.exe**.
 - In Regia i sottotitoli sono scaricabili dal risultato.
 - Chiedendo un’anteprima video in Regia si attiva il profilo veloce quando il motore lo supporta.
 - Le demo web aprono subito l’indirizzo indicato. Il copione automatico usa le altre pagine solo se sono state fornite.
+- Il Gemello video pronuncia la battuta indicata nella richiesta. Con «modalità veloce» usa il profilo lip-sync a 8 passi.
 
 ## Memoria e addestramento
 - «Ricorda che» salva subito il dato. La generazione di codice consulta i ricordi pertinenti anche in una chat nuova.

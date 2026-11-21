@@ -103,6 +103,12 @@ test('un personaggio salvato chiarisce il formato anche dopo una risposta di scr
   assert.equal(decide({ testo: 'Fammi Anita sul balcone' }), null);
 });
 
+test('un testo per un servizio fotografico o un reel resta un testo', () => {
+  assert.equal(decide({ testo: 'Scrivi tre idee per un servizio fotografico glamour' }).azione, 'scrittura');
+  assert.equal(decide({ testo: 'Scrivi il copione di un reel per un negozio' }).azione, 'scrittura');
+  assert.equal(decide({ testo: 'Genera un reel per un negozio' }).azione, 'reel');
+});
+
 test('la ricerca follower riconosce la richiesta e somma solo i profili verificabili', async () => {
   assert.equal(profiloRichiesto('conta tutti i follower di ideaeventi che trovi su tutti i social'), 'ideaeventi');
   assert.equal(profiloRichiesto('crea una pagina per contare i follower di ideaeventi'), null);
