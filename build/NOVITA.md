@@ -1,7 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.17.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.18.exe**.
 
 ## Voce, musica e reel
+- La scelta «Immagini generate · veloce» usa SDXL locale per creare un’immagine per scena. IDEAX la seleziona anche in automatico per i reel a elenco illustrati se è disponibile un modello adatto. Ogni punto ha la sua scena, con voce pacata, sottotitoli sincronizzati e sottofondo discreto.
 - I reel a elenco in stile cartoon possono usare schede illustrate coerenti con il copione, sottotitoli più leggibili e un sottofondo discreto. I modelli di immagini restano selezionabili.
 - La lettura in Regia dà più respiro ai paragrafi. Inserisci [pausa] o [pausa lunga] per aggiungere una pausa senza pronunciare il marcatore.
 - La voce della Regia legge per frasi e prepara la successiva durante la riproduzione. Il controllo Tono modifica ritmo e pause, con profili naturale, calmo, vivace e narrativo.
@@ -20,6 +21,7 @@ Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.17.exe**.
 - Il Gemello video pronuncia la battuta indicata nella richiesta. Con «modalità veloce» usa 6 passi lip-sync. I video e gli audio di partenza funzionano anche da percorsi con spazi.
 
 ## Memoria e addestramento
+- L’Operatore valida JavaScript nella cartella di progetto scelta, anche dall’app Windows, senza eseguire il codice generato.
 - «Ricorda che» salva subito il dato. La generazione di codice consulta i ricordi pertinenti anche in una chat nuova.
 - Il Gemello riusa la LoRA pronta quando carichi le stesse foto con lo stesso nome. Se manca il risultato, può riprendere dai checkpoint compatibili invece di ricostruire il dataset.
 

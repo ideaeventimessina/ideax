@@ -9,6 +9,17 @@ import { setTimeout as wait } from 'node:timers/promises';
 
 process.env.IDEAX_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'ideax-sistemi-'));
 const { saveSystem, deleteSystem } = await import('../lib/systems.js');
+const { validaSintassi } = await import('../lib/operatore.js');
+
+test('la Pipeline valida moduli in una cartella esterna senza avviare il codice', async (t) => {
+  const cartella = fs.mkdtempSync(path.join(os.tmpdir(), 'ideax-progetto esterno-'));
+  t.after(() => fs.rmSync(cartella, { recursive: true, force: true }));
+  const file = path.join(cartella, 'server.mjs');
+  fs.writeFileSync(file, "import fs from 'node:fs'; throw new Error('non eseguire'); export { fs };");
+  assert.deepEqual(await validaSintassi(file), { ok: true });
+  fs.writeFileSync(file, 'export const = ;');
+  assert.equal((await validaSintassi(file)).ok, false);
+});
 
 test('un ponte che risponde subito con una coda vuota non viene interrogato in un ciclo serrato', async (t) => {
   let polls = 0;

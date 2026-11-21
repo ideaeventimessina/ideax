@@ -1070,7 +1070,7 @@ class SchedaReel(BaseModel):
 
 class IllustrazioniReel(BaseModel):
     serie: str = Field(max_length=100)
-    schede: list[SchedaReel] = Field(min_length=1, max_length=20)
+    schede: list[SchedaReel] = Field(max_length=20)
     cartella: str
     musica: bool = False
     durata: float = Field(gt=0, le=120)

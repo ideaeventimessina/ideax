@@ -2194,7 +2194,7 @@ async function loadReelForm() {
   f.voice.innerHTML = v.voices.map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('') + '<option value="none">Senza voce (solo sottotitoli)</option>';
   if (cur) f.voice.value = cur;
   const mcur = f.model.value;
-  f.model.innerHTML = '<option value="">Lo sceglie ideax</option><option value="ideax-illustrato">Schede illustrate · veloce</option>' + models.generators.filter((m) => m.capabilities.includes('image_generate')).map((m) => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
+  f.model.innerHTML = '<option value="">Lo sceglie ideax</option><option value="ideax-generato-veloce">Immagini generate · veloce</option><option value="ideax-illustrato">Schede illustrate · veloce</option>' + models.generators.filter((m) => m.capabilities.includes('image_generate')).map((m) => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
   f.model.value = mcur;
   // Cosa manca per un reel completo
   const needs = [];
