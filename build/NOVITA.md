@@ -1,7 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.13.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.14.exe**.
 
 ## Voce, musica e reel
+- I reel che chiedono un elenco numerato verificano che il copione contenga tutti i punti prima di registrare la voce e generare le immagini.
 - Le letture e i reel completano la sintesi anche con «Tieni la voce pronta» attivo.
 - ACE-Step riusa i pesi già installati e su Windows usa il backend PyTorch per il pianificatore. Il sottofondo dei reel usa la generazione strumentale rapida.
 - Sulle schede NVIDIA fino a 16 GB, la scelta automatica del reel preferisce un SDXL locale adatto, quando disponibile. La scelta esplicita del modello resta disponibile.
