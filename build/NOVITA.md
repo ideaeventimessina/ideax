@@ -3,6 +3,7 @@ Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.15.exe**.
 
 ## Voce, musica e reel
 - I reel rispettano la durata selezionata. Voce e sottotitoli seguono la stessa linea temporale e il montaggio verticale usa 24 fotogrammi al secondo.
+- Sulle GPU da 16 GB IDEAX lascia più spazio alle immagini SDXL quando il cervello ha un contesto lungo, per evitare di rallentare con la memoria condivisa.
 - I reel che chiedono un elenco numerato verificano che il copione contenga tutti i punti prima di registrare la voce e generare le immagini.
 - Le letture e i reel completano la sintesi anche con «Tieni la voce pronta» attivo.
 - ACE-Step riusa i pesi già installati e su Windows usa il backend PyTorch per il pianificatore. Il sottofondo dei reel usa la generazione strumentale rapida.
