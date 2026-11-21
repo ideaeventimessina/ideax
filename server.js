@@ -526,6 +526,7 @@ async function processJob(job) {
     if (job.params) delete job.params.prompt_style;
     const d = await route(job.prompt, job.attachments, {
       forceModelId: job.forceModelId, forceTask: job.forceTask, forceStyle, literalPrompt: job.literalPrompt,
+      fastVideo: ['true', '1', 'si', 'sì'].includes(String(job.params.veloce).toLowerCase()),
     });
     if (job.cancelled) throw new Error('Annullato');
     // Parametri dello stile (es. clip_skip per Pony) < parametri del modello < parametri della richiesta
@@ -1092,7 +1093,10 @@ const server = http.createServer(async (req, res) => {
     // Il gemello che parla: testo → voce clonata → video con le labbra a tempo
     if (/^\/(api|v1)\/twin\/talk$/.test(p) && req.method === 'POST') {
       const body = await readBody(req);
-      const job = await createJob({ ...body, prompt: body.text || body.prompt, kind: 'talk', talk: { twin: body.twin, voice: body.voice, language: body.language } }, ctx);
+      if (body.steps != null && (!Number.isInteger(body.steps) || body.steps < 4 || body.steps > 50)) {
+        throw new Error('steps deve essere un intero da 4 a 50.');
+      }
+      const job = await createJob({ ...body, prompt: body.text || body.prompt, kind: 'talk', talk: { twin: body.twin, voice: body.voice, language: body.language, steps: body.steps ?? (body.veloce === true ? 8 : undefined) } }, ctx);
       if (body.wait !== true) return send(res, 202, { id: job.id, status: job.status, status_url: `${origin}/v1/jobs/${job.id}` });
       await job.done;
       return send(res, job.status === 'done' ? 200 : 500, publicJob(job, origin));

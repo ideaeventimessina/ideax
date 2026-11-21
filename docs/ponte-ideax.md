@@ -69,3 +69,6 @@ prende il lavoro entro `grace` secondi, o se l'operaio cade, il capofila lo rif√
 Restano sul capofila i lavori legati ai suoi dati di macchina: voci clonate, gemello e personaggi
 (LoRA locali), reel, demo dello schermo. Si distribuiscono solo i lavori che un PC con la stessa
 configurazione pu√≤ fare da solo: immagine/video da testo, fotomontaggio, ingrandimento, musica.
+
+Per un lavoro `video`, `dati.veloce: true` preferisce Wan 5B, se installato e abilitato, e usa le dimensioni di anteprima.
+Per il lip-sync via `POST /v1/twin/talk`, `veloce: true` usa 8 passi. In alternativa `steps` accetta da 4 a 50 passi. Senza opzioni valgono 20 passi.

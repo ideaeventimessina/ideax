@@ -1,5 +1,14 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.10.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.11.exe**.
+
+## Video e Gemello
+- Wan 5B e 14B sono entrambi selezionabili. La modalità veloce preferisce il 5B, con dimensioni di anteprima più contenute.
+- Wan 14B usa il nodo compatibile con il suo VAE e il condizionamento della foto nei due passaggi.
+- Il lip-sync salva correttamente anche in percorsi con spazi. L'API del Gemello video offre una modalità a 8 passi, con avanzamento distinto tra allineamento, generazione e ricomposizione.
+- Gli avvii concorrenti dell'addestramento si escludono. Su Windows l'addestratore usa il processo principale per il dataset con latenti in cache.
+
+## Sistemi collegati
+- Un ponte che risponde subito con una coda vuota viene interrogato al massimo una volta al secondo. Gli errori di consegna finali sono registrati nello stato del sistema.
 
 ## Codice e chiamate concorrenti
 - Le richieste esplicite di codice restano nella chat anche se citano immagini o video.

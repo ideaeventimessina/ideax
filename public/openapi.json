@@ -1513,7 +1513,7 @@
      },
      "params": {
       "type": "object",
-      "description": "Parametri per il modello",
+      "description": "Parametri per il modello. Per Wan, veloce=true preferisce il 5B se non è indicato un modello. width e height espliciti vanno forniti insieme, entrambi multipli di 32 tra 256 e 1280.",
       "example": {
        "aspect": "16:9",
        "seed": 42,

@@ -34,6 +34,7 @@ WORK = Path(args.work)
 app = FastAPI()
 state: dict = {"status": "idle", "step": 0, "total": 0, "phase": None, "log": [], "output": None, "error": None, "name": None}
 proc: Optional[subprocess.Popen] = None
+training_lock = threading.Lock()
 STEP = re.compile(r"(\d+)/(\d+) \[")
 FASE_ADDESTRO = "Addestro il gemello"
 
@@ -67,11 +68,13 @@ def _ferma_bloccato(motivo: str) -> None:
             pass
 
 
-def _cane_da_guardia() -> None:
+def _cane_da_guardia(started: float) -> None:
     visto = 0           # ultimo passo visto avanzare
     visto_a = time.time()
-    while state["status"] == "running":
+    while state["status"] == "running" and state.get("started") == started:
         time.sleep(VEGLIA_S)
+        if state.get("started") != started:
+            return
         if state["status"] != "running":
             return
         now = time.time()
@@ -148,6 +151,9 @@ def config_for(req: TrainRequest, dataset: Path, out: Path) -> dict:
                 "datasets": [{
                     "folder_path": str(dataset), "caption_ext": "txt", "caption_dropout_rate": 0.05,
                     "shuffle_tokens": False, "cache_latents_to_disk": True,
+                    # Su Windows il dataset con latenti già in cache non
+                    # beneficia dell'avvio di altri interpreti PyTorch.
+                    **({"num_workers": 0} if os.name == "nt" else {}),
                     "resolution": [768, 1024] if sdxl else [512, 768, 1024],
                 }],
                 "train": {
@@ -178,9 +184,13 @@ def log(line: str) -> None:
 def run(req: TrainRequest, cfg_path: Path, out: Path) -> None:
     global proc
     try:
+        if state["status"] == "cancelled":
+            return
         env = {**os.environ, "PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1"}
         proc = subprocess.Popen([sys.executable, "run.py", str(cfg_path)], cwd=APP, env=env,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace", bufsize=1)
+        if state["status"] == "cancelled":
+            proc.kill()
         # ideax passa --model come CARTELLA già scaricata (una volta sola, all'installazione del motore): lì il modello
         # si CARICA dal disco, non si scarica. La scritta diceva "scarica" sempre, anche a modello già presente: falso.
         # Si scarica davvero solo se la cartella non c'è (es. avvio standalone con un repo di Hugging Face).
@@ -221,6 +231,7 @@ def run(req: TrainRequest, cfg_path: Path, out: Path) -> None:
             state.update(status="error", error=str(err), phase=None)
     finally:
         proc = None
+        training_lock.release()
 
 
 @app.get("/health")
@@ -230,28 +241,34 @@ def health():
 
 @app.post("/train")
 def train(req: TrainRequest):
-    if state["status"] == "running":
-        raise HTTPException(409, "Sto già addestrando un gemello")
     if len(req.images) < 8:
         raise HTTPException(400, "Servono almeno 8 foto (meglio 15-30)")
     if not re.fullmatch(r"[a-z0-9_]{2,40}", req.name):
         raise HTTPException(400, "Nome non valido")
-    base = WORK / req.name
-    dataset = base / "foto"
-    out = base / "output"
-    shutil.rmtree(dataset, ignore_errors=True)
-    dataset.mkdir(parents=True)
-    for i, src in enumerate(req.images):
-        ext = Path(src).suffix.lower() or ".jpg"
-        shutil.copyfile(src, dataset / f"{i:03d}{ext}")
-        (dataset / f"{i:03d}.txt").write_text(f"photo of [trigger]", encoding="utf-8")
-    cfg_path = base / "config.yaml"
-    # Il JSON è YAML valido: niente dipendenze in più
-    cfg_path.write_text(json.dumps(config_for(req, dataset, out), indent=2), encoding="utf-8")
+    if not training_lock.acquire(blocking=False):
+        raise HTTPException(409, "Sto già addestrando un gemello")
+    started = time.time()
     state.update(status="running", step=0, total=req.steps, phase="Avvio", log=[], output=None, error=None,
-                 name=req.name, started=time.time(), train_started=None, log_at=time.time())
-    threading.Thread(target=run, args=(req, cfg_path, out), daemon=True).start()
-    threading.Thread(target=_cane_da_guardia, daemon=True).start()
+                 name=req.name, started=started, train_started=None, log_at=started)
+    try:
+        base = WORK / req.name
+        dataset = base / "foto"
+        out = base / "output"
+        shutil.rmtree(dataset, ignore_errors=True)
+        dataset.mkdir(parents=True)
+        for i, src in enumerate(req.images):
+            ext = Path(src).suffix.lower() or ".jpg"
+            shutil.copyfile(src, dataset / f"{i:03d}{ext}")
+            (dataset / f"{i:03d}.txt").write_text("photo of [trigger]", encoding="utf-8")
+        cfg_path = base / "config.yaml"
+        # Il JSON è YAML valido: niente dipendenze in più
+        cfg_path.write_text(json.dumps(config_for(req, dataset, out), indent=2), encoding="utf-8")
+        threading.Thread(target=run, args=(req, cfg_path, out), daemon=True).start()
+    except Exception as err:
+        state.update(status="error", error=str(err), phase=None)
+        training_lock.release()
+        raise
+    threading.Thread(target=_cane_da_guardia, args=(started,), daemon=True).start()
     return {"ok": True}
 
 
@@ -262,9 +279,11 @@ def progress():
 
 @app.post("/cancel")
 def cancel():
-    if proc and state["status"] == "running":
-        state["status"] = "cancelled"
-        proc.kill()
+    if state["status"] == "running":
+        state.update(status="cancelled", phase=None)
+        current = proc
+        if current:
+            current.kill()
     return {"ok": True}
 
 

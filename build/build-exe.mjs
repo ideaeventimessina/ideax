@@ -51,7 +51,7 @@ console.log('1a/5 Banco di prova');
 {
   const { execFileSync } = await import('node:child_process');
   try {
-    const checks = ['banco.mjs', 'farm.mjs', 'sicurezza.mjs', 'siti.mjs'];
+    const checks = ['banco.mjs', 'farm.mjs', 'sicurezza.mjs', 'siti.mjs', 'video.mjs', 'gemello.mjs', 'sistemi.mjs'];
     execFileSync(process.execPath, ['--test', ...checks.map((name) => path.join(ROOT, 'test', name))], { stdio: 'pipe' });
     console.log('   tutte le scelte giuste: ok');
   } catch (err) {
