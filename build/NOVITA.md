@@ -7,6 +7,7 @@ Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.13.exe**.
 - Sulle schede NVIDIA fino a 16 GB, la scelta automatica del reel preferisce un SDXL locale adatto, quando disponibile. La scelta esplicita del modello resta disponibile.
 - In Regia i sottotitoli sono scaricabili dal risultato.
 - Chiedendo un’anteprima video in Regia si attiva il profilo veloce quando il motore lo supporta.
+- Le demo web aprono subito l’indirizzo indicato. Il copione automatico usa le altre pagine solo se sono state fornite.
 
 ## Memoria e addestramento
 - «Ricorda che» salva subito il dato. La generazione di codice consulta i ricordi pertinenti anche in una chat nuova.

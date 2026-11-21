@@ -122,6 +122,8 @@ def registra(req: RegistraRequest):
                     try:
                         _esegui(page, p)
                     except Exception as err:  # noqa: BLE001 — un passo sbagliato non ferma la registrazione
+                        if i == 0 and p.azione in ("vai", "login"):
+                            raise HTTPException(502, "Impossibile aprire la pagina iniziale della demo.") from err
                         _log(f"passo {i+1} ({p.azione}) saltato: {str(err)[:120]}")
                     page.wait_for_timeout(300)
             finally:

@@ -495,7 +495,9 @@ async function processJob(job) {
     if (!job.forceModelId && !job.attachments.length) {
       const car = personaggi.personaggioForPrompt(job.prompt);
       if (car?.modelId) {
-        job.forceModelId = car.modelId;
+        const task = job.forceTask || heuristicTask(job.prompt, []);
+        if (/video|animation/.test(task)) job.twinModelId = car.modelId;
+        else job.forceModelId = car.modelId;
         // Pelle vera anche in resa: senza questi termini Pony/SDXL rende la "plastica" liscia di cui ci si lamenta.
         // Si aggiunge solo se non li hai già scritti tu, per non raddoppiare.
         if (!/raw photo|skin texture|pori|pores|pelle vera|film grain/i.test(job.prompt))
@@ -510,7 +512,7 @@ async function processJob(job) {
       job.params = { ...(job.params || {}), aspect: '2:3' };
       log('Formato verticale 2:3 per la figura intera');
     }
-    if (!job.forceModelId && !job.attachments.length) {
+    if (!job.forceModelId && !job.twinModelId && !job.attachments.length) {
       const tw = twin.twinForPrompt(job.prompt);
       if (tw?.modelId) {
         // Per un video il gemello serve alla foto di partenza, non al motore video
@@ -524,9 +526,10 @@ async function processJob(job) {
     // prompt_style nei parametri: lo stile del prompt per questo lavoro, al posto di quello del modello
     const forceStyle = typeof job.params?.prompt_style === 'string' ? job.params.prompt_style : null;
     if (job.params) delete job.params.prompt_style;
+    const fastVideo = ['true', '1', 'si', 'sì'].includes(String(job.params.veloce).toLowerCase());
     const d = await route(job.prompt, job.attachments, {
       forceModelId: job.forceModelId, forceTask: job.forceTask, forceStyle, literalPrompt: job.literalPrompt,
-      fastVideo: ['true', '1', 'si', 'sì'].includes(String(job.params.veloce).toLowerCase()),
+      fastVideo,
     });
     if (job.cancelled) throw new Error('Annullato');
     // Parametri dello stile (es. clip_skip per Pony) < parametri del modello < parametri della richiesta
@@ -556,7 +559,8 @@ async function processJob(job) {
     // prima si crea l'immagine dal testo, poi la si anima
     // Wan 2.2: per volti perfetti (e per il gemello) si parte da una foto rifinita, salvo da_foto: false
     const svdOnly = !d.model.capabilities?.includes('video_generate') && (d.model.arch === 'svd' || /StableVideoDiffusion/i.test(d.model.pipelineClass || ''));
-    const wanStill = ['wan', 'wan14b'].includes(d.model.backend) && !['false', '0', 'no'].includes(String(job.params.da_foto ?? true).toLowerCase());
+    const autoStill = !fastVideo || d.model.backend !== 'wan' || !!job.twinModelId;
+    const wanStill = ['wan', 'wan14b'].includes(d.model.backend) && !['false', '0', 'no'].includes(String(job.params.da_foto ?? autoStill).toLowerCase());
     const needsStill = /video|animation/.test(d.task) && (svdOnly || wanStill)
       && !job.attachments.some((a) => a.type?.startsWith('image/'));
     if (needsStill) {
@@ -566,7 +570,7 @@ async function processJob(job) {
       if (blockedStill) throw new Error(blockedStill);
       const still = { ...job, attachments: [], loras: di.loras || [], routedPrompt: di.prompt, negativePrompt: di.negativePrompt,
         params: { ...(di.styleParams || {}), ...(di.model.params || {}), aspect: job.params.aspect || (/reel|verticale|storia|stories|9:16|tiktok/i.test(job.prompt) ? '9:16' : '16:9') } };
-      const [img] = await runModel(di.model, 'image_generate', still, log);
+      const [img] = await runModel(di.model, 'image_generate', still, log, { owner: job });
       if (job.cancelled) throw new Error('Annullato');
       if (!img) throw new Error('Non sono riuscito a creare la foto di partenza del video');
       const buf = fs.readFileSync(path.join(store.OUTPUT_DIR, path.basename(img.url)));
