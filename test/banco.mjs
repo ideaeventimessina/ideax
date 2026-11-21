@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { decide } from '../lib/decidi.js';
+import { contaFollower, profiloRichiesto } from '../lib/follower.js';
 
 const img = [{ type: 'image/jpeg' }];
 const aud = [{ type: 'audio/ogg' }];
@@ -92,4 +93,29 @@ for (const [testo, allegati, ultima, atteso] of CASI) {
 test('un motore non installato non si sceglie: decide il cervello', () => {
   assert.equal(decide({ testo: 'ingrandisci', allegati: img, puo: new Set(['vista']) }), null);
   assert.equal(decide({ testo: 'ingrandisci', allegati: img, puo: new Set(['ingrandisci']) }).azione, 'ingrandisci');
+});
+
+test('un personaggio salvato chiarisce il formato anche dopo una risposta di scrittura', () => {
+  const contesto = { personaggioSalvato: 'Anita', ultima: 'scrittura' };
+  assert.equal(decide({ ...contesto, testo: 'Fammi Anita sul balcone' }).azione, 'chiarisci_personaggio');
+  assert.equal(decide({ ...contesto, testo: 'Genera un’immagine di Anita sul balcone' }).azione, 'immagine');
+  assert.equal(decide({ ...contesto, testo: 'Scrivi un racconto di Anita' }).azione, 'scrittura');
+  assert.equal(decide({ testo: 'Fammi Anita sul balcone' }), null);
+});
+
+test('la ricerca follower riconosce la richiesta e somma solo i profili verificabili', async () => {
+  assert.equal(profiloRichiesto('conta tutti i follower di ideaeventi che trovi su tutti i social'), 'ideaeventi');
+  assert.equal(profiloRichiesto('crea una pagina per contare i follower di ideaeventi'), null);
+  const leggi = async (url) => {
+    if (url === 'https://www.ideaeventi.com/') return '<script type="application/ld+json">{"sameAs":["https://www.instagram.com/ideaeventi4.0"]}</script>';
+    if (url === 'https://www.instagram.com/ideaeventi4.0') return '<meta property="og:description" content="1,234 Followers, 900 Following">';
+    if (url === 'https://www.youtube.com/@ideaeventi4.0') return '<title>IDEAeventi 4.0 - YouTube</title>{"accessibilityLabel":"171 iscritti"}';
+    throw new Error('Richiesta inattesa');
+  };
+  const cerca = async () => ({ risultati: [{ url: 'https://facebook.com/altro-profilo', titolo: '10K Followers' }] });
+  const report = await contaFollower('ideaeventi', cerca, leggi);
+  assert.match(report, /Instagram — 1\.234/);
+  assert.match(report, /YouTube — 171/);
+  assert.match(report, /1\.405 su 2 piattaforme/);
+  assert.doesNotMatch(report, /altro-profilo/);
 });

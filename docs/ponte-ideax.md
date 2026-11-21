@@ -72,3 +72,9 @@ configurazione può fare da solo: immagine/video da testo, fotomontaggio, ingran
 
 Per un lavoro `video`, `dati.veloce: true` preferisce Wan 5B, se installato e abilitato, e usa le dimensioni di anteprima.
 Per il lip-sync via `POST /v1/twin/talk`, `veloce: true` usa 8 passi. In alternativa `steps` accetta da 4 a 50 passi. Senza opzioni valgono 20 passi.
+
+### Montatore Impagino sullo stesso PC
+
+IDEAX cerca il blueprint `/montatore` sulle porte locali 8765 e 8080. Per una porta diversa imposta `IDEAX_MONTATORE_URL` all'avvio di IDEAX. Il montatore autonomo si avvia con `python -m montatore.webapp --port 8765`. Per il montatore locale IDEAX legge la password dal file `~/.montatore/web_password`.
+
+Per montare da due a dodici MP4 già prodotti da IDEAX, invia a `POST /v1/catena` un `prompt` come titolo e `clip_urls` con i relativi percorsi `/outputs/…mp4`. Imposta `audio_originale: true` per la sequenza con l'audio delle clip. Con `draft_capcut: false` chiedi soltanto l'MP4. L'endpoint restituisce l'ID del lavoro e lo stato si legge da `GET /v1/jobs/{id}`.

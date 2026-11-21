@@ -932,7 +932,13 @@ function renderOperatore(v) {
       let extra = '';
       if (v.pipeline?.anteprima) extra += ` <a href="${esc(v.pipeline.anteprima)}" target="_blank">apri l'anteprima</a>`;
       if (v.pipeline?.zippabile) extra += ` <button class="btn small" data-operatore="zip">Scarica zip</button>`;
-      ris.innerHTML = `<strong>Risultato:</strong> ${esc(v.risultato)}${extra}`;
+      const righe = v.risultato.split('\n').map((riga) => {
+        const link = riga.match(/^(.*) · (https:\/\/[^\s]+)$/);
+        return link
+          ? esc(link[1]) + ' · <a href="' + esc(link[2]) + '" target="_blank" rel="noopener noreferrer">Fonte</a>'
+          : esc(riga);
+      });
+      ris.innerHTML = '<strong>Risultato:</strong> ' + righe.join('<br>') + extra;
     }
   } else ris.hidden = true;
 }
@@ -2232,7 +2238,8 @@ function renderReelResult(j) {
 // ----- Video montato con Impagino (catena di clip) -----
 async function loadCatena() {
   const st = await api('/api/catena/montatore').catch(() => ({ online: false }));
-  $('#catena-montatore').innerHTML = st.online ? '<span class="ok-text">● Montatore di Impagino acceso</span>' : '<span class="muted">○ Montatore di Impagino spento: le clip restano pronte in una cartella</span>';
+  $('#catena-montatore').innerHTML = st.online ? '<span class="ok-text">● Montatore di Impagino acceso</span>'
+    : `<span class="muted">○ ${esc(st.errore || 'Montatore di Impagino non raggiungibile.')} Le clip restano pronte in una cartella.</span>`;
   const sel = $('#catena-form').stile;
   if (st.stili?.length && sel.options.length < 2) sel.innerHTML += st.stili.map((x) => `<option value="${esc(x)}">${esc(x)}</option>`).join('');
 }

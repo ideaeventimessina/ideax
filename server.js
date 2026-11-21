@@ -853,7 +853,14 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/catena/montatore' && req.method === 'GET') return send(res, 200, await catena.montatoreStato());
     if (p === '/v1/catena' && req.method === 'POST') {
       const b = await readJson(req);
-      const job = await createJob({ prompt: b.prompt || b.idea, kind: 'catena', catena: { clip: b.clip, formato: b.formato, stile: b.stile, musica_provenienza: b.musica_provenienza, monta: b.monta, scene: b.scene, musica_file: b.musica_file, veloce: !!b.veloce } }, ctx);
+      const job = await createJob({
+        prompt: b.prompt || b.idea, kind: 'catena',
+        catena: {
+          clip: b.clip, formato: b.formato, stile: b.stile, musica_provenienza: b.musica_provenienza,
+          monta: b.monta, scene: b.scene, musica_file: b.musica_file, veloce: !!b.veloce,
+          clip_urls: b.clip_urls, audio_originale: b.audio_originale === true, draft_capcut: b.draft_capcut,
+        },
+      }, ctx);
       return send(res, 202, { id: job.id, status: job.status, status_url: `${origin}/v1/jobs/${job.id}` });
     }
     if (p === '/api/voicelib' && req.method === 'GET') return send(res, 200, voicelib.list());

@@ -159,6 +159,9 @@ def config_for(req: TrainRequest, dataset: Path, out: Path) -> dict:
                 "train": {
                     "batch_size": 1, "steps": req.steps, "gradient_accumulation_steps": 1, "train_unet": True,
                     "train_text_encoder": False, "gradient_checkpointing": True, "noise_scheduler": scheduler,
+                    # Le didascalie di Gemello sono fisse. SDXL può riusare gli
+                    # embedding e liberare la GPU dai due encoder durante i passi.
+                    **({"cache_text_embeddings": True} if sdxl else {}),
                     "optimizer": "adamw8bit", "lr": req.lr, "ema_config": {"use_ema": True, "ema_decay": 0.99},
                     "dtype": "bf16", "disable_sampling": True, "skip_first_sample": True,
                 },

@@ -1,5 +1,19 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.11.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.12.exe**.
+
+## Montaggio con Impagino
+- IDEAX rileva il montatore locale con il prefisso corretto e si autentica con la password del montatore.
+- L'API della Catena può riutilizzare gli MP4 già prodotti da IDEAX e conservare l'audio originale delle clip.
+- L'MP4 viene scaricato dal montatore e torna tra i risultati di IDEAX. Stato, timeout e problemi di autenticazione sono visibili.
+
+## Addestramento SDXL
+- Il Gemello mette in cache gli embedding delle didascalie e libera gli encoder di testo dalla GPU dopo la preparazione, aumentando il margine di VRAM durante l'addestramento.
+
+## Personaggi in Regia
+- Se nomini un personaggio salvato e il formato è ambiguo, IDEAX chiede se vuoi un’immagine o un video. Puoi rispondere con il solo formato per avviare la richiesta originale.
+
+## Ricerca nell’Operatore
+- Le richieste di conteggio follower cercano dati pubblici e mostrano conteggi, fonti e piattaforme senza un valore verificabile, anche con l’Orchestratore attivo.
 
 ## Video e Gemello
 - Wan 5B e 14B sono entrambi selezionabili. La modalità veloce preferisce il 5B, con dimensioni di anteprima più contenute.
