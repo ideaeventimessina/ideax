@@ -20,6 +20,7 @@ import subprocess
 import sys
 import os
 import tempfile
+from pathlib import Path
 import threading
 import time
 from typing import Any, Optional
@@ -28,6 +29,9 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 from PIL import Image, ImageDraw
 from pydantic import BaseModel, Field
+
+# Il Python incorporato usa python._pth e può escludere la directory dello script.
+sys.path.append(str(Path(__file__).resolve().parent))
 
 DEMO = os.environ.get("IDEAX_DEMO") == "1"
 OFFLOAD = os.environ.get("IDEAX_OFFLOAD", "auto")
@@ -1003,6 +1007,7 @@ class ComposeRequest(BaseModel):
     fps: int = 30
     music_volume: float = 0.18
     caption_position: float = 0.70  # altezza del centro dei sottotitoli, da 0 (alto) a 1 (basso)
+    static_frames: bool = False
 
 
 def load_font(size: int):
@@ -1028,7 +1033,7 @@ def cover(img: Image.Image, w: int, h: int) -> Image.Image:
 
 def caption_overlay(text: str, w: int, h: int, pos: float) -> Image.Image:
     """Sottotitolo grande, bianco con contorno nero, centrato e su più righe se serve."""
-    size = round(w * 0.068)
+    size = round(w * 0.053)
     font = load_font(size)
     layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
@@ -1047,7 +1052,7 @@ def caption_overlay(text: str, w: int, h: int, pos: float) -> Image.Image:
     for line in lines:
         tw = d.textlength(line, font=font)
         d.text(((w - tw) / 2, y), line, font=font, fill=(255, 255, 255, 255),
-               stroke_width=max(4, size // 11), stroke_fill=(0, 0, 0, 255))
+               stroke_width=max(3, size // 14), stroke_fill=(0, 0, 0, 255))
         y += line_h
     return layer
 
@@ -1055,6 +1060,36 @@ def caption_overlay(text: str, w: int, h: int, pos: float) -> Image.Image:
 @app.get("/compose/progress")
 def compose_progress():
     return dict(COMPOSE)
+
+
+class SchedaReel(BaseModel):
+    titolo: str = Field(max_length=100)
+    icona: str = Field(max_length=30)
+    badge: str = Field(max_length=30)
+
+
+class IllustrazioniReel(BaseModel):
+    serie: str = Field(max_length=100)
+    schede: list[SchedaReel] = Field(min_length=1, max_length=20)
+    cartella: str
+    musica: bool = False
+    durata: float = Field(gt=0, le=120)
+
+
+@app.post("/reel/illustrazioni")
+def illustrazioni_reel(req: IllustrazioniReel):
+    from reel_editoriale import accompagnamento, scheda
+
+    out = Path(req.cartella)
+    immagini = []
+    for i, card in enumerate(req.schede):
+        image = out / f"scheda-{i:02d}.png"
+        scheda(card.titolo, req.serie, card.icona, card.badge, i, len(req.schede), load_font).save(image, compress_level=2)
+        immagini.append(str(image))
+    music = out / "accompagnamento.wav" if req.musica else None
+    if music:
+        accompagnamento(music, req.durata)
+    return {"images": immagini, "music": str(music) if music else None}
 
 
 @app.post("/compose")
@@ -1065,12 +1100,16 @@ def compose(req: ComposeRequest):
     import numpy as np
 
     W, H, fps = req.width, req.height, req.fps
+    if not req.scenes or fps <= 0:
+        raise HTTPException(400, "Servono almeno una scena e un frame rate positivo.")
     total = max(s.start + s.duration for s in req.scenes)
     frames = int(round(total * fps))
+    if frames <= 0:
+        raise HTTPException(400, "La durata del video deve essere positiva.")
+    ff = imageio_ffmpeg.get_ffmpeg_exe()
     with compose_lock:
         COMPOSE.update(frame=0, frames=frames)
         # Ogni scena: immagine un po' più grande dell'inquadratura, per poter zoomare e spostarsi
-        bases = [cover(Image.open(s.image), round(W * 1.12), round(H * 1.12)) for s in req.scenes]
         overlays = []
         for caption in req.captions:
             layer = caption_overlay(caption.text, W, H, req.caption_position)
@@ -1078,34 +1117,40 @@ def compose(req: ComposeRequest):
             if bounds:
                 overlays.append((caption, layer.crop(bounds), bounds[:2]))
         silent = req.output + ".video.mp4"
-        writer = imageio.get_writer(silent, fps=fps, codec="libx264", quality=8, macro_block_size=8,
+        if req.static_frames:
+            from reel_editoriale import codifica_statica
+            try:
+                codifica_statica(req, frames, overlays, silent, ff, cover)
+            except subprocess.CalledProcessError as err:
+                raise HTTPException(500, f"Montaggio delle schede: {err.stderr.decode(errors='replace')[-500:]}") from err
+            COMPOSE["frame"] = frames
+        else:
+            bases = [cover(Image.open(s.image), round(W * 1.12), round(H * 1.12)) for s in req.scenes]
+            writer = imageio.get_writer(silent, fps=fps, codec="libx264", quality=8, macro_block_size=8,
                                     ffmpeg_params=["-pix_fmt", "yuv420p", "-preset", "veryfast"])
-        try:
-            for i in range(frames):
-                t = i / fps
-                k = next((j for j, s in enumerate(req.scenes) if s.start <= t < s.start + s.duration), len(req.scenes) - 1)
-                s, base = req.scenes[k], bases[k]
-                p = min(1.0, max(0.0, (t - s.start) / max(s.duration, 0.01)))
-                p = p * p * (3 - 2 * p)  # movimento morbido all'inizio e alla fine
-                # Scene alterne: zoom in e zoom out, con un leggero spostamento laterale
-                zoom = 1.0 + 0.10 * (p if k % 2 == 0 else 1 - p)
-                cw, ch = round(base.width / zoom / 1.0), round(base.height / zoom / 1.0)
-                cw, ch = min(cw, base.width), min(ch, base.height)
-                pan = (p - 0.5) * (base.width - cw) * (0.6 if k % 3 == 1 else -0.6 if k % 3 == 2 else 0)
-                left = max(0, min(base.width - cw, round((base.width - cw) / 2 + pan)))
-                top = (base.height - ch) // 2
-                frame = base.crop((left, top, left + cw, top + ch)).resize((W, H), Image.BILINEAR)
-                for c, ov, offset in overlays:
-                    if c.start <= t < c.end:
-                        frame.paste(ov, offset, ov)
-                        break
-                writer.append_data(np.asarray(frame))
-                COMPOSE["frame"] = i + 1
-        finally:
-            writer.close()
+            try:
+                for i in range(frames):
+                    t = i / fps
+                    k = next((j for j, s in enumerate(req.scenes) if s.start <= t < s.start + s.duration), len(req.scenes) - 1)
+                    s, base = req.scenes[k], bases[k]
+                    p = min(1.0, max(0.0, (t - s.start) / max(s.duration, 0.01)))
+                    p = p * p * (3 - 2 * p)
+                    zoom = 1.0 + 0.10 * (p if k % 2 == 0 else 1 - p)
+                    cw, ch = min(round(base.width / zoom), base.width), min(round(base.height / zoom), base.height)
+                    pan = (p - 0.5) * (base.width - cw) * (0.6 if k % 3 == 1 else -0.6 if k % 3 == 2 else 0)
+                    left = max(0, min(base.width - cw, round((base.width - cw) / 2 + pan)))
+                    top = (base.height - ch) // 2
+                    frame = base.crop((left, top, left + cw, top + ch)).resize((W, H), Image.BILINEAR)
+                    for c, ov, offset in overlays:
+                        if c.start <= t < c.end:
+                            frame.paste(ov, offset, ov)
+                            break
+                    writer.append_data(np.asarray(frame))
+                    COMPOSE["frame"] = i + 1
+            finally:
+                writer.close()
 
         # Audio: voce in primo piano, musica bassa con dissolvenze
-        ff = imageio_ffmpeg.get_ffmpeg_exe()
         cmd = [ff, "-y", "-i", silent]
         filters, labels = [], []
         if req.voice:

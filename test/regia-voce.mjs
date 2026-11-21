@@ -17,3 +17,9 @@ test('il tono modifica il ritmo e una domanda riceve una pausa più lunga', () =
   assert.ok(calma[0].velocita < vivace[0].velocita);
   assert.ok(calma[1].pausa > calma[0].pausa);
 });
+
+test('pause esplicite e paragrafi aggiungono silenzio senza essere pronunciati', () => {
+  const pezzi = segmentiVoce('Aspetta. [pausa lunga] Ripartiamo.\n\nUltima frase.');
+  assert.deepEqual(pezzi.map((p) => p.input), ['Aspetta.', 'Ripartiamo.', 'Ultima frase.']);
+  assert.deepEqual(pezzi.slice(0, 2).map((p) => p.pausa), [780, 460]);
+});

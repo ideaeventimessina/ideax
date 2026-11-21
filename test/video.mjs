@@ -12,7 +12,7 @@ for (const id of ['comfyui', 'wan', 'wan14b']) {
 }
 
 const { buildCatalog, route } = await import('../lib/router.js');
-const { puntiRichiesti, elencoCompleto, allineaReel } = await import('../lib/reels.js');
+const { puntiRichiesti, elencoCompleto, allineaReel, iconaScheda } = await import('../lib/reels.js');
 
 test('i due Wan installati si possono selezionare separatamente', async () => {
   const ids = buildCatalog().generators.filter((model) => model.arch === 'wan').map((model) => model.id);
@@ -52,4 +52,9 @@ test('un reel con cinque punti richiede cinque scene di elenco distinte e numera
   assert.equal(elencoCompleto(scene(['Introduzione', '1. Primo', '2. Secondo', '3. Terzo', '4. Quarto', 'Chiusura']), punti), false);
   assert.equal(elencoCompleto(scene(['Introduzione', '1. Primo', '2. Secondo', '3. Terzo', '4. Quarto', '5. Quinto', 'Chiusura']), punti), true);
   assert.equal(puntiRichiesti('Crea un reel di 30 secondi sulla trattativa'), 0);
+});
+
+test('la scheda preferisce un’icona coerente quando il copione propone quella sbagliata', () => {
+  const testo = ['Ignorare le esigenze reali', 'Non offrire alternative', 'Imporre tempi', 'Sottovalutare i limiti', 'Non riepilogare i punti'];
+  assert.deepEqual(testo.map(t => iconaScheda(t, 'alternativa')), ['ascolto', 'alternativa', 'tempo', 'limite', 'riepilogo']);
 });

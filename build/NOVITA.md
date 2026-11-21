@@ -1,7 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.16.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.17.exe**.
 
 ## Voce, musica e reel
+- I reel a elenco in stile cartoon possono usare schede illustrate coerenti con il copione, sottotitoli più leggibili e un sottofondo discreto. I modelli di immagini restano selezionabili.
+- La lettura in Regia dà più respiro ai paragrafi. Inserisci [pausa] o [pausa lunga] per aggiungere una pausa senza pronunciare il marcatore.
 - La voce della Regia legge per frasi e prepara la successiva durante la riproduzione. Il controllo Tono modifica ritmo e pause, con profili naturale, calmo, vivace e narrativo.
 - Il sottofondo veloce del reel parte senza caricare il pianificatore musicale. Le opzioni di composizione completa restano disponibili.
 - Per le voci sintetiche della libreria senza impostazioni di clonazione personalizzate, il reel può usare direttamente la voce originale su CPU.

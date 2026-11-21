@@ -2194,14 +2194,14 @@ async function loadReelForm() {
   f.voice.innerHTML = v.voices.map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('') + '<option value="none">Senza voce (solo sottotitoli)</option>';
   if (cur) f.voice.value = cur;
   const mcur = f.model.value;
-  f.model.innerHTML = '<option value="">Lo sceglie ideax</option>' + models.generators.filter((m) => m.capabilities.includes('image_generate')).map((m) => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
+  f.model.innerHTML = '<option value="">Lo sceglie ideax</option><option value="ideax-illustrato">Schede illustrate · veloce</option>' + models.generators.filter((m) => m.capabilities.includes('image_generate')).map((m) => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
   f.model.value = mcur;
   // Cosa manca per un reel completo
   const needs = [];
   if (/regole/.test(models.brain || '')) needs.push('Senza cervello attivo serve il testo ("Ho già il testo"); con Ollama o un .gguf lo scrive ideax.');
   if (!v.voices.length) needs.push('Nessuna voce: creala nella pagina Voce, oppure il reel sarà solo con sottotitoli.');
   if (!eng.find((e) => e.id === 'music' && e.status === 'installed')) needs.push('Motore musica non installato: il reel sarà senza musica.');
-  if (!models.generators.some((m) => m.capabilities.includes('image_generate'))) needs.push('Serve un modello di immagini (pagina Modelli).');
+  if (!models.generators.some((m) => m.capabilities.includes('image_generate'))) needs.push('Scegli Schede illustrate, oppure collega un modello di immagini dalla pagina Modelli.');
   $('#reel-needs').textContent = needs.join(' ');
   if (/regole/.test(models.brain || '')) $('#reel-script-box').open = true;
 }
