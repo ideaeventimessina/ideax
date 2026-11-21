@@ -2,6 +2,7 @@
 import base64
 import io
 import json
+import re
 import sys
 
 import numpy as np
@@ -9,15 +10,17 @@ import soundfile as sf
 from kokoro_onnx import Kokoro
 
 speaker = Kokoro(*sys.argv[1:3])
+emphasis = re.compile(r"\b(?:NON|MAI|SEMPRE|ORA|ANCORA|ATTENZIONE|IMPORTANTE|SUBITO)\b")
 print(json.dumps({"ready": True}), flush=True)
 for line in sys.stdin:
     key = None
     try:
         req = json.loads(line)
         key = req["id"]
-        samples, rate = speaker.create(
-            req["text"], voice=req["voice"], speed=req["speed"], lang=req["language"]
-        )
+        text = req["text"]
+        if req["language"] == "it":
+            text = emphasis.sub(lambda match: match[0].lower(), text)
+        samples, rate = speaker.create(text, voice=req["voice"], speed=req["speed"], lang=req["language"])
         samples = np.asarray(samples, dtype=np.float32)
         samples = np.pad(samples, (0, round(req["pause"] * rate / 1000)))
         wav = io.BytesIO()
