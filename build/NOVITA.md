@@ -1,15 +1,16 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.14.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.15.exe**.
 
 ## Voce, musica e reel
+- I reel rispettano la durata selezionata. Voce e sottotitoli seguono la stessa linea temporale e il montaggio verticale usa 24 fotogrammi al secondo.
 - I reel che chiedono un elenco numerato verificano che il copione contenga tutti i punti prima di registrare la voce e generare le immagini.
 - Le letture e i reel completano la sintesi anche con «Tieni la voce pronta» attivo.
 - ACE-Step riusa i pesi già installati e su Windows usa il backend PyTorch per il pianificatore. Il sottofondo dei reel usa la generazione strumentale rapida.
 - Sulle schede NVIDIA fino a 16 GB, la scelta automatica del reel preferisce un SDXL locale adatto, quando disponibile. La scelta esplicita del modello resta disponibile.
 - In Regia i sottotitoli sono scaricabili dal risultato.
-- Chiedendo un’anteprima video in Regia si attiva il profilo veloce quando il motore lo supporta.
+- Chiedendo un’anteprima video in Regia si attiva il profilo veloce. Wan 5B usa 8 passi, con la qualità standard e i passi espliciti ancora selezionabili.
 - Le demo web aprono subito l’indirizzo indicato. Il copione automatico usa le altre pagine solo se sono state fornite.
-- Il Gemello video pronuncia la battuta indicata nella richiesta. Con «modalità veloce» usa il profilo lip-sync a 8 passi.
+- Il Gemello video pronuncia la battuta indicata nella richiesta. Con «modalità veloce» usa 6 passi lip-sync. I video e gli audio di partenza funzionano anche da percorsi con spazi.
 
 ## Memoria e addestramento
 - «Ricorda che» salva subito il dato. La generazione di codice consulta i ricordi pertinenti anche in una chat nuova.

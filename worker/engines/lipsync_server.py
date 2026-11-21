@@ -70,10 +70,21 @@ def lipsync(req: LipsyncRequest):
         staged = tempfile.TemporaryDirectory(prefix="ideax-lipsync-", dir=APP)
         stage = Path(staged.name)
         rendered = stage / "result.mp4"
+        # LatentSync usa anche i percorsi sorgente in comandi ffmpeg testuali.
+        inputs = {}
+        for kind, file in (("video", req.video), ("audio", req.audio)):
+            source = Path(file).resolve()
+            suffix = source.suffix if re.fullmatch(r"\.[a-zA-Z0-9]{1,6}", source.suffix) else ""
+            target = stage / (kind + suffix)
+            try:
+                os.link(source, target)
+            except OSError:
+                shutil.copyfile(source, target)
+            inputs[kind] = str(Path(stage.name) / target.name)
         cmd = [sys.executable, "-m", "scripts.inference",
                "--unet_config_path", args.config, "--inference_ckpt_path", "checkpoints/latentsync_unet.pt",
                "--inference_steps", str(req.steps), "--guidance_scale", str(req.guidance), "--enable_deepcache",
-               "--seed", str(req.seed), "--video_path", req.video, "--audio_path", req.audio,
+               "--seed", str(req.seed), "--video_path", inputs["video"], "--audio_path", inputs["audio"],
                "--temp_dir", str(Path(stage.name) / "scratch"), "--video_out_path", str(Path(stage.name) / rendered.name)]
         proc = subprocess.Popen(cmd, cwd=APP, env={**os.environ, "PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1"},
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace", bufsize=1)

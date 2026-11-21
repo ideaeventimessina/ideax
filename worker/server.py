@@ -995,6 +995,7 @@ class ComposeRequest(BaseModel):
     scenes: list[ComposeScene]
     captions: list[ComposeCaption] = []
     voice: Optional[str] = None
+    voice_tempo: float = Field(default=1.0, ge=1, allow_inf_nan=False)
     music: Optional[str] = None
     output: str
     width: int = 1080
@@ -1109,7 +1110,15 @@ def compose(req: ComposeRequest):
         filters, labels = [], []
         if req.voice:
             cmd += ["-i", req.voice]
-            labels.append(f"[{len(labels) + 1}:a]")
+            tempo = req.voice_tempo
+            speed = []
+            while tempo > 2:
+                speed.append("atempo=2")
+                tempo /= 2
+            if tempo > 1:
+                speed.append(f"atempo={tempo:.9f}")
+            filters.append(f"[1:a]{','.join([*speed, 'apad'])}[v]")
+            labels.append("[v]")
         if req.music:
             cmd += ["-stream_loop", "-1", "-i", req.music]
             idx = len(labels) + 1
@@ -1129,7 +1138,7 @@ def compose(req: ComposeRequest):
             raise HTTPException(500, f"Montaggio non riuscito: {proc.stderr[-600:]}")
         # Copertina: il primo fotogramma con il titolo, utile per l'anteprima
         COMPOSE.update(frame=0, frames=0)
-    return {"output": req.output, "seconds": round(total, 2), "frames": frames}
+    return {"output": req.output, "seconds": round(total, 2), "frames": frames, "voice_tempo": req.voice_tempo}
 
 
 @app.post("/refine")
