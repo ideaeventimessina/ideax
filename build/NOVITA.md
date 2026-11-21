@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.0.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.1.exe** e aprilo.
+
+## Correzione: niente più "request exceeds the available context size"
+- Con tutti gli strumenti (compresi quelli imparati) e un po' di conversazione, la richiesta superava la finestra da 8k e il cervello la **rifiutava**. Ora la finestra è di nuovo **16k** (sicura), la cronologia inviata è più snella, e se mai dovesse succedere di nuovo il messaggio è **in italiano e dice cosa fare** (apri una chat nuova, o alza `IDEAX_LLM_CTX`) invece dell'errore tecnico in inglese.
+- ideax ora è istruito a **rispondere sempre in italiano**, anche quando legge ricerche o pagine in un'altra lingua: le traduce.
 
 ## Quando non sa fare una cosa, ideax IMPARA (e non ti rimanda a farla tu)
 - Prima, se chiedevi qualcosa che gli strumenti non coprivano, il cervello spesso rispondeva "fallo tu". Ora **no**: ideax **studia** come si fa (memoria + web), **scrive da sé** il codice della capacità mancante, ti dice *"mi aggiorno, torno tra poco"*, ti chiede **un solo tocco** di conferma — *"Attiva e vai"* — e appena confermi *"mi sono aggiornato, ora posso"* ed **esegue dando i risultati**. Tutto nella Regia, con la voce.
