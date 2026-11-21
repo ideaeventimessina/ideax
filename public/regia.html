@@ -201,9 +201,45 @@ async function seguiChat(lavoro){
     if(ultimo){
       if(ultimo.content) { aggiungi(esc(ultimo.content),'bolla lui'); parla(ultimo.content); }
       for(const id of (ultimo.jobs||[])) seguiLavoro(id);
+      if(ultimo.potenziamento) seguiPotenziamento(ultimo.potenziamento);
     } else aggiungi('<span class="pensa">(nessuna risposta)</span>','pensa');
     return;
   }
+}
+
+// AUTOPOTENZIAMENTO: ideax sta imparando una capacità che non aveva. Studio dal vivo, poi UN tocco di conferma
+// (il cancello), poi "mi sono aggiornato" e i risultati. Niente riavvio: la capacità si attiva a caldo.
+async function seguiPotenziamento(id){
+  const box=aggiungi('<div class="capo"><div class="spin"></div><span class="ora">Studio e mi aggiorno…</span></div><ol class="passi"></ol>','lavoro');
+  const disegna=(s)=>{ const log=s.log||[]; box.querySelector('.ora').textContent=log.length?log[log.length-1].msg:'Studio…'; box.querySelector('.passi').innerHTML=log.slice(-6).map((l,i,a)=>`<li class="${i===a.length-1?'vivo':''}">${esc(l.msg)}</li>`).join(''); filo.scrollTop=filo.scrollHeight; };
+  for(let i=0;i<900;i++){
+    await new Promise(r=>setTimeout(r,1000));
+    let s; try{ s=await (await fetch(`/api/autopotenzia/${id}`)).json(); }catch{ continue; }
+    disegna(s);
+    if(s.stato==='errore'){ box.remove(); aggiungi('Non sono riuscito ad aggiornarmi: '+esc(s.errore||'errore'),'bolla lui'); return; }
+    if(s.stato==='rifiutato'){ box.remove(); return; }
+    if(s.stato==='pronto'){
+      box.remove();
+      const nm=s.skill?.nome||'questa capacità';
+      const card=aggiungi(`<div style="font-weight:600;color:#1c3a5e">Ho preparato una capacità nuova: ${esc(nm)}</div><div style="font-size:14px;color:#3a577a;margin:4px 0 10px">${esc(s.skill?.descrizione||'')}</div><div class="row"><button class="attiva" style="background:#2f6fb0;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-weight:600;cursor:pointer">Attiva e vai</button><button class="nolla" style="background:transparent;color:#51708f;border:none;padding:9px 12px;cursor:pointer">No, grazie</button></div>`,'bolla lui');
+      parla(`Mi sono preparato per ${nm}. La attivo?`);
+      await new Promise((risolvi)=>{
+        card.querySelector('.attiva').onclick=async()=>{ card.remove(); await attivaPotenziamento(id); risolvi(); };
+        card.querySelector('.nolla').onclick=async()=>{ card.remove(); try{ await fetch(`/api/autopotenzia/${id}/conferma`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{"ok":false}'}); }catch{} risolvi(); };
+      });
+      return;
+    }
+  }
+}
+
+async function attivaPotenziamento(id){
+  const box=aggiungi('<div class="capo"><div class="spin"></div><span class="ora">Mi sto aggiornando…</span></div>','lavoro');
+  let s; try{ s=await (await fetch(`/api/autopotenzia/${id}/conferma`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{"ok":true}'})).json(); }catch(e){ box.remove(); aggiungi('Attivazione non riuscita: '+esc(e.message),'bolla lui'); return; }
+  box.remove();
+  const nm=s.skill?.nome||'la capacità';
+  const testa=`Mi sono aggiornato: ora posso ${esc(nm.toLowerCase())}.`;
+  aggiungi(`<div style="font-weight:600;color:#1c3a5e">${testa}</div>${s.risultato?`<div class="parz" style="margin-top:6px">${esc(s.risultato)}</div>`:''}`,'bolla lui');
+  parla('Mi sono aggiornato. '+(s.risultato?String(s.risultato).slice(0,400):'Fatto.'));
 }
 
 async function invia(){

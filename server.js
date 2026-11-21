@@ -25,6 +25,8 @@ import * as visione from './lib/vision.js';
 import * as personaggi from './lib/personaggi.js';
 import * as webdemo from './lib/webdemo.js';
 import * as operatore from './lib/operatore.js';
+import * as autopotenzia from './lib/autopotenzia.js';
+import * as skills from './lib/skills.js';
 import * as siti from './lib/siti.js';
 import * as civitai from './lib/civitai.js';
 import * as memoria from './lib/memoria.js';
@@ -818,6 +820,15 @@ const server = http.createServer(async (req, res) => {
       if (mo && req.method === 'POST') { const b = await readJson(req); return send(res, 200, operatore.rispondi(mo[1], b.ok === true)); } }
     { const mo = p.match(/^\/api\/operatore\/([\w-]+)\/ferma$/);
       if (mo && req.method === 'POST') return send(res, 200, operatore.ferma(mo[1])); }
+    // Autopotenziamento: ideax impara una capacità che non ha (studio → conferma a un tocco → attivazione a caldo → risultati)
+    if (p === '/api/autopotenzia' && req.method === 'POST') { const b = await readJson(req); return send(res, 200, autopotenzia.avvia(b.obiettivo)); }
+    { const ma = p.match(/^\/api\/autopotenzia\/([\w-]+)$/);
+      if (ma && req.method === 'GET') return send(res, 200, autopotenzia.stato(ma[1])); }
+    { const ma = p.match(/^\/api\/autopotenzia\/([\w-]+)\/conferma$/);
+      if (ma && req.method === 'POST') { const b = await readJson(req); return send(res, 200, await autopotenzia.conferma(ma[1], b.ok === true, b.input)); } }
+    { const ma = p.match(/^\/api\/autopotenzia\/([\w-]+)\/ferma$/);
+      if (ma && req.method === 'POST') return send(res, 200, autopotenzia.ferma(ma[1])); }
+    if (p === '/api/capacita' && req.method === 'GET') return send(res, 200, { skills: skills.elenca().map((s) => ({ slug: s.slug, nome: s.nome, descrizione: s.descrizione, come_si_usa: s.come_si_usa, origine: s.origine })) });
     // Code: genera/modifica una pagina web col cervello, pubblicala (ideax la serve a /siti/<slug>/)
     // Tutte le schede video viste da ideax + chi fa cosa (il Node vede tutte le schede, il worker solo la sua).
     if (p === '/api/gpu' && req.method === 'GET') {

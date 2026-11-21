@@ -1,5 +1,14 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.52.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.0.exe** e aprilo.
+
+## Quando non sa fare una cosa, ideax IMPARA (e non ti rimanda a farla tu)
+- Prima, se chiedevi qualcosa che gli strumenti non coprivano, il cervello spesso rispondeva "fallo tu". Ora **no**: ideax **studia** come si fa (memoria + web), **scrive da sé** il codice della capacità mancante, ti dice *"mi aggiorno, torno tra poco"*, ti chiede **un solo tocco** di conferma — *"Attiva e vai"* — e appena confermi *"mi sono aggiornato, ora posso"* ed **esegue dando i risultati**. Tutto nella Regia, con la voce.
+- **Niente riavvio, niente contesto perso**: la capacità nuova (una "skill") si attiva **a caldo** mentre ideax gira. Una volta imparata, la volta dopo la **richiama da sola** invece di re-impararla — è l'auto-apprendimento che si accumula.
+- **Due paletti non negoziabili**: (1) **un tocco di conferma** prima di attivare qualsiasi capacità nuova — ideax non si auto-modifica in silenzio; (2) **tutto in locale**: la skill vive sul tuo PC e **non viene spedita agli altri utenti**. Ne resta una copia in `proposte-self/` così, con una revisione a mano e un normale aggiornamento, un domani può entrare nel programma di tutti — ma è una scelta deliberata, non automatica.
+- Le skill sono **isolate** (girano in un processo Python a parte), validate nella sintassi prima di salvarle, senza pagamenti e senza toccare i tuoi file.
+
+## I numeri e i dati dalle pagine "vere" (Google Maps, schede attività, Instagram)
+- `apri_pagina` legge l'HTML grezzo e **non vede** quello che il JavaScript costruisce dopo (il numero di recensioni su Google, un profilo Instagram…). Ora c'è **leggi_pagina_dinamica**: ideax apre quell'indirizzo in un **browser vero**, esegue il JavaScript e **legge il dato tu** invece di dirti di guardarlo. (Serve il motore Regista web installato.)
 
 ## La voce della Regia ora è veloce (Kokoro diretto)
 - Prima il parlato usava Chatterbox, che per parlare **scaricava i 12 GB del modello immagini** dalla scheda e ci metteva 10 secondi. Ora la Regia legge **direttamente con Kokoro** (gira sulla CPU, non tocca la scheda video): risposta in un paio di secondi, e non rallenta nemmeno la generazione dopo.
