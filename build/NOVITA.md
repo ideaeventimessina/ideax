@@ -1,5 +1,10 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.49.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.50.exe** e aprilo.
+
+## Più veloce, tutto in locale: il cervello non si riaccende a ogni immagine
+- Prima di ogni immagine ideax spegneva il cervello per liberare la scheda, e alla chat successiva lo **ricaricava da zero** (secondi persi, ogni volta). Ora lo **tiene acceso** quando il modello immagine ci sta accanto (SDXL sui 16 GB); lo spegne solo quando non c'è spazio (Flux). Risultato: nel flusso "chiedo → crea → chiedo" la risposta arriva molto prima. Valvola di sicurezza `IDEAX_BRAIN_ALWAYS_FREE=1` se una generazione dovesse sforare.
+- La finestra di contesto del cervello scende da 16k a **8k**: meno memoria occupata (più spazio per tenerlo acceso) ed elaborazione del prompt più rapida. Si rialza con `IDEAX_LLM_CTX`.
+- Niente API esterne: tutta la velocità viene da come usiamo la **tua** scheda.
 
 ## Regia: la voce ora parla, è una donna, ed è più veloce
 - La Regia ora sceglie da sola una **voce femminile** fra quelle installate, preferendo una **sintetica (Kokoro)** che è molto più rapida di una voce clonata.
