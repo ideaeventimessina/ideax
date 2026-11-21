@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.6.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.7.exe** e aprilo.
+
+## Il volto del gemello torna: nomini "Marzia", esce Marzia
+- Chiedendo "Marzia che prende un caffè al bar" usciva una donna qualsiasi: il cervello, traducendo il prompt in inglese, **perdeva il nome** e così la LoRA del volto non si agganciava. Ora: (1) una **rete di sicurezza** rimette il nome del gemello/personaggio nel prompt se il cervello lo perde — presa dalla tua richiesta originale; (2) il cervello è istruito a **tenere il nome esatto** e a descrivere **fedelmente** luogo e azione; (3) il gemello SDXL ora usa sempre la **base pulita** (file-singolo realistica), non la prima che capita, quindi niente rumore né stile "cartoon". Il volto si aggancia solo se il nome resta nel prompt: ora ci resta.
 
 ## Un cervello più forte (e senza filtri): Qwen3 14B
 - L'8B andava in **loop** (ripeteva la stessa frase), **non usava gli strumenti** e si inventava le risposte. Il problema era alla base: modello troppo debole. In **Cervello → Scarica** ora c'è, in cima, **«Qwen3 14B senza censure · CONSIGLIATO»** (~9 GB, entra nei 16 GB): molto migliore con gli strumenti (cerca sul web, legge le pagine, usa le capacità imparate), non va in loop, ottimo italiano, senza filtri. Scaricalo e impostalo come cervello principale; per «vedere» le immagini tieni acceso anche Qwen3-VL. *Trovato e verificato sul vero Hugging Face, non a memoria.*
