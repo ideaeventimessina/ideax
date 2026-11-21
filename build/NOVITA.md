@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.19.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.20.exe**.
+
+## Giochi di guida
+- In Operatore, «Gioco di guida 3D collaudato» genera frontend e backend e usa Regista web per provare la partita in Chromium. IDEAX rimanda al modello gli errori di collaudo e salva i giochi che superano le prove in «Giochi collaudati».
+- I giochi archiviati si possono riaprire e scaricare anche dopo un riavvio di IDEAX.
 
 ## Operatore
 - Per le richieste di gioco puoi scegliere vista 3D o 2D, stile, difficoltà e modalità prima di avviare il lavoro.

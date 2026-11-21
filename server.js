@@ -25,6 +25,7 @@ import * as visione from './lib/vision.js';
 import * as personaggi from './lib/personaggi.js';
 import * as webdemo from './lib/webdemo.js';
 import * as operatore from './lib/operatore.js';
+import * as giochi from './lib/progetti-guida.js';
 import * as autopotenzia from './lib/autopotenzia.js';
 import * as skills from './lib/skills.js';
 import * as siti from './lib/siti.js';
@@ -823,6 +824,15 @@ const server = http.createServer(async (req, res) => {
     if (/^\/api\/personaggi\/[\w-]+$/.test(p) && req.method === 'DELETE') return send(res, 200, { ok: personaggi.del(p.split('/').pop()) });
     // Operatore autonomo: avvia un obiettivo, segui l'avanzamento, rispondi alle conferme, fermalo.
     if (p === '/api/operatore' && req.method === 'POST') { const b = await readJson(req); return send(res, 200, operatore.avvia(b.obiettivo, b.modalita, b.cartella, b.collaudo)); }
+    if (p === '/api/operatore/giochi' && req.method === 'GET') return send(res, 200, { giochi: giochi.elencaGiochi() });
+    {
+      const g = p.match(/^\/api\/operatore\/giochi\/([a-f0-9]{8})(\/apri)?$/);
+      if (g && locale && g[2] && req.method === 'POST') return send(res, 200, await giochi.gioca(g[1]));
+      if (g && !g[2] && req.method === 'GET') {
+        res.setHeader('Content-Disposition', `attachment; filename="ideax-gioco-${g[1]}.json"`);
+        return send(res, 200, giochi.leggiGioco(g[1]));
+      }
+    }
     { const mz = p.match(/^\/api\/operatore\/([\w-]+)\/zip$/);
       if (mz && req.method === 'POST') return send(res, 200, await operatore.zip(mz[1])); }
     { const mo = p.match(/^\/api\/operatore\/([\w-]+)$/);

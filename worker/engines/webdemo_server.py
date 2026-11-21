@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import base64
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -328,6 +329,83 @@ def br_estrai(r: BrReq):
 @app.post("/br/chiudi")
 def br_chiudi(r: BrReq):
     return _br_call("chiudi", {"sessione": r.sessione}, timeout=20.0)
+
+
+class CollaudoGioco(BaseModel):
+    url: str
+
+
+@app.post("/br/collauda-guida")
+def collauda_guida(r: CollaudoGioco):
+    """Collaudo senza sessioni, credenziali o accesso alla rete esterna."""
+    if not re.fullmatch(r"http://127\.0\.0\.1:[1-9]\d{0,4}/[a-f0-9]{32}/", r.url):
+        raise HTTPException(400, "Anteprima locale non valida.")
+    if not _chromium_ok():
+        raise HTTPException(503, "Prepara Chromium dal motore Regista web.")
+    from playwright.sync_api import sync_playwright
+
+    errors = []
+    phase = "Apertura pagina"
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(executable_path=os.environ.get("IDEAX_CHROMIUM") or None)
+        try:
+            context = browser.new_context(service_workers="block", accept_downloads=False,
+                                          viewport={"width": 1050, "height": 720})
+            context.route("**/*", lambda route: route.continue_()
+                          if route.request.url in (r.url, r.url + "azione") else route.abort())
+            page = context.new_page()
+            page.set_default_timeout(2500)
+            page.on("pageerror", lambda err: errors.append((getattr(err, "stack", None) or str(err))[:350]))
+            page.goto(r.url, timeout=5000)
+            page.locator("#world").wait_for()
+            initial = page.locator("#world").screenshot(animations="disabled")
+            phase = "Click #start: atteso POST relativo a 'azione' con {azione:'avvia'}"
+            with page.expect_response(lambda response: response.url == r.url + "azione") as started:
+                page.locator("#start").click()
+            if started.value.status != 200 or started.value.json() != {"x": 0, "z": 0, "score": 0}:
+                raise AssertionError("Avvio: API attesa x=0 z=0 score=0")
+            page.locator("#score").wait_for()
+            phase = "Tasto ArrowRight: atteso POST relativo a 'azione' con {azione:'destra'}"
+            with page.expect_response(lambda response: response.url == r.url + "azione") as advanced:
+                page.keyboard.press("ArrowRight")
+            if advanced.value.status != 200 or advanced.value.json() != {"x": 1, "z": 0, "score": 1}:
+                raise AssertionError("Freccia destra: API attesa x=1 z=0 score=1")
+            page.wait_for_function("document.querySelector('#score')?.textContent.trim() === '1'")
+            changed = page.locator("#world").screenshot(animations="disabled")
+            if initial == changed:
+                raise AssertionError("Il canvas resta identico durante la guida.")
+            def press(key):
+                with page.expect_response(lambda response: response.url == r.url + "azione") as response:
+                    page.keyboard.press(key)
+                if response.value.status != 200:
+                    raise AssertionError(f"{key}: HTTP {response.value.status}")
+                state = response.value.json()
+                page.evaluate("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))")
+                return state
+
+            phase = "Percorso completo: ogni freccia deve produrre un POST"
+            last = None
+            for key, count in [("ArrowRight", 3), ("ArrowUp", 3), ("ArrowLeft", 8),
+                               ("ArrowUp", 1), ("ArrowLeft", 1), ("ArrowDown", 8),
+                               ("ArrowRight", 9), ("ArrowDown", 1)]:
+                for _ in range(count):
+                    last = press(key)
+            if last != {"x": 4, "z": 5, "score": 5}:
+                raise AssertionError(f"Percorso completo: atteso il quinto checkpoint, ricevuto {last}")
+            page.wait_for_function("document.querySelector('#score')?.textContent.trim() === '5'")
+            phase = "Traguardo: attendono #vittoria visibile e riavvio"
+            page.locator("#vittoria").wait_for()
+            with page.expect_response(lambda response: response.url == r.url + "azione") as reset:
+                page.locator("#start").click()
+            if reset.value.json() != {"x": 0, "z": 0, "score": 0}:
+                raise AssertionError("Il riavvio dopo la vittoria deve azzerare la partita.")
+            if errors:
+                raise AssertionError(errors[0])
+            return {"ok": True, "casi": 6, "preview": base64.b64encode(changed).decode("ascii")}
+        except Exception as exc:
+            return {"ok": False, "errore": (phase + ": " + (errors[0] if errors else str(exc)))[:500]}
+        finally:
+            browser.close()
 
 
 if __name__ == "__main__":

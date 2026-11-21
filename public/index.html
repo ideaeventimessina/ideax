@@ -589,6 +589,7 @@
           <label class="check"><input type="checkbox" name="semi"> Modalità semi-autonoma: fa tutto da solo (codice e web, clic compresi) senza chiedere a ogni passo; si ferma dopo 3 tentativi falliti di fila. Il pagamento resta sempre bloccato.</label>
           <label class="check"><input type="checkbox" name="pipeline"> Modalità Pipeline (codice): un comando → un file. Il modello risponde solo in JSON, scrivo il file, controllo la sintassi e se è sbagliata correggo da solo. Il commit/push su GitHub NON è automatico (si conferma a mano).</label>
           <label class="check"><input type="checkbox" name="orchestratore"> Orchestratore: scompongo un obiettivo grande in sotto-task tecnici e li eseguo uno alla volta con la Pipeline (ognuno validato prima del successivo). Classifica SELF/EXTERNAL/PROJECT e per i PROJECT puoi vederne l'anteprima e scaricare lo zip.</label>
+          <label class="check"><input type="checkbox" name="giocoGuida"> Gioco di guida 3D collaudato. Salva il gioco dopo le prove di backend e Chromium.</label>
           <fieldset id="operatore-gioco" hidden>
             <legend>Come vuoi il gioco?</legend>
             <label>Vista <select name="vistaGioco"><option value="3D">3D</option><option value="2D">2D</option></select></label>
@@ -622,6 +623,10 @@
           <button class="btn" data-operatore="ferma">Ferma</button></div>
         <pre id="operatore-log" class="small" style="white-space:pre-wrap;overflow:auto;max-height:50vh"></pre>
         <div id="operatore-risultato" class="small" hidden></div>
+      </div>
+      <div class="card">
+        <h2>Giochi collaudati</h2>
+        <div id="operatore-giochi" class="stack-sm"></div>
       </div>
     </section>
     <section class="page" id="page-impostazioni">

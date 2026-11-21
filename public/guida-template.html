@@ -1,0 +1,113 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>__TITOLO__</title><style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#101820;color:#f6e9d5}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 15% 0,#332323,transparent 43%),#101820;padding:clamp(12px,3vw,28px)}main{max-width:1280px;margin:auto}header,.hud{display:flex;align-items:center;justify-content:space-between;gap:16px}h1{font:500 clamp(35px,6vw,72px)/1 Georgia,serif;margin:0 0 10px}p{margin:0;color:#dbcbba}button{border-radius:7px;border:1px solid #8f6c4f;background:#222e32;color:#f8eddd;padding:.6em 1em;font:inherit;cursor:pointer}button:focus-visible{outline:3px solid #ffe5a4}#start{background:#f2bb75;color:#241712;font-weight:750}canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;border:1px solid #544638;border-radius:12px;margin:16px 0 12px;background:#152328}.hud{flex-wrap:wrap}strong{color:#ffcb84}#vittoria{color:#ffce87;font-weight:800}.pad{display:flex;gap:6px;flex-wrap:wrap}.pad button{min-width:42px}#errore{color:#f9a49a}@media(max-width:580px){header{align-items:flex-start}canvas{aspect-ratio:4/3}}
+</style></head><body><main><header><div><h1>__TITOLO__</h1><p>Guida tra banchine e palazzi fino ai cinque checkpoint.</p></div><button id="start">Avvia</button></header><canvas id="world" width="1100" height="620" aria-label="Quartiere portuale tridimensionale"></canvas><div class="hud"><p>Checkpoint <strong id="score">0</strong> / 5 · <span id="distanza">In attesa</span></p><strong id="vittoria" hidden>Percorso completato</strong><p id="errore" role="status"></p><div class="pad" aria-label="Controlli"><button data-a="sinistra" aria-label="Sinistra">←</button><button data-a="su" aria-label="Su">↑</button><button data-a="giu" aria-label="Giù">↓</button><button data-a="destra" aria-label="Destra">→</button></div></div></main><script>
+'use strict';
+const el=id=>document.getElementById(id), canvas=el('world'), g=canvas.getContext('2d');
+const goals=[[1,0],[4,-3],[-4,-4],[-5,4],[4,5]];
+const roadX=new Set([-5,-4,0,1,4]), roadZ=new Set([-4,-3,0,4,5]);
+const keys={ArrowRight:'destra',ArrowLeft:'sinistra',ArrowUp:'su',ArrowDown:'giu',d:'destra',a:'sinistra',w:'su',s:'giu'};
+let s={x:0,z:0,score:0},cx=0,cz=0,angle=0,heading=0,active=false,busy=false;
+const W=1100,H=620;
+const buildings=[];
+for(let z=-8;z<=8;z++)for(let x=-8;x<=8;x++){
+  if(roadX.has(x)||roadZ.has(z)||x>6||z>6)continue;
+  const seed=Math.abs((x*491+z*311+x*z*29)%101);
+  if(seed%6===0)continue;
+  buildings.push({x,z,height:.52+(seed%6)*.18,a:seed%4});
+}
+const colors=[['#bd8264','#8f6159','#f3a16d'],['#857978','#5f646b','#bd9b90'],['#969075','#71755f','#cea47a'],['#9b7766','#735956','#d6966e']];
+function render(t){
+  cx+=(s.x-cx)*.14;cz+=(s.z-cz)*.14;
+  angle+=Math.atan2(Math.sin(heading-angle),Math.cos(heading-angle))*.14;
+  const horizon=g.createLinearGradient(0,0,0,H);
+  horizon.addColorStop(0,'#20374c');horizon.addColorStop(.37,'#925f64');horizon.addColorStop(.65,'#ffc080');horizon.addColorStop(1,'#1d4049');
+  g.fillStyle=horizon;g.fillRect(0,0,W,H);
+  const sunlight=g.createRadialGradient(830,132,14,830,132,180);
+  sunlight.addColorStop(0,'#ffd093aa');sunlight.addColorStop(1,'#ffd09300');g.fillStyle=sunlight;g.fillRect(650,0,360,310);
+  g.beginPath();g.arc(830,132,43,0,Math.PI*2);g.fillStyle='#ffdcac';g.fill();
+  const polys=[];
+  function project([x,y,z]){
+    const rx=x-cx,rz=z-cz;
+    const u=rx*.87-rz*.49, f=rx*.49+rz*.87;
+    const depth=19-f*.56-y*.83, v=y*.56-f*.83;
+    return [W*.5+u*1110/depth,H*.63-v*1110/depth,depth];
+  }
+  function poly(points,color){
+    const projected=points.map(project);
+    polys.push({p:projected,c:color,d:projected.reduce((v,p)=>v+p[2],0)/projected.length});
+  }
+  function ground(x,z,w,h,color,y=0){poly([[x,y,z],[x+w,y,z],[x+w,y,z+h],[x,y,z+h]],color);}
+  function box(x,z,w,h,y0,y1,pal){
+    const a=[x,y0,z],b=[x+w,y0,z],c=[x+w,y0,z+h],d=[x,y0,z+h];
+    const aa=[x,y1,z],bb=[x+w,y1,z],cc=[x+w,y1,z+h],dd=[x,y1,z+h];
+    poly([b,c,cc,bb],pal[1]);poly([d,c,cc,dd],pal[0]);poly([aa,bb,cc,dd],pal[2]);
+  }
+  for(let z=-10;z<=10;z++)for(let x=-10;x<=10;x++){
+    const water=x>8||z>8||x< -8||z< -8;
+    if(water){ground(x-.5,z-.5,1,1,(x+z)%3?'#205162':'#285c6a',-.13);continue;}
+    const road=roadX.has(x)||roadZ.has(z);
+    ground(x-.5,z-.5,1,1,road?((x+z)%2?'#4b494b':'#50494a'):((x+z)%2?'#b29883':'#ba9e84'));
+    if(roadX.has(x)&&!roadZ.has(z))ground(x-.028,z-.23,.056,.46,'#ecc890',.013);
+    if(roadZ.has(z)&&!roadX.has(x))ground(x-.23,z-.028,.46,.056,'#ecc890',.013);
+  }
+  for(const q of buildings){
+    const {x,z,height,a}=q; const pal=colors[a];
+    ground(x-.36,z-.34,.85,.81,'#463e3780',.004);
+    box(x-.39,z-.41,.78,.82,0,height,pal);
+    box(x-.285,z-.30,.57,.60,height,height+.12,pal);
+    for(let y=.3;y<height-.07;y+=.23){
+      for(let i=0;i<3;i++){
+        const X=x-.28+i*.21, Z=z-.28+i*.21;
+        poly([[X,y,z+.412],[X+.08,y,z+.412],[X+.08,y+.075,z+.412],[X,y+.075,z+.412]],i%2?'#ffe1a8':'#423f41');
+        poly([[x+.392,y,Z],[x+.392,y,Z+.08],[x+.392,y+.075,Z+.08],[x+.392,y+.075,Z]],'#cf9d68');
+      }
+    }
+  }
+  for(const [x,z] of [[7,-5],[7,2],[-3,7]]){
+    box(x,z,.19,.23,0,2.1,['#b67d4d','#7a5542','#e2a660']);
+    box(x-.65,z,.97,.15,1.98,2.12,['#b67d4d','#7a5542','#e2a660']);
+  }
+  if(s.score<goals.length){
+    const [x,z]=goals[s.score], a=.25+Math.sin(t*.006)*.07;
+    ground(x-.42,z-.42,.84,.84,'#5df2cd55',.035);
+    const ring=[];
+    for(let i=0;i<24;i++){const r=i*Math.PI*2/24;ring.push([x+Math.cos(r)*a,.48+Math.sin(r)*a,z]);}
+    poly(ring,'#9ffde2c4');
+  }
+  function car(dx,y,dz){return [cx+dx*Math.cos(angle)+dz*Math.sin(angle),y,cz+dz*Math.cos(angle)-dx*Math.sin(angle)];}
+  poly([car(-.31,.014,-.39),car(.31,.014,-.39),car(.31,.014,.39),car(-.31,.014,.39)],'#221a1c9e');
+  const carPolys=[
+    [[[-.26,.07,.35],[.26,.07,.35],[.26,.26,.32],[-.26,.26,.32]],'#953e3c'],
+    [[[.26,.07,-.34],[.26,.07,.35],[.26,.26,.32],[.26,.26,-.30]],'#a84d46'],
+    [[[-.26,.26,-.30],[.26,.26,-.30],[.26,.26,.32],[-.26,.26,.32]],'#f38061'],
+    [[[-.16,.26,.14],[.16,.26,.14],[.13,.42,.09],[-.13,.42,.09]],'#536e79'],
+    [[[-.13,.42,-.13],[.13,.42,-.13],[.13,.42,.09],[-.13,.42,.09]],'#ffc39a']
+  ];
+  for(const [points,color] of carPolys)poly(points.map(([x,y,z])=>car(x,y,z)),color);
+  polys.sort((a,b)=>b.d-a.d);
+  for(const {p,c} of polys){g.beginPath();for(const [x,y] of p)g.lineTo(x,y);g.closePath();g.fillStyle=c;g.fill();}
+  requestAnimationFrame(render);
+}
+async function act(azione){
+  if(busy||(!active&&azione!=='avvia'))return;
+  busy=true;el('errore').textContent='';
+  try{
+    const response=await fetch('azione',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({azione})});
+    const next=await response.json();
+    if(!response.ok)throw new Error(next.error);
+    const dx=next.x-s.x,dz=next.z-s.z;
+    if(azione==='avvia'){heading=0;el('start').textContent='Ricomincia';}
+    else if(dx||dz)heading=Math.atan2(dx,dz);
+    active=true;s=next;
+    el('score').textContent=String(s.score);
+    el('vittoria').hidden=s.score!==5;
+    const goal=goals[s.score];
+    el('distanza').textContent=goal?'Prossimo a '+(Math.abs(s.x-goal[0])+Math.abs(s.z-goal[1]))+' isolati':'Traguardo raggiunto';
+  }catch(e){el('errore').textContent=e.message;}
+  finally{busy=false;}
+}
+el('start').addEventListener('click',()=>act('avvia'));
+document.addEventListener('keydown',e=>{const a=keys[e.key]||keys[e.key.toLowerCase()];if(a){e.preventDefault();act(a);}});
+document.querySelectorAll('[data-a]').forEach(b=>b.addEventListener('click',()=>act(b.dataset.a)));
+requestAnimationFrame(render);
+</script></body></html>

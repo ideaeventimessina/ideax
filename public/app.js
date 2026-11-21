@@ -862,6 +862,7 @@ async function seguiCivitai() {
 let operatore = { id: null, timer: null };
 
 function loadOperatore() {
+  void caricaGiochiCollaudati();
   // Non ri-aggancia i listener due volte: una guardia sul form.
   const form = $('#operatore-form');
   if (form && !form.dataset.pronto) {
@@ -876,9 +877,11 @@ function loadOperatore() {
       if (!obiettivo) return;
       const btn = $('.create', form); btn.disabled = true;
       try {
-        const modalita = form.orchestratore?.checked ? 'orchestratore' : form.pipeline?.checked ? 'pipeline' : form.semi?.checked ? 'semi' : 'strict';
+        const modalita = form.giocoGuida.checked ? 'gioco-guida' : form.orchestratore?.checked ? 'orchestratore' : form.pipeline?.checked ? 'pipeline' : form.semi?.checked ? 'semi' : 'strict';
         const cartella = form.cartella?.value.trim() || undefined;
-        if (!gioco.hidden) {
+        if (modalita === 'gioco-guida') {
+          obiettivo += `\nPreferenze: guida 3D arcade in solitaria, stile ${form.stileGioco.value}.`;
+        } else if (!gioco.hidden) {
           obiettivo += `\nPreferenze di gioco: vista ${form.vistaGioco.value}, stile ${form.stileGioco.value}, difficoltà ${form.livelliGioco.value}, modalità ${form.modoGioco.value}. Cura estetica, feedback delle mosse e accessibilità.`;
         }
         const collaudo = form.collaudo.value.trim() ? JSON.parse(form.collaudo.value) : undefined;
@@ -891,6 +894,17 @@ function loadOperatore() {
       finally { btn.disabled = false; }
     });
     $('#page-operatore').addEventListener('click', async (e) => {
+      const aperto = e.target.closest('[data-gioco-id]');
+      if (aperto) {
+        const tab = window.open('about:blank', '_blank');
+        if (tab) tab.opener = null;
+        try {
+          const { url } = await api(`/api/operatore/giochi/${aperto.dataset.giocoId}/apri`, { method: 'POST' });
+          if (tab) tab.location.href = url;
+          else window.location.href = url;
+        } catch (err) { tab?.close(); alert(err.message); }
+        return;
+      }
       const b = e.target.closest('[data-operatore]'); if (!b || !operatore.id) return;
       const azione = b.dataset.operatore;
       if (azione === 'zip') {
@@ -907,12 +921,22 @@ function loadOperatore() {
   }
 }
 
+async function caricaGiochiCollaudati() {
+  const elenco = $('#operatore-giochi');
+  try {
+    const { giochi } = await api('/api/operatore/giochi');
+    elenco.innerHTML = giochi.map(({ id, titolo, casi }) =>
+      `<div class="row"><span class="grow">${esc(titolo)} · ${casi} verifiche</span><button class="btn small" data-gioco-id="${esc(id)}">Gioca</button><a href="/api/operatore/giochi/${esc(id)}" class="btn small" download>Scarica progetto</a></div>`).join('') || '<p class="muted small">I giochi che superano il collaudo compaiono qui.</p>';
+  } catch (err) { elenco.textContent = err.message; }
+}
+
 async function seguiOperatore() {
   clearTimeout(operatore.timer);
   if (!operatore.id) return;
   let v;
   try { v = await api(`/api/operatore/${operatore.id}`); } catch { return; }
   renderOperatore(v);
+  if (v.pipeline?.progettoId) void caricaGiochiCollaudati();
   const vivo = v.stato === 'in corso' || v.inAttesa;
   if (vivo) operatore.timer = setTimeout(seguiOperatore, 1200);
 }

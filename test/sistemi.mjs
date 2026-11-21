@@ -11,6 +11,30 @@ process.env.IDEAX_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'ideax-sistemi-')
 const { saveSystem, deleteSystem } = await import('../lib/systems.js');
 const { validaSintassi } = await import('../lib/operatore.js');
 const { collauda, preparaCollaudo } = await import('../lib/collaudo.js');
+const { apriAnteprima, elencaGiochi, salvaGioco, leggiGioco } = await import('../lib/progetti-guida.js');
+
+test('il gioco usa un backend isolato e risponde solo sulla propria origine', async (t) => {
+  const frontend = '<canvas id="world"></canvas>';
+  const backend = 'function passo(s, a) { return a === "avvia" ? {x:0,z:0,score:0} : {x:s.x+1,z:0,score:1}; }';
+  const gioco = await apriAnteprima({ frontend, backend });
+  t.after(() => gioco.chiudi());
+  const url = new URL(gioco.url);
+  const post = (azione, origin = url.origin) => fetch(gioco.url + 'azione', {
+    method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ azione }),
+  });
+  const pagina = await fetch(url);
+  assert.equal(await pagina.text(), frontend);
+  assert.match(pagina.headers.get('content-security-policy'), /frame-ancestors 'none'/);
+  assert.equal((await post('avvia', 'http://example.invalid')).status, 403);
+  assert.equal((await post('destra')).status, 409);
+  assert.equal((await post('salta')).status, 422);
+  assert.deepEqual(await (await post('avvia')).json(), { x: 0, z: 0, score: 0 });
+  assert.deepEqual(await (await post('destra')).json(), { x: 1, z: 0, score: 1 });
+  assert.deepEqual(elencaGiochi(), []);
+  salvaGioco('01234567', 'Prova', { frontend, backend }, { casi: 11 });
+  assert.equal(elencaGiochi()[0].casi, 11);
+  assert.equal(leggiGioco('01234567').backend, backend);
+});
 
 test('i test JS distinguono sorgenti eseguibili, risposte errate e calcoli fuori tempo', async () => {
   const verifica = preparaCollaudo({ funzione: 'doppio', casi: [{ argomenti: [4], atteso: 8 }] });
