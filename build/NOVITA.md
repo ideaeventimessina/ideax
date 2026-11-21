@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.3.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.4.exe** e aprilo.
+
+## Autopotenziamento: provato navigando dentro ideax, nel browser
+- Ho fatto girare ideax e **navigato la Regia in un browser vero**: il flusso completo funziona — il cancello **«Attiva e vai»**, poi **«Mi sono aggiornato: ora posso usare …»** con i risultati — senza errori. Sistemata una sbavatura di testo (ora il nome della capacità resta intero e corretto).
 
 ## Velocità: la chat non ricarica più il cervello per una battuta
 - Con "nessun filtro" attivo, per scrivere ideax provava **per primo il cervello scrittore** — spesso un modello DIVERSO da quello già acceso: `llama-server` lo **ricaricava da zero** (~5 GB), decine di secondi, anche per una barzelletta. Ora usa **prima il cervello già acceso** e passa allo scrittore **solo se il principale rifiuta** davvero. Le risposte normali sono molto più rapide.

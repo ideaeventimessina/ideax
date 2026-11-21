@@ -239,8 +239,8 @@ async function attivaPotenziamento(id){
   const box=aggiungi('<div class="capo"><div class="spin"></div><span class="ora">Mi sto aggiornando…</span></div>','lavoro');
   let s; try{ s=await (await fetch(`/api/autopotenzia/${id}/conferma`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{"ok":true}'})).json(); }catch(e){ box.remove(); aggiungi('Attivazione non riuscita: '+esc(e.message),'bolla lui'); return; }
   box.remove();
-  const nm=s.skill?.nome||'la capacità';
-  const testa=`Mi sono aggiornato: ora posso ${esc(nm.toLowerCase())}.`;
+  const nm=s.skill?.nome||'la nuova capacità';
+  const testa=`Mi sono aggiornato: ora posso usare «${esc(nm)}».`;
   aggiungi(`<div style="font-weight:600;color:#1c3a5e">${testa}</div>${s.risultato?`<div class="parz" style="margin-top:6px">${esc(s.risultato)}</div>`:''}`,'bolla lui');
   parla('Mi sono aggiornato. '+(s.risultato?String(s.risultato).slice(0,400):'Fatto.'));
 }
