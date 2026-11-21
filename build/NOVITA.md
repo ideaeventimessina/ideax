@@ -1,5 +1,10 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.50.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.51.exe** e aprilo.
+
+## Regia: vedi cosa fa mentre lavora (e scegli la voce)
+- Mentre ideax lavora, la Regia ora mostra **dal vivo**: un **timer**, cosa sta facendo ("Sto pensando…", "Cerco…", "Creo…"), la **lista dei passi** uno dopo l'altro (quello in corso gira), e la **risposta che cresce** man mano. Come seguire il lavoro passo per passo.
+- **Scegli-voce**: sotto la barra c'è il menu delle voci installate; la Regia parte già su una **voce femminile** (preferendo una sintetica, più rapida), ma puoi cambiarla con un tocco. Niente più voce scelta a caso.
+- Nota onesta: la **qualità delle risposte** è quella del cervello locale (Qwen3-VL-8B sul tuo PC) — se a volte "inventa", è il modello, non un bug della Regia. La velocità e la fedeltà del cervello sono il capitolo a parte su cui stiamo lavorando (tutto in locale).
 
 ## Più veloce, tutto in locale: il cervello non si riaccende a ogni immagine
 - Prima di ogni immagine ideax spegneva il cervello per liberare la scheda, e alla chat successiva lo **ricaricava da zero** (secondi persi, ogni volta). Ora lo **tiene acceso** quando il modello immagine ci sta accanto (SDXL sui 16 GB); lo spegne solo quando non c'è spazio (Flux). Risultato: nel flusso "chiedo → crea → chiedo" la risposta arriva molto prima. Valvola di sicurezza `IDEAX_BRAIN_ALWAYS_FREE=1` se una generazione dovesse sforare.

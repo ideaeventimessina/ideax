@@ -9,74 +9,71 @@
   * { box-sizing: border-box; }
   :root { --inchiostro:#142941; --vetro:rgba(255,255,255,.72); --vetro-scuro:rgba(20,41,65,.08); font-family:Inter,"Segoe UI",system-ui,sans-serif; }
   html,body { height:100%; margin:0; }
-  body { color:var(--inchiostro); background:#cdd9ea url("/cielo.jpg") center/cover no-repeat fixed;
-         display:flex; flex-direction:column; align-items:center; }
-  /* una velatura morbida così il testo si legge sul cielo */
+  body { color:var(--inchiostro); background:#cdd9ea url("/cielo.jpg") center/cover no-repeat fixed; display:flex; flex-direction:column; align-items:center; }
   body::before { content:""; position:fixed; inset:0; background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.42) 60%, rgba(255,255,255,.66)); pointer-events:none; }
   .alto { position:fixed; top:16px; width:100%; max-width:860px; display:flex; align-items:center; justify-content:space-between; padding:0 18px; z-index:3; }
-  .marchio svg { height:26px; width:auto; filter:drop-shadow(0 1px 2px rgba(20,41,65,.25)); }
-  .rotella { width:40px; height:40px; border:none; border-radius:50%; background:var(--vetro); color:var(--inchiostro);
-             font-size:18px; cursor:pointer; box-shadow:0 2px 10px rgba(20,41,65,.12); display:grid; place-items:center; text-decoration:none; }
+  .marchio svg { height:26px; filter:drop-shadow(0 1px 2px rgba(20,41,65,.25)); }
+  .rotella { width:40px; height:40px; border:none; border-radius:50%; background:var(--vetro); color:var(--inchiostro); font-size:18px; cursor:pointer; box-shadow:0 2px 10px rgba(20,41,65,.12); display:grid; place-items:center; text-decoration:none; }
   .rotella:hover { background:#fff; }
-
-  main { position:relative; z-index:2; width:100%; max-width:720px; flex:1; display:flex; flex-direction:column;
-         justify-content:flex-end; padding:84px 16px 150px; gap:14px; overflow-y:auto; }
-  /* a vuoto: logo grande al centro e un invito */
-  .benvenuto { margin:auto; text-align:center; opacity:.9; }
+  main { position:relative; z-index:2; width:100%; max-width:720px; flex:1; display:flex; flex-direction:column; justify-content:flex-end; padding:84px 16px 162px; gap:14px; overflow-y:auto; }
+  .benvenuto { margin:auto; text-align:center; opacity:.92; }
   .benvenuto svg { height:54px; margin-bottom:14px; filter:drop-shadow(0 2px 6px rgba(20,41,65,.25)); }
   .benvenuto p { margin:0; font-size:17px; color:#2b476b; }
-
   .bolla { max-width:88%; padding:12px 15px; border-radius:16px; line-height:1.5; box-shadow:0 2px 12px rgba(20,41,65,.08); white-space:pre-wrap; word-wrap:break-word; }
-  .io { align-self:flex-end; background:rgba(130,155,189,.9); color:#fff; border-bottom-right-radius:5px; }
+  .io { align-self:flex-end; background:rgba(130,155,189,.92); color:#fff; border-bottom-right-radius:5px; }
   .lui { align-self:flex-start; background:var(--vetro); border-bottom-left-radius:5px; backdrop-filter:blur(6px); }
-  .lui .fase { font-size:13px; opacity:.6; }
   .media { align-self:flex-start; max-width:88%; }
   .media img, .media video { width:100%; border-radius:14px; box-shadow:0 4px 18px rgba(20,41,65,.18); display:block; }
-  .pensa { align-self:flex-start; font-size:14px; color:#2b476b; opacity:.8; }
+  .media audio { width:280px; }
+  .pensa { align-self:flex-start; font-size:14px; color:#2b476b; opacity:.85; }
   .allegati { align-self:flex-end; display:flex; gap:6px; flex-wrap:wrap; }
-  .allegati .chip { background:var(--vetro); border-radius:10px; padding:4px 8px; font-size:12px; display:flex; gap:6px; align-items:center; }
-  .allegati img { width:34px; height:34px; object-fit:cover; border-radius:7px; }
+  .allegati .chip { background:var(--vetro); border-radius:10px; padding:4px 8px; font-size:12px; }
 
-  .barra { position:fixed; bottom:20px; z-index:3; width:100%; max-width:720px; padding:0 16px; }
-  .campo { display:flex; align-items:flex-end; gap:8px; background:var(--vetro); backdrop-filter:blur(10px);
-           border-radius:22px; padding:8px 8px 8px 10px; box-shadow:0 8px 30px rgba(20,41,65,.18); }
-  .campo textarea { flex:1; border:none; background:transparent; resize:none; outline:none; font:inherit; color:var(--inchiostro);
-                    max-height:140px; padding:8px 4px; line-height:1.4; }
+  /* IL PANNELLO VIVO: cosa sta facendo, il timer, la lista dei passi, la risposta che cresce */
+  .lavoro { align-self:flex-start; max-width:92%; background:var(--vetro); backdrop-filter:blur(6px); border-radius:16px; border-bottom-left-radius:5px; padding:12px 15px; box-shadow:0 2px 12px rgba(20,41,65,.1); }
+  .lavoro .capo { display:flex; align-items:center; gap:9px; font-weight:600; color:#1c3a5e; }
+  .spin { width:16px; height:16px; border:2px solid rgba(20,41,65,.2); border-top-color:#4f7bb0; border-radius:50%; animation:gira .8s linear infinite; flex:none; }
+  @keyframes gira { to { transform:rotate(360deg); } }
+  .lavoro .tmr { margin-left:auto; font-variant-numeric:tabular-nums; font-size:13px; color:#51708f; font-weight:500; }
+  .lavoro .passi { margin:9px 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:3px; }
+  .lavoro .passi li { font-size:13.5px; color:#3a577a; padding-left:18px; position:relative; opacity:.75; }
+  .lavoro .passi li::before { content:"✓"; position:absolute; left:0; color:#5a8f5a; font-size:12px; }
+  .lavoro .passi li.vivo { opacity:1; color:#1c3a5e; font-weight:500; }
+  .lavoro .passi li.vivo::before { content:""; width:9px; height:9px; border:2px solid #4f7bb0; border-top-color:transparent; border-radius:50%; left:1px; top:3px; animation:gira .8s linear infinite; }
+  .lavoro .parz { margin-top:9px; font-size:14.5px; line-height:1.5; color:var(--inchiostro); white-space:pre-wrap; }
+
+  .barra { position:fixed; bottom:18px; z-index:3; width:100%; max-width:720px; padding:0 16px; }
+  .campo { display:flex; align-items:flex-end; gap:8px; background:var(--vetro); backdrop-filter:blur(10px); border-radius:22px; padding:8px 8px 8px 10px; box-shadow:0 8px 30px rgba(20,41,65,.18); }
+  .campo textarea { flex:1; border:none; background:transparent; resize:none; outline:none; font:inherit; color:var(--inchiostro); max-height:140px; padding:8px 4px; line-height:1.4; }
   .campo textarea::placeholder { color:#5a79a0; }
-  .tondo { width:40px; height:40px; min-width:40px; border:none; border-radius:50%; cursor:pointer; font-size:18px;
-           display:grid; place-items:center; background:var(--vetro-scuro); color:var(--inchiostro); transition:.15s; }
+  .tondo { width:40px; height:40px; min-width:40px; border:none; border-radius:50%; cursor:pointer; font-size:18px; display:grid; place-items:center; background:var(--vetro-scuro); color:var(--inchiostro); transition:.15s; }
   .tondo:hover { background:rgba(20,41,65,.16); }
   .tondo.invia { background:#4f7bb0; color:#fff; } .tondo.invia:hover { background:#3f6a9d; }
+  .tondo.invia:disabled { opacity:.5; cursor:default; }
   .tondo.rec { background:#d2544f; color:#fff; animation:pulsa 1.2s infinite; }
   @keyframes pulsa { 0%,100%{box-shadow:0 0 0 0 rgba(210,84,79,.5)} 50%{box-shadow:0 0 0 8px rgba(210,84,79,0)} }
-  .tondo.muto { opacity:.45; }
+  .tondo.muto { opacity:.4; }
   .anteprime { display:flex; gap:6px; padding:6px 10px 0; flex-wrap:wrap; }
   .anteprime .t { position:relative; }
   .anteprime img { width:40px; height:40px; object-fit:cover; border-radius:8px; }
   .anteprime .x { position:absolute; top:-6px; right:-6px; background:#142941; color:#fff; border:none; border-radius:50%; width:18px; height:18px; font-size:11px; cursor:pointer; }
-  .riga-stato { text-align:center; font-size:12px; color:#2b476b; opacity:.75; padding:6px 0 0; min-height:18px; }
-  @media (max-width:520px){ main{padding-bottom:160px;} }
+  .sotto { display:flex; align-items:center; justify-content:center; gap:10px; padding:7px 0 0; min-height:20px; }
+  .sotto select { border:none; background:var(--vetro-scuro); border-radius:9px; padding:3px 8px; font:inherit; font-size:12px; color:#2b476b; max-width:170px; }
+  .sotto .msg { font-size:12px; color:#2b476b; opacity:.8; }
+  @media (max-width:520px){ main{padding-bottom:172px;} }
 </style>
 </head>
 <body>
   <div class="alto">
     <span class="marchio" aria-label="IDEAX">
-      <svg viewBox="0 0 360 72" role="img"><g fill="none" stroke="#17365b" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M10 12v48 M53 60V12h18a24 24 0 0 1 0 48H53Z M158 12h-36v48h36 M122 36h28 M183 60l27-48 27 48 M194 43h32"/>
-        <path d="M266 12l49 48 M289 36l26-24 M266 60l16-16"/>
-        <path d="M340 26c0-10-5-15-15-15 10 0 15-5 15-15 0 10 5 15 15 15-10 0-15 5-15 15Z" transform="translate(0 7)" fill="#17365b" stroke="none"/>
-      </g></svg>
+      <svg viewBox="0 0 360 72" role="img"><g fill="none" stroke="#17365b" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12v48 M53 60V12h18a24 24 0 0 1 0 48H53Z M158 12h-36v48h36 M122 36h28 M183 60l27-48 27 48 M194 43h32"/><path d="M266 12l49 48 M289 36l26-24 M266 60l16-16"/><path d="M340 26c0-10-5-15-15-15 10 0 15-5 15-15 0 10 5 15 15 15-10 0-15 5-15 15Z" transform="translate(0 7)" fill="#17365b" stroke="none"/></g></svg>
     </span>
     <a class="rotella" href="/" title="Impostazioni, regia, motori, discussioni">⚙</a>
   </div>
 
   <main id="filo">
     <div class="benvenuto" id="benvenuto">
-      <svg viewBox="0 0 360 72" role="img" aria-label="IDEAX"><g fill="none" stroke="#17365b" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M10 12v48 M53 60V12h18a24 24 0 0 1 0 48H53Z M158 12h-36v48h36 M122 36h28 M183 60l27-48 27 48 M194 43h32"/>
-        <path d="M266 12l49 48 M289 36l26-24 M266 60l16-16"/>
-        <path d="M340 26c0-10-5-15-15-15 10 0 15-5 15-15 0 10 5 15 15 15-10 0-15 5-15 15Z" transform="translate(0 7)" fill="#17365b" stroke="none"/>
-      </g></svg>
+      <svg viewBox="0 0 360 72" role="img" aria-label="IDEAX"><g fill="none" stroke="#17365b" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12v48 M53 60V12h18a24 24 0 0 1 0 48H53Z M158 12h-36v48h36 M122 36h28 M183 60l27-48 27 48 M194 43h32"/><path d="M266 12l49 48 M289 36l26-24 M266 60l16-16"/><path d="M340 26c0-10-5-15-15-15 10 0 15-5 15-15 0 10 5 15 15 15-10 0-15 5-15 15Z" transform="translate(0 7)" fill="#17365b" stroke="none"/></g></svg>
       <p>Parlami o scrivi. Penso io a cosa serve.</p>
     </div>
   </main>
@@ -91,128 +88,142 @@
       <button class="tondo" id="voce" title="Risposta a voce (tocca per zittire)" aria-label="Risposta a voce">🔊</button>
       <button class="tondo invia" id="invia" title="Invia" aria-label="Invia comando">↑</button>
     </div>
-    <div class="riga-stato" id="stato"></div>
+    <div class="sotto">
+      <select id="voci" title="Voce con cui ti risponde"></select>
+      <span class="msg" id="stato"></span>
+    </div>
   </div>
 
 <script>
 const $ = (s) => document.querySelector(s);
 const filo = $('#filo'), ingresso = $('#ingresso'), stato = $('#stato'), anteprime = $('#anteprime');
 let chatId = null, allegati = [], vocePub = true, registra = null, occupato = false;
-let voceId = null;                 // la voce donna scelta per rispondere
-const parlante = new Audio();      // un solo elemento audio, così lo "sblocco" una volta e poi parla sempre
-let audioSbloccato = false;
+let voceId = null;
+const parlante = new Audio(); let audioSbloccato = false;
 
-// Il browser BLOCCA l'audio automatico finché non c'è un tuo gesto. Al primo tocco (invio o microfono) lo sblocco una
-// volta: faccio partire l'audio vuoto, e da lì in poi la voce può parlare da sola.
-function sbloccaAudio() { if (audioSbloccato) return; audioSbloccato = true; parlante.play().catch(()=>{}); parlante.pause(); }
+const esc = (t) => (t||'').replace(/[&<>]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const mmss = (ms) => { const s=Math.max(0,Math.floor(ms/1000)); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; };
+function aggiungi(html, cls) { $('#benvenuto')?.remove(); const d=document.createElement('div'); d.className=cls; d.innerHTML=html; filo.appendChild(d); filo.scrollTop=filo.scrollHeight; return d; }
+function leggiFile(f){ return new Promise((ok)=>{ const r=new FileReader(); r.onload=()=>ok({name:f.name,type:f.type,dataUrl:r.result}); r.readAsDataURL(f); }); }
+function disegnaAllegati(){ anteprime.innerHTML = allegati.map((a,i)=>`<span class="t">${a.type.startsWith('image')?`<img src="${a.dataUrl}">`:`<span class="chip">${esc(a.name)}</span>`}<button class="x" data-i="${i}">✕</button></span>`).join(''); }
 
-// Sceglie la voce con cui rispondere: una DONNA, e fra le donne una SINTETICA (Kokoro) che è molto più veloce di una
-// voce clonata. Se non trova una donna, usa la prima voce disponibile. Si fa una volta all'apertura.
-async function scegliVoce() {
+ingresso.addEventListener('input', ()=>{ ingresso.style.height='auto'; ingresso.style.height=Math.min(140,ingresso.scrollHeight)+'px'; });
+ingresso.addEventListener('keydown', (e)=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); invia(); } });
+$('#piu').onclick=()=>$('#file').click();
+$('#file').onchange=async(e)=>{ for(const f of e.target.files) allegati.push(await leggiFile(f)); disegnaAllegati(); e.target.value=''; };
+anteprime.onclick=(e)=>{ const i=e.target.dataset?.i; if(i!=null){ allegati.splice(+i,1); disegnaAllegati(); } };
+$('#voce').onclick=()=>{ vocePub=!vocePub; $('#voce').classList.toggle('muto',!vocePub); };
+$('#voci').onchange=()=>{ voceId=$('#voci').value||null; };
+
+// audio sbloccato al primo gesto, o il browser blocca la riproduzione automatica
+function sbloccaAudio(){ if(audioSbloccato) return; audioSbloccato=true; parlante.play().catch(()=>{}); parlante.pause(); }
+
+// riempie il menu delle voci e sceglie una DONNA (preferendo una sintetica, più veloce)
+async function caricaVoci(){
   try {
     const d = await (await fetch('/v1/voices')).json();
     const vs = d.voices || [];
-    const eDonna = (v) => /femmin|female|donna|\bf\b/i.test(v.gender||'') || /\b(af_|if_|bf_|bella|sarah|nicole|sky|aoede|kore|alice|donna|female)\b/i.test(`${v.name} ${v.origin||''}`);
-    const donne = vs.filter(eDonna);
-    const scelta = donne.find((v) => v.origin) || donne[0] || vs.find((v) => v.origin) || vs[0];
-    voceId = scelta?.id || scelta?.name || null;
-    if (!voceId) { $('#voce').classList.add('muto'); vocePub = false; }
-  } catch { /* lista voci non raggiungibile: la voce resta spenta, il testo c'è sempre */ }
+    if(!vs.length){ $('#voci').innerHTML='<option value="">nessuna voce — installa il motore Voce</option>'; vocePub=false; $('#voce').classList.add('muto'); return; }
+    const eDonna=(v)=>/femmin|female|donna|\bf\b/i.test(v.gender||'')||/\b(af_|if_|bf_|bella|sarah|nicole|sky|aoede|kore|alice|donna|female|maria|giulia|sofia|chiara)\b/i.test(`${v.name} ${v.origin||''}`);
+    const scelta = vs.filter(eDonna).find(v=>v.origin) || vs.filter(eDonna)[0] || vs.find(v=>v.origin) || vs[0];
+    voceId = scelta?.id || null;
+    $('#voci').innerHTML = vs.map(v=>`<option value="${esc(v.id)}" ${v.id===voceId?'selected':''}>🔊 ${esc(v.name)}${eDonna(v)?' (donna)':''}</option>`).join('');
+  } catch { $('#voci').innerHTML='<option value="">voci non raggiungibili</option>'; }
 }
-scegliVoce();
+caricaVoci();
 
-// ---- utilità ----
-const esc = (t) => (t||'').replace(/[&<>]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-function aggiungi(html, cls) { $('#benvenuto')?.remove(); const d = document.createElement('div'); d.className = cls; d.innerHTML = html; filo.appendChild(d); filo.scrollTop = filo.scrollHeight; return d; }
-function leggiFile(f) { return new Promise((ok) => { const r = new FileReader(); r.onload = () => ok({ name:f.name, type:f.type, dataUrl:r.result }); r.readAsDataURL(f); }); }
-function disegnaAllegati() { anteprime.innerHTML = allegati.map((a,i) => `<span class="t">${a.type.startsWith('image')?`<img src="${a.dataUrl}">`:`<span class="chip">${esc(a.name)}</span>`}<button class="x" data-i="${i}">✕</button></span>`).join(''); }
-
-// textarea che cresce
-ingresso.addEventListener('input', () => { ingresso.style.height='auto'; ingresso.style.height = Math.min(140, ingresso.scrollHeight)+'px'; });
-ingresso.addEventListener('keydown', (e) => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); invia(); } });
-
-// "+": media di riferimento
-$('#piu').onclick = () => $('#file').click();
-$('#file').onchange = async (e) => { for (const f of e.target.files) allegati.push(await leggiFile(f)); disegnaAllegati(); e.target.value=''; };
-anteprime.onclick = (e) => { const i = e.target.dataset?.i; if (i!=null) { allegati.splice(+i,1); disegnaAllegati(); } };
-
-// 🔊 risposta a voce on/off
-$('#voce').onclick = () => { vocePub = !vocePub; $('#voce').classList.toggle('muto', !vocePub); };
-
-// 🎙 parla → trascrivi → invia
-$('#mic').onclick = async () => {
+$('#mic').onclick=async()=>{
   sbloccaAudio();
-  if (registra) { registra.stop(); return; }
+  if(registra){ registra.stop(); return; }
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
-    const mr = new MediaRecorder(stream); const pezzi = [];
-    mr.ondataavailable = (ev) => pezzi.push(ev.data);
-    mr.onstop = async () => {
-      stream.getTracks().forEach((t)=>t.stop()); $('#mic').classList.remove('rec'); registra = null;
-      stato.textContent = 'Ti ascolto…';
-      const blob = new Blob(pezzi, { type:'audio/webm' });
-      const dataUrl = await new Promise((ok)=>{ const r=new FileReader(); r.onload=()=>ok(r.result); r.readAsDataURL(blob); });
-      try {
-        const r = await fetch('/v1/trascrivi', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ audio:dataUrl, lingua:'it' }) });
-        const d = await r.json(); stato.textContent='';
-        if (d.testo) { ingresso.value = d.testo.trim(); invia(); } else stato.textContent = 'Non ho capito, riprova.';
-      } catch { stato.textContent = 'Trascrizione non disponibile.'; }
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const mr=new MediaRecorder(stream); const pezzi=[];
+    mr.ondataavailable=(ev)=>pezzi.push(ev.data);
+    mr.onstop=async()=>{
+      stream.getTracks().forEach(t=>t.stop()); $('#mic').classList.remove('rec'); registra=null; stato.textContent='Ti ascolto…';
+      const blob=new Blob(pezzi,{type:'audio/webm'});
+      const dataUrl=await new Promise((ok)=>{ const r=new FileReader(); r.onload=()=>ok(r.result); r.readAsDataURL(blob); });
+      try { const r=await fetch('/v1/trascrivi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({audio:dataUrl,lingua:'it'})});
+        const d=await r.json(); stato.textContent='';
+        if(d.testo){ ingresso.value=d.testo.trim(); invia(); } else stato.textContent='Non ho capito, riprova.';
+      } catch { stato.textContent='Trascrizione non disponibile.'; }
     };
-    registra = mr; mr.start(); $('#mic').classList.add('rec'); stato.textContent = 'Parla… (tocca di nuovo per fermare)';
-  } catch { stato.textContent = 'Microfono non disponibile.'; }
+    registra=mr; mr.start(); $('#mic').classList.add('rec'); stato.textContent='Parla… (tocca di nuovo per fermare)';
+  } catch { stato.textContent='Microfono non disponibile.'; }
 };
 
-// risposta a voce: testo → /v1/audio/speech → riproduci
-async function parla(testo) {
-  if (!vocePub || !testo) return;
+async function parla(testo){
+  if(!vocePub||!testo) return;
   try {
-    const r = await fetch('/v1/audio/speech', { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ input: testo.slice(0,1000), voice: voceId || undefined, response_format:'mp3' }) });
-    if (!r.ok) { stato.textContent = 'La voce non è partita (motore Voce acceso?).'; return; }
-    parlante.src = URL.createObjectURL(await r.blob());
-    parlante.play().catch(() => { stato.textContent = 'Tocca lo schermo una volta e riprova: il browser chiede un gesto per la voce.'; });
-  } catch { stato.textContent = 'Voce non disponibile ora.'; }
+    const r=await fetch('/v1/audio/speech',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({input:testo.slice(0,1000),voice:voceId||undefined,response_format:'mp3'})});
+    if(!r.ok){ stato.textContent='La voce non è partita (motore Voce acceso?).'; return; }
+    parlante.src=URL.createObjectURL(await r.blob());
+    parlante.play().catch(()=>{ stato.textContent='Tocca lo schermo una volta: il browser chiede un gesto per la voce.'; });
+  } catch { stato.textContent='Voce non disponibile ora.'; }
 }
 
 // i media creati arrivano come "jobs": si seguono e si mostrano
-async function seguiLavoro(id) {
-  const box = aggiungi('<div class="pensa">Lo sto creando…</div>', 'media');
-  for (let i=0; i<600; i++) {
-    await new Promise((r)=>setTimeout(r, 1500));
-    let j; try { j = await (await fetch(`/v1/jobs/${id}`)).json(); } catch { continue; }
-    if (j.progress?.phase) box.innerHTML = `<div class="pensa">${esc(j.progress.phase)}${j.progress.total?` · ${j.progress.step}/${j.progress.total}`:''}</div>`;
-    if (j.status==='done') {
-      box.innerHTML = (j.results||[]).map((m)=> /^video\//.test(m.type)?`<video src="${m.url}" controls playsinline></video>` : /^audio\//.test(m.type)?`<audio src="${m.url}" controls></audio>` : `<img src="${m.url}">`).join('') || '<div class="pensa">Fatto.</div>';
-      filo.scrollTop = filo.scrollHeight; return;
-    }
-    if (j.status==='error' || j.status==='cancelled') { box.innerHTML = `<div class="pensa">Non è riuscito: ${esc(j.error||'errore')}</div>`; return; }
+async function seguiLavoro(id){
+  const box=aggiungi('<div class="pensa">Lo sto creando…</div>','media');
+  for(let i=0;i<800;i++){
+    await new Promise(r=>setTimeout(r,1500));
+    let j; try{ j=await (await fetch(`/v1/jobs/${id}`)).json(); }catch{ continue; }
+    if(j.progress?.phase) box.innerHTML=`<div class="pensa">${esc(j.progress.phase)}${j.progress.total?` · ${j.progress.step}/${j.progress.total}`:''}</div>`;
+    if(j.status==='done'){ box.innerHTML=(j.results||[]).map(m=>/^video\//.test(m.type)?`<video src="${m.url}" controls playsinline></video>`:/^audio\//.test(m.type)?`<audio src="${m.url}" controls></audio>`:`<img src="${m.url}">`).join('')||'<div class="pensa">Fatto.</div>'; filo.scrollTop=filo.scrollHeight; return; }
+    if(j.status==='error'||j.status==='cancelled'){ box.innerHTML=`<div class="pensa">Non è riuscito: ${esc(j.error||'errore')}</div>`; return; }
   }
 }
 
-// il cuore: parli → il cervello risponde → appare (e parla)
-async function invia() {
-  sbloccaAudio();
-  const testo = ingresso.value.trim();
-  if ((!testo && !allegati.length) || occupato) return;
-  occupato = true; $('#invia').disabled = true;
-  if (allegati.length) aggiungi(allegati.map((a)=> a.type.startsWith('image')?`<img src="${a.dataUrl}" style="width:60px;height:60px;object-fit:cover;border-radius:8px">`:`<span class="chip">${esc(a.name)}</span>`).join(''), 'allegati');
-  if (testo) aggiungi(esc(testo), 'bolla io');
-  const inviati = allegati.slice(); allegati = []; disegnaAllegati();
-  ingresso.value=''; ingresso.style.height='auto';
-  const pensando = aggiungi('<span class="pensa">…</span>', 'pensa');
-  try {
-    const r = await fetch('/v1/chat', { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ chat_id: chatId, message: testo, attachments: inviati }) });
-    const d = await r.json(); pensando.remove();
-    chatId = d.chat_id || chatId;
-    if (d.reply) { aggiungi(esc(d.reply), 'bolla lui'); parla(d.reply); }
-    for (const j of (d.jobs||[])) seguiLavoro(j.id);
-    if (!d.reply && !(d.jobs||[]).length) aggiungi('<span class="pensa">(nessuna risposta)</span>', 'pensa');
-  } catch (e) {
-    pensando.remove(); aggiungi('Non sono riuscito a rispondere: ' + esc(e.message), 'bolla lui');
-  } finally { occupato = false; $('#invia').disabled = false; ingresso.focus(); }
+async function assicuraChat(){
+  if(chatId) return chatId;
+  const c=await (await fetch('/v1/chats',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).json();
+  chatId=c.id; return chatId;
 }
-$('#invia').onclick = invia;
+
+// SEGUE la chat mentre lavora: timer, cosa sta facendo, la lista dei passi, il testo che cresce — come faccio io
+async function seguiChat(lavoro){
+  for(;;){
+    await new Promise(r=>setTimeout(r,420));
+    let c; try{ c=await (await fetch(`/v1/chats/${chatId}`)).json(); }catch{ continue; }
+    const p=c.pending;
+    if(p){
+      lavoro.querySelector('.tmr').textContent=mmss(Date.now()-(p.startedAt||Date.now()));
+      const passi=p.steps||[];
+      lavoro.querySelector('.ora').textContent=passi.length?passi[passi.length-1]:'Sto pensando…';
+      lavoro.querySelector('.passi').innerHTML=passi.map((s,i)=>`<li class="${i===passi.length-1?'vivo':''}">${esc(s)}</li>`).join('');
+      const parz=lavoro.querySelector('.parz'); parz.textContent=p.text||'';
+      filo.scrollTop=filo.scrollHeight;
+      continue;
+    }
+    // finito: l'ultima risposta dell'assistente è nei messaggi
+    const ultimo=[...(c.messages||[])].reverse().find(m=>m.role==='assistant');
+    lavoro.remove();
+    if(ultimo){
+      if(ultimo.content) { aggiungi(esc(ultimo.content),'bolla lui'); parla(ultimo.content); }
+      for(const id of (ultimo.jobs||[])) seguiLavoro(id);
+    } else aggiungi('<span class="pensa">(nessuna risposta)</span>','pensa');
+    return;
+  }
+}
+
+async function invia(){
+  sbloccaAudio();
+  const testo=ingresso.value.trim();
+  if((!testo && !allegati.length)||occupato) return;
+  occupato=true; $('#invia').disabled=true; stato.textContent='';
+  if(allegati.length) aggiungi(allegati.map(a=>a.type.startsWith('image')?`<img src="${a.dataUrl}" style="width:60px;height:60px;object-fit:cover;border-radius:8px">`:`<span class="chip">${esc(a.name)}</span>`).join(''),'allegati');
+  if(testo) aggiungi(esc(testo),'bolla io');
+  const inviati=allegati.slice(); allegati=[]; disegnaAllegati();
+  ingresso.value=''; ingresso.style.height='auto';
+  const lavoro=aggiungi('<div class="capo"><div class="spin"></div><span class="ora">Sto pensando…</span><span class="tmr">0:00</span></div><ol class="passi"></ol><div class="parz"></div>','lavoro');
+  try {
+    await assicuraChat();
+    await fetch(`/api/chats/${chatId}/messages`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:testo,attachments:inviati})});
+    await seguiChat(lavoro);
+  } catch(e){ lavoro.remove(); aggiungi('Non sono riuscito a rispondere: '+esc(e.message),'bolla lui'); }
+  finally { occupato=false; $('#invia').disabled=false; ingresso.focus(); }
+}
+$('#invia').onclick=invia;
 ingresso.focus();
 </script>
 </body>
