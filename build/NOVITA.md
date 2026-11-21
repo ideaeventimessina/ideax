@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.51.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.26.52.exe** e aprilo.
+
+## La voce della Regia ora è veloce (Kokoro diretto)
+- Prima il parlato usava Chatterbox, che per parlare **scaricava i 12 GB del modello immagini** dalla scheda e ci metteva 10 secondi. Ora la Regia legge **direttamente con Kokoro** (gira sulla CPU, non tocca la scheda video): risposta in un paio di secondi, e non rallenta nemmeno la generazione dopo.
+- Voce **femminile italiana (Sara)** di default; nel menu sotto la barra scegli fra le voci donna della libreria.
 
 ## Regia: vedi cosa fa mentre lavora (e scegli la voce)
 - Mentre ideax lavora, la Regia ora mostra **dal vivo**: un **timer**, cosa sta facendo ("Sto pensando…", "Cerco…", "Creo…"), la **lista dei passi** uno dopo l'altro (quello in corso gira), e la **risposta che cresce** man mano. Come seguire il lavoro passo per passo.

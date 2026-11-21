@@ -98,7 +98,7 @@
 const $ = (s) => document.querySelector(s);
 const filo = $('#filo'), ingresso = $('#ingresso'), stato = $('#stato'), anteprime = $('#anteprime');
 let chatId = null, allegati = [], vocePub = true, registra = null, occupato = false;
-let voceId = null;
+let voceId = 'if_sara';   // Sara, italiana, donna (Kokoro) — predefinita
 const parlante = new Audio(); let audioSbloccato = false;
 
 const esc = (t) => (t||'').replace(/[&<>]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
@@ -118,17 +118,15 @@ $('#voci').onchange=()=>{ voceId=$('#voci').value||null; };
 // audio sbloccato al primo gesto, o il browser blocca la riproduzione automatica
 function sbloccaAudio(){ if(audioSbloccato) return; audioSbloccato=true; parlante.play().catch(()=>{}); parlante.pause(); }
 
-// riempie il menu delle voci e sceglie una DONNA (preferendo una sintetica, più veloce)
+// il menu: le voci DONNA della libreria Kokoro (veloce), Sara italiana di default
 async function caricaVoci(){
   try {
-    const d = await (await fetch('/v1/voices')).json();
-    const vs = d.voices || [];
-    if(!vs.length){ $('#voci').innerHTML='<option value="">nessuna voce — installa il motore Voce</option>'; vocePub=false; $('#voce').classList.add('muto'); return; }
-    const eDonna=(v)=>/femmin|female|donna|\bf\b/i.test(v.gender||'')||/\b(af_|if_|bf_|bella|sarah|nicole|sky|aoede|kore|alice|donna|female|maria|giulia|sofia|chiara)\b/i.test(`${v.name} ${v.origin||''}`);
-    const scelta = vs.filter(eDonna).find(v=>v.origin) || vs.filter(eDonna)[0] || vs.find(v=>v.origin) || vs[0];
-    voceId = scelta?.id || null;
-    $('#voci').innerHTML = vs.map(v=>`<option value="${esc(v.id)}" ${v.id===voceId?'selected':''}>🔊 ${esc(v.name)}${eDonna(v)?' (donna)':''}</option>`).join('');
-  } catch { $('#voci').innerHTML='<option value="">voci non raggiungibili</option>'; }
+    const d = await (await fetch('/v1/audio/kokoro/voci')).json();
+    const vs = d.voci || [];
+    if(!vs.length){ $('#voci').innerHTML='<option value="if_sara">Sara (donna)</option>'; voceId='if_sara'; return; }
+    voceId = (vs.find(v=>v.key==='if_sara') || vs[0]).key;
+    $('#voci').innerHTML = vs.map(v=>`<option value="${esc(v.key)}" ${v.key===voceId?'selected':''}>🔊 ${esc(v.name)}${v.lang&&v.lang!=='it'?' · '+esc(v.lang):''}</option>`).join('');
+  } catch { $('#voci').innerHTML='<option value="if_sara">Sara (donna)</option>'; voceId='if_sara'; }
 }
 caricaVoci();
 
@@ -154,11 +152,13 @@ $('#mic').onclick=async()=>{
 
 async function parla(testo){
   if(!vocePub||!testo) return;
+  stato.textContent='🔊 preparo la voce…';
   try {
-    const r=await fetch('/v1/audio/speech',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({input:testo.slice(0,1000),voice:voceId||undefined,response_format:'mp3'})});
-    if(!r.ok){ stato.textContent='La voce non è partita (motore Voce acceso?).'; return; }
+    const r=await fetch('/v1/audio/kokoro',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({input:testo.slice(0,1000),voce:voceId||'if_sara',lingua:'it'})});
+    if(!r.ok){ stato.textContent='La voce non è partita.'; return; }
     parlante.src=URL.createObjectURL(await r.blob());
-    parlante.play().catch(()=>{ stato.textContent='Tocca lo schermo una volta: il browser chiede un gesto per la voce.'; });
+    stato.textContent='';
+    parlante.play().catch(()=>{ stato.textContent='Tocca lo schermo una volta per la voce.'; });
   } catch { stato.textContent='Voce non disponibile ora.'; }
 }
 

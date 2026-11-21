@@ -923,6 +923,17 @@ const server = http.createServer(async (req, res) => {
       return send(res, job.status === 'done' ? 200 : 500, out);
     }
     // Compatibile OpenAI TTS: client.audio.speech.create(model=…, voice="Marco", input=…)
+    // Parlato VELOCE per la Regia: Kokoro diretto (CPU, non scarica i 12 GB del worker immagini come Chatterbox).
+    if (p === '/v1/audio/kokoro/voci' && req.method === 'GET') return send(res, 200, { voci: voicelib.VOCI_REGIA });
+    if (p === '/v1/audio/kokoro' && req.method === 'POST') {
+      const b = await readJson(req);
+      try {
+        const wav = await voicelib.parla(b.input || '', { voce: b.voce, lingua: b.lingua });
+        if (!wav) return send(res, 400, { error: { message: 'niente da leggere' } });
+        res.writeHead(200, { 'Content-Type': 'audio/wav' });
+        return res.end(wav);
+      } catch (err) { return send(res, 500, { error: { message: err.message } }); }
+    }
     if (p === '/v1/audio/speech' && req.method === 'POST') {
       const body = await readJson(req);
       const fmt = body.response_format === 'wav' ? 'wav' : 'mp3';
