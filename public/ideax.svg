@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 72" role="img" aria-labelledby="title">
+  <title id="title">IDEAX</title>
+  <g fill="none" stroke="#fff" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 12v48 M53 60V12h18a24 24 0 0 1 0 48H53Z M158 12h-36v48h36 M122 36h28 M183 60l27-48 27 48 M194 43h32"/>
+    <path d="M266 12l49 48 M289 36l26-24 M266 60l16-16"/>
+    <path d="M340 26c0-10-5-15-15-15 10 0 15-5 15-15 0 10 5 15 15 15-10 0-15 5-15 15Z" transform="translate(0 7)" fill="#fff" stroke="none"/>
+  </g>
+</svg>

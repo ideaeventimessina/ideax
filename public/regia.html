@@ -7,115 +7,208 @@
 <title>IDEAX</title>
 <style>
   * { box-sizing: border-box; }
-  :root { --inchiostro:#142941; --vetro:rgba(255,255,255,.72); --vetro-scuro:rgba(20,41,65,.08); font-family:Inter,"Segoe UI",system-ui,sans-serif; }
-  html,body { height:100%; margin:0; }
-  body { color:var(--inchiostro); background:#cdd9ea url("/cielo.jpg") center/cover no-repeat fixed; display:flex; flex-direction:column; align-items:center; }
-  body::before { content:""; position:fixed; inset:0; background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.42) 60%, rgba(255,255,255,.66)); pointer-events:none; }
-  .alto { position:fixed; top:16px; width:100%; max-width:860px; display:flex; align-items:center; justify-content:space-between; padding:0 18px; z-index:3; }
-  .marchio svg { height:26px; filter:drop-shadow(0 1px 2px rgba(20,41,65,.25)); }
-  .rotella { width:40px; height:40px; border:none; border-radius:50%; background:var(--vetro); color:var(--inchiostro); font-size:18px; cursor:pointer; box-shadow:0 2px 10px rgba(20,41,65,.12); display:grid; place-items:center; text-decoration:none; }
-  .rotella:hover { background:#fff; }
-  main { position:relative; z-index:2; width:100%; max-width:720px; flex:1; min-height:0; display:flex; flex-direction:column; padding:84px 16px 162px; gap:14px; overflow-y:auto; }
-  /* Spaziatore: tiene i messaggi in basso quando sono pochi, ma quando riempiono lo schermo la cima resta
-     raggiungibile (justify-content:flex-end taglierebbe l'alto e la chat non si scrollerebbe). */
-  main#filo::before { content:""; margin-top:auto; }
-  .benvenuto { margin:auto; text-align:center; opacity:.92; }
-  .benvenuto svg { height:54px; margin-bottom:14px; filter:drop-shadow(0 2px 6px rgba(20,41,65,.25)); }
-  .benvenuto p { margin:0; font-size:17px; color:#2b476b; }
-  .bolla { max-width:88%; padding:12px 15px; border-radius:16px; line-height:1.5; box-shadow:0 2px 12px rgba(20,41,65,.08); white-space:pre-wrap; word-wrap:break-word; }
-  .io { align-self:flex-end; background:rgba(130,155,189,.92); color:#fff; border-bottom-right-radius:5px; }
-  .lui { align-self:flex-start; background:var(--vetro); border-bottom-left-radius:5px; backdrop-filter:blur(6px); }
-  .media { align-self:flex-start; max-width:88%; }
-  .media img, .media video { width:100%; border-radius:14px; box-shadow:0 4px 18px rgba(20,41,65,.18); display:block; }
-  .media audio { width:280px; }
-  .pensa { align-self:flex-start; font-size:14px; color:#2b476b; opacity:.85; }
-  .allegati { align-self:flex-end; display:flex; gap:6px; flex-wrap:wrap; }
-  .allegati .chip { background:var(--vetro); border-radius:10px; padding:4px 8px; font-size:12px; }
-
-  /* IL PANNELLO VIVO: cosa sta facendo, il timer, la lista dei passi, la risposta che cresce */
-  .lavoro { align-self:flex-start; max-width:92%; background:var(--vetro); backdrop-filter:blur(6px); border-radius:16px; border-bottom-left-radius:5px; padding:12px 15px; box-shadow:0 2px 12px rgba(20,41,65,.1); }
-  .lavoro .capo { display:flex; align-items:center; gap:9px; font-weight:600; color:#1c3a5e; }
-  .spin { width:16px; height:16px; border:2px solid rgba(20,41,65,.2); border-top-color:#4f7bb0; border-radius:50%; animation:gira .8s linear infinite; flex:none; }
-  @keyframes gira { to { transform:rotate(360deg); } }
-  .lavoro .tmr { margin-left:auto; font-variant-numeric:tabular-nums; font-size:13px; color:#51708f; font-weight:500; }
-  .lavoro .passi { margin:9px 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:3px; }
-  .lavoro .passi li { font-size:13.5px; color:#3a577a; padding-left:18px; position:relative; opacity:.75; }
-  .lavoro .passi li::before { content:"✓"; position:absolute; left:0; color:#5a8f5a; font-size:12px; }
-  .lavoro .passi li.vivo { opacity:1; color:#1c3a5e; font-weight:500; }
-  .lavoro .passi li.vivo::before { content:""; width:9px; height:9px; border:2px solid #4f7bb0; border-top-color:transparent; border-radius:50%; left:1px; top:3px; animation:gira .8s linear infinite; }
-  .lavoro .parz { margin-top:9px; font-size:14.5px; line-height:1.5; color:var(--inchiostro); white-space:pre-wrap; }
-
-  .barra { position:fixed; bottom:18px; z-index:3; width:100%; max-width:720px; padding:0 16px; }
-  .campo { display:flex; align-items:flex-end; gap:8px; background:var(--vetro); backdrop-filter:blur(10px); border-radius:22px; padding:8px 8px 8px 10px; box-shadow:0 8px 30px rgba(20,41,65,.18); }
-  .campo textarea { flex:1; border:none; background:transparent; resize:none; outline:none; font:inherit; color:var(--inchiostro); max-height:140px; padding:8px 4px; line-height:1.4; }
-  .campo textarea::placeholder { color:#5a79a0; }
-  .tondo { width:40px; height:40px; min-width:40px; border:none; border-radius:50%; cursor:pointer; font-size:18px; display:grid; place-items:center; background:var(--vetro-scuro); color:var(--inchiostro); transition:.15s; }
-  .tondo:hover { background:rgba(20,41,65,.16); }
-  .tondo.invia { background:#4f7bb0; color:#fff; } .tondo.invia:hover { background:#3f6a9d; }
-  .tondo.invia:disabled { opacity:.5; cursor:default; }
-  .tondo.rec { background:#d2544f; color:#fff; animation:pulsa 1.2s infinite; }
-  @keyframes pulsa { 0%,100%{box-shadow:0 0 0 0 rgba(210,84,79,.5)} 50%{box-shadow:0 0 0 8px rgba(210,84,79,0)} }
-  .tondo.muto { opacity:.4; }
-  .anteprime { display:flex; gap:6px; padding:6px 10px 0; flex-wrap:wrap; }
-  .anteprime .t { position:relative; }
-  .anteprime img { width:40px; height:40px; object-fit:cover; border-radius:8px; }
-  .anteprime .x { position:absolute; top:-6px; right:-6px; background:#142941; color:#fff; border:none; border-radius:50%; width:18px; height:18px; font-size:11px; cursor:pointer; }
-  .sotto { display:flex; align-items:center; justify-content:center; gap:10px; padding:7px 0 0; min-height:20px; }
-  .sotto select { border:none; background:var(--vetro-scuro); border-radius:9px; padding:3px 8px; font:inherit; font-size:12px; color:#2b476b; max-width:170px; }
-  .sotto .msg { font-size:12px; color:#2b476b; opacity:.8; }
-  @media (max-width:520px){ main{padding-bottom:172px;} }
+  :root {
+    --inchiostro: #142941;
+    --vetro: rgb(255 255 255 / 38%);
+    font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  }
+  body { margin: 0; color: var(--inchiostro); background: #829bbd; }
+  .world, .world > div { position: fixed; pointer-events: none; }
+  .world { inset: 0; overflow: hidden; isolation: isolate; }
+  .sky {
+    inset: -3%;
+    background: url("/cielo.jpg") center / cover no-repeat,
+      linear-gradient(165deg,#6285b4,#a6bed8 45%,#ffe7bf 66%,#d7e6f5 84%,white);
+    animation: drift 34s ease-in-out infinite alternate;
+  }
+  .mist {
+    inset: 55% -14% -20%;
+    background: radial-gradient(ellipse at 20% 48%,#fff9,transparent 53%),
+                radial-gradient(ellipse at 82% 63%,#f2f5ffb5,transparent 53%);
+    filter: blur(34px);
+    animation: drift 21s ease-in-out infinite alternate-reverse;
+  }
+  .sun {
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 66%,#fff9 0%,#ffedbd54 13%,transparent 42%),
+                conic-gradient(from 235deg at 50% 66%,transparent 40deg,#fff3 54deg,transparent 70deg,#fff2 96deg,transparent 110deg,#ffeccc42 144deg,transparent 158deg);
+    mix-blend-mode: screen;
+    filter: blur(10px);
+    animation: bloom 11s ease-in-out infinite alternate;
+  }
+  .shade { inset: 0; background: radial-gradient(ellipse at center,#2145753d,transparent 53%); }
+  main { min-height: 100svh; position: relative; margin-inline: auto; width: min(560px, calc(100% - 40px)); }
+  .scena { padding: max(48px, calc(50svh - clamp(23px, 6vw, 34px))) 0 24px; }
+  h1 { margin: 0; display: flex; justify-content: center; }
+  .logo {
+    display: block; height: auto; width: clamp(230px, 60vw, 340px); max-width: 100%;
+    filter: drop-shadow(0 0 15px #fff8) drop-shadow(0 2px 14px #193d68a0);
+    animation: breathe 8s ease-in-out infinite;
+  }
+  .filo {
+    min-height: clamp(68px, 12vh, 114px);
+    max-height: max(140px, 32svh);
+    overflow: auto; scrollbar-width: thin;
+    display: flex; flex-direction: column; justify-content: safe center;
+  }
+  .turno { min-width: 0; padding: 10px 8px; text-align: center; overflow-wrap: anywhere; }
+  .turno:empty { display: none; }
+  .turno > * + * { margin-top: 9px; }
+  .filo .io, .filo .allegati { display: none; }
+  .risposta, .parz {
+    white-space: pre-wrap; line-height: 1.55; font-size: clamp(.95rem, 2.4vw, 1.12rem);
+    text-shadow: 0 0 8px #fff, 0 0 16px #fff, 0 0 24px #fff;
+  }
+  .risposta, .parz:not(:empty), .media { animation: emerge 1.45s cubic-bezier(.2,.7,.2,1) both; }
+  .capo { display: flex; justify-content: center; align-items: center; gap: 8px; font-size: .88rem; }
+  .spin { width: 14px; height: 14px; flex: none; border: 2px solid #24416330; border-top-color: #244163; border-radius: 50%; animation: gira .8s linear infinite; }
+  @keyframes gira { to { transform: rotate(360deg); } }
+  .tmr { font-variant-numeric: tabular-nums; }
+  .passi { list-style: none; padding: 0; margin: 6px 0; font-size: .8rem; }
+  .passi:empty { display: none; }
+  .pensa { font-size: .88rem; }
+  .media img, .media video { display: block; max-width: 100%; max-height: 230px; margin: 8px auto; border-radius: 12px; }
+  .media audio { max-width: 100%; }
+  .barra { position: relative; }
+  .campo {
+    position: relative; display: flex; align-items: flex-end; min-height: 66px; gap: 4px;
+    padding: 10px 12px 10px 20px; border-radius: 24px; border: 1px solid #ffffffe0;
+    background: rgb(255 255 255 / 20%);
+    -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+    box-shadow: inset 0 1px 1px #fff9, 0 10px 40px #26496526;
+    transition: border-color .45s, box-shadow .45s, background .45s;
+  }
+  .campo:focus-within, .campo:has(textarea:not(:placeholder-shown)) {
+    border-color: #fff1c8; background: rgb(255 253 243 / 28%);
+    box-shadow: inset 0 0 18px #fff5d88c, 0 0 0 2px #a96d2b65, 0 0 35px #ffe0a9c4;
+  }
+  .campo textarea {
+    flex: 1; min-width: 0; border: 0; outline: 0; resize: none; background: transparent;
+    font: inherit; font-weight: 350; letter-spacing: .04em; color: inherit;
+    min-height: 44px; max-height: 140px; padding: 11px 0; line-height: 22px; box-sizing: border-box;
+  }
+  .campo textarea::placeholder { color: #34475f; }
+  .tondo {
+    flex: none; min-width: 34px; height: 44px; border: 0; border-radius: 12px;
+    background: transparent; color: inherit; font: inherit; cursor: pointer;
+  }
+  .tondo:hover, summary:hover { background: #fff6; }
+  .tondo:disabled { opacity: .4; cursor: default; }
+  .tondo.muto { opacity: .55; }
+  .tondo.rec { background: #ffdbcd; }
+  .sotto { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px 12px; padding-top: 8px; font-size: .8rem; }
+  .sotto select { font: inherit; max-width: 150px; }
+  .opzioni > div { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 5px; }
+  summary { cursor: pointer; border-radius: 8px; padding: 4px 6px; }
+  .console { position: absolute; top: 12px; right: 0; color: #fff; padding: 8px; font-size: .8rem; }
+  .cronologia { margin: 10px auto 0; width: min(100%, 420px); font-size: .85rem; }
+  .cronologia[open] { background: var(--vetro); border-radius: 12px; }
+  .cronologia .turno + .turno { border-top: 1px solid #ffffff80; }
+  .anteprime, .allegati { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .anteprime:not(:empty) { padding: 0 10px 8px; }
+  .anteprime img, .allegati img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; }
+  .anteprime .t { display: flex; align-items: center; gap: 4px; max-width: 100%; overflow-wrap: anywhere; }
+  .anteprime .x { background: #fff6; color: inherit; border: 0; border-radius: 50%; width: 24px; height: 24px; flex: none; cursor: pointer; }
+  .dust { position: absolute; inset: -33px -10px; pointer-events: none; }
+  .dust i {
+    position: absolute; top: var(--y); left: var(--x); width: var(--size); height: var(--size);
+    border-radius: 50%; background: #fff8e4; box-shadow: 0 0 8px 2px #ffe3a2a0;
+    animation: float var(--time) ease-in-out var(--delay) infinite alternate;
+  }
+  @keyframes drift { to { transform: translate3d(1.8%, -1.2%, 0) scale(1.045); } }
+  @keyframes bloom { from { opacity: .46; } to { opacity: .94; } }
+  @keyframes breathe { 50% { transform: scale(1.025); filter: drop-shadow(0 0 24px #fffd) drop-shadow(0 2px 14px #193d6890); } }
+  @keyframes float { from { opacity: .16; transform: translateY(8px); } to { opacity: .85; transform: translate(9px,-14px); } }
+  @keyframes emerge { from { opacity: 0; filter: blur(12px); transform: translateY(9px); } to { opacity: 1; filter: blur(0); transform: translateY(0); } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
 </style>
 </head>
 <body>
-  <div class="alto">
-    <span class="marchio" aria-label="IDEAX">
-      <svg viewBox="0 0 360 72" role="img"><g fill="none" stroke="#17365b" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12v48 M53 60V12h18a24 24 0 0 1 0 48H53Z M158 12h-36v48h36 M122 36h28 M183 60l27-48 27 48 M194 43h32"/><path d="M266 12l49 48 M289 36l26-24 M266 60l16-16"/><path d="M340 26c0-10-5-15-15-15 10 0 15-5 15-15 0 10 5 15 15 15-10 0-15 5-15 15Z" transform="translate(0 7)" fill="#17365b" stroke="none"/></g></svg>
-    </span>
-    <a class="rotella" href="/" title="Impostazioni, regia, motori, discussioni">⚙</a>
+<div class="world" aria-hidden="true"><div class="sky"></div><div class="sun"></div><div class="mist"></div><div class="shade"></div></div>
+<main>
+  <a class="console" href="/">Console</a>
+  <div class="scena">
+    <h1><img class="logo" src="/ideax.svg" alt="IDEAX" width="340" height="68"></h1>
+    <div class="filo" id="filo" role="region" aria-label="Risposta corrente" tabindex="0"></div>
+    <form class="barra" id="portale">
+      <div class="anteprime" id="anteprime"></div>
+      <div class="dust" aria-hidden="true"></div>
+      <div class="campo">
+        <textarea id="ingresso" rows="1" placeholder="Scrivi un comando…" aria-label="Comando per IDEAX" enterkeyhint="send"></textarea>
+        <button class="tondo" id="invia" type="submit" aria-label="Invia comando">↵</button>
+      </div>
+      <div class="sotto">
+        <details class="opzioni">
+          <summary>Voce e allegati</summary>
+          <div>
+            <button class="tondo" id="piu" type="button" aria-label="Aggiungi allegati">＋</button>
+            <input type="file" id="file" accept="image/*,video/*,audio/*" multiple hidden>
+            <button class="tondo" id="mic" type="button" aria-label="Parla">🎙</button>
+            <button class="tondo" id="voce" type="button" aria-label="Risposta a voce" aria-pressed="true">🔊</button>
+            <select id="voci" aria-label="Scegli la voce"></select>
+          </div>
+        </details>
+        <span id="stato" role="status"></span>
+      </div>
+    </form>
+    <details class="cronologia" id="cronologia" hidden>
+      <summary>Cronologia</summary>
+      <div id="precedenti"></div>
+    </details>
   </div>
-
-  <main id="filo">
-    <div class="benvenuto" id="benvenuto">
-      <svg viewBox="0 0 360 72" role="img" aria-label="IDEAX"><g fill="none" stroke="#17365b" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12v48 M53 60V12h18a24 24 0 0 1 0 48H53Z M158 12h-36v48h36 M122 36h28 M183 60l27-48 27 48 M194 43h32"/><path d="M266 12l49 48 M289 36l26-24 M266 60l16-16"/><path d="M340 26c0-10-5-15-15-15 10 0 15-5 15-15 0 10 5 15 15 15-10 0-15 5-15 15Z" transform="translate(0 7)" fill="#17365b" stroke="none"/></g></svg>
-      <p>Parlami o scrivi. Penso io a cosa serve.</p>
-    </div>
-  </main>
-
-  <div class="barra">
-    <div class="anteprime" id="anteprime"></div>
-    <div class="campo">
-      <button class="tondo" id="piu" title="Aggiungi una foto/video di riferimento" aria-label="Aggiungi media">＋</button>
-      <input type="file" id="file" accept="image/*,video/*,audio/*" multiple hidden>
-      <textarea id="ingresso" rows="1" placeholder="Scrivi un comando…" aria-label="Comando per IDEAX"></textarea>
-      <button class="tondo" id="mic" title="Parla" aria-label="Parla">🎙</button>
-      <button class="tondo" id="voce" title="Risposta a voce (tocca per zittire)" aria-label="Risposta a voce">🔊</button>
-      <button class="tondo invia" id="invia" title="Invia" aria-label="Invia comando">↑</button>
-    </div>
-    <div class="sotto">
-      <select id="voci" title="Voce con cui ti risponde"></select>
-      <span class="msg" id="stato"></span>
-    </div>
-  </div>
+</main>
 
 <script>
 const $ = (s) => document.querySelector(s);
 const filo = $('#filo'), ingresso = $('#ingresso'), stato = $('#stato'), anteprime = $('#anteprime');
+const dust = $('.dust');
+for (let index = 0; index < 18; index++) {
+  const mote = document.createElement('i');
+  mote.style.setProperty('--x', ((index * 37 + 7) % 100) + '%');
+  mote.style.setProperty('--y', ((index * 41 + 11) % 100) + '%');
+  mote.style.setProperty('--size', (1.5 + index % 3) + 'px');
+  mote.style.setProperty('--time', (5 + index % 7) + 's');
+  mote.style.setProperty('--delay', '-' + (index % 6) + 's');
+  dust.append(mote);
+}
+
 let chatId = null, allegati = [], vocePub = true, registra = null, occupato = false;
 let voceId = 'if_sara';   // Sara, italiana, donna (Kokoro) — predefinita
 const parlante = new Audio(); let audioSbloccato = false;
 
 const esc = (t) => (t||'').replace(/[&<>]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const mmss = (ms) => { const s=Math.max(0,Math.floor(ms/1000)); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; };
-function aggiungi(html, cls) { $('#benvenuto')?.remove(); const d=document.createElement('div'); d.className=cls; d.innerHTML=html; filo.appendChild(d); filo.scrollTop=filo.scrollHeight; return d; }
+function aggiungi(turno, html, cls) {
+  const elemento = document.createElement('div');
+  elemento.className = cls;
+  elemento.innerHTML = html;
+  turno.append(elemento);
+  return elemento;
+}
+
+function nuovoTurno() {
+  if (filo.firstElementChild) {
+    $('#precedenti').prepend(filo.firstElementChild);
+    $('#cronologia').hidden = false;
+  }
+  const turno = document.createElement('div');
+  turno.className = 'turno';
+  filo.append(turno);
+  filo.scrollTop = 0;
+  return turno;
+}
+
 function leggiFile(f){ return new Promise((ok)=>{ const r=new FileReader(); r.onload=()=>ok({name:f.name,type:f.type,dataUrl:r.result}); r.readAsDataURL(f); }); }
-function disegnaAllegati(){ anteprime.innerHTML = allegati.map((a,i)=>`<span class="t">${a.type.startsWith('image')?`<img src="${a.dataUrl}">`:`<span class="chip">${esc(a.name)}</span>`}<button class="x" data-i="${i}">✕</button></span>`).join(''); }
+function disegnaAllegati(){ anteprime.innerHTML = allegati.map((a,i)=>`<span class="t">${a.type.startsWith('image')?`<img src="${a.dataUrl}">`:`<span class="chip">${esc(a.name)}</span>`}<button class="x" type="button" aria-label="Rimuovi allegato" data-i="${i}">✕</button></span>`).join(''); }
 
 ingresso.addEventListener('input', ()=>{ ingresso.style.height='auto'; ingresso.style.height=Math.min(140,ingresso.scrollHeight)+'px'; });
-ingresso.addEventListener('keydown', (e)=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); invia(); } });
+ingresso.addEventListener('keydown', (e)=>{ if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); $('#portale').requestSubmit(); } });
 $('#piu').onclick=()=>$('#file').click();
 $('#file').onchange=async(e)=>{ for(const f of e.target.files) allegati.push(await leggiFile(f)); disegnaAllegati(); e.target.value=''; };
 anteprime.onclick=(e)=>{ const i=e.target.dataset?.i; if(i!=null){ allegati.splice(+i,1); disegnaAllegati(); } };
-$('#voce').onclick=()=>{ vocePub=!vocePub; $('#voce').classList.toggle('muto',!vocePub); };
+$('#voce').onclick=()=>{ vocePub=!vocePub; $('#voce').classList.toggle('muto',!vocePub); $('#voce').setAttribute('aria-pressed', String(vocePub)); };
 $('#voci').onchange=()=>{ voceId=$('#voci').value||null; };
 
 // audio sbloccato al primo gesto, o il browser blocca la riproduzione automatica
@@ -166,28 +259,45 @@ async function parla(testo){
 }
 
 // i media creati arrivano come "jobs": si seguono e si mostrano
-async function seguiLavoro(id){
-  const box=aggiungi('<div class="pensa">Lo sto creando…</div>','media');
+async function seguiLavoro(turno, id){
+  const box=aggiungi(turno, '<div class="pensa">Lo sto creando…</div>','media');
   for(let i=0;i<800;i++){
     await new Promise(r=>setTimeout(r,1500));
     let j; try{ j=await (await fetch(`/v1/jobs/${id}`)).json(); }catch{ continue; }
     if(j.progress?.phase) box.innerHTML=`<div class="pensa">${esc(j.progress.phase)}${j.progress.total?` · ${j.progress.step}/${j.progress.total}`:''}</div>`;
-    if(j.status==='done'){ box.innerHTML=(j.results||[]).map(m=>/^video\//.test(m.type)?`<video src="${m.url}" controls playsinline></video>`:/^audio\//.test(m.type)?`<audio src="${m.url}" controls></audio>`:`<img src="${m.url}">`).join('')||'<div class="pensa">Fatto.</div>'; filo.scrollTop=filo.scrollHeight; return; }
+    if(j.status==='done'){ box.innerHTML=(j.results||[]).map(m=>/^video\//.test(m.type)?`<video src="${m.url}" controls playsinline></video>`:/^audio\//.test(m.type)?`<audio src="${m.url}" controls></audio>`:`<img src="${m.url}">`).join('')||'<div class="pensa">Fatto.</div>'; return; }
     if(j.status==='error'||j.status==='cancelled'){ box.innerHTML=`<div class="pensa">Non è riuscito: ${esc(j.error||'errore')}</div>`; return; }
   }
 }
 
 async function assicuraChat(){
   if(chatId) return chatId;
-  const c=await (await fetch('/v1/chats',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).json();
+  const c=await richiesta('/v1/chats',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
   chatId=c.id; return chatId;
 }
 
+async function richiesta(url, options) {
+  const response = await fetch(url, { ...options, signal: AbortSignal.timeout(15000) });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(typeof body.error === 'string' ? body.error : `Errore HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
 // SEGUE la chat mentre lavora: timer, cosa sta facendo, la lista dei passi, il testo che cresce — come faccio io
-async function seguiChat(lavoro){
+async function seguiChat(turno, lavoro, messaggioId){
+  let errori = 0;
   for(;;){
     await new Promise(r=>setTimeout(r,420));
-    let c; try{ c=await (await fetch(`/v1/chats/${chatId}`)).json(); }catch{ continue; }
+    let c;
+    try {
+      c = await richiesta(`/v1/chats/${chatId}`);
+      errori = 0;
+    } catch (errore) {
+      if (++errori >= 3) throw errore;
+      continue;
+    }
     const p=c.pending;
     if(p){
       lavoro.querySelector('.tmr').textContent=mmss(Date.now()-(p.startedAt||Date.now()));
@@ -195,39 +305,44 @@ async function seguiChat(lavoro){
       lavoro.querySelector('.ora').textContent=passi.length?passi[passi.length-1]:'Sto pensando…';
       lavoro.querySelector('.passi').innerHTML=passi.map((s,i)=>`<li class="${i===passi.length-1?'vivo':''}">${esc(s)}</li>`).join('');
       const parz=lavoro.querySelector('.parz'); parz.textContent=p.text||'';
-      filo.scrollTop=filo.scrollHeight;
+
       continue;
     }
-    // finito: l'ultima risposta dell'assistente è nei messaggi
-    const ultimo=[...(c.messages||[])].reverse().find(m=>m.role==='assistant');
+    const messaggi = c.messages || [];
+    const inviato = messaggi.findIndex(m => m.id === messaggioId);
+    const ultimo = inviato < 0 ? null : messaggi.slice(inviato + 1).find(m => m.role === 'assistant');
     lavoro.remove();
     if(ultimo){
-      if(ultimo.content) { aggiungi(esc(ultimo.content),'bolla lui'); parla(ultimo.content); }
-      for(const id of (ultimo.jobs||[])) seguiLavoro(id);
-      if(ultimo.potenziamento) seguiPotenziamento(ultimo.potenziamento);
-    } else aggiungi('<span class="pensa">(nessuna risposta)</span>','pensa');
+      if(ultimo.content) {
+        const risposta = aggiungi(turno, esc(ultimo.content), 'risposta');
+        risposta.setAttribute('role', 'status');
+        parla(ultimo.content);
+      }
+      for(const id of (ultimo.jobs||[])) seguiLavoro(turno, id);
+      if(ultimo.potenziamento) seguiPotenziamento(turno, ultimo.potenziamento);
+    } else aggiungi(turno, '<span class="pensa">(nessuna risposta)</span>','pensa');
     return;
   }
 }
 
 // AUTOPOTENZIAMENTO: ideax sta imparando una capacità che non aveva. Studio dal vivo, poi UN tocco di conferma
 // (il cancello), poi "mi sono aggiornato" e i risultati. Niente riavvio: la capacità si attiva a caldo.
-async function seguiPotenziamento(id){
-  const box=aggiungi('<div class="capo"><div class="spin"></div><span class="ora">Studio e mi aggiorno…</span></div><ol class="passi"></ol>','lavoro');
-  const disegna=(s)=>{ const log=s.log||[]; box.querySelector('.ora').textContent=log.length?log[log.length-1].msg:'Studio…'; box.querySelector('.passi').innerHTML=log.slice(-6).map((l,i,a)=>`<li class="${i===a.length-1?'vivo':''}">${esc(l.msg)}</li>`).join(''); filo.scrollTop=filo.scrollHeight; };
+async function seguiPotenziamento(turno, id){
+  const box=aggiungi(turno, '<div class="capo"><div class="spin"></div><span class="ora">Studio e mi aggiorno…</span></div><ol class="passi"></ol>','lavoro');
+  const disegna=(s)=>{ const log=s.log||[]; box.querySelector('.ora').textContent=log.length?log[log.length-1].msg:'Studio…'; box.querySelector('.passi').innerHTML=log.slice(-6).map((l,i,a)=>`<li class="${i===a.length-1?'vivo':''}">${esc(l.msg)}</li>`).join(''); };
   for(let i=0;i<900;i++){
     await new Promise(r=>setTimeout(r,1000));
     let s; try{ s=await (await fetch(`/api/autopotenzia/${id}`)).json(); }catch{ continue; }
     disegna(s);
-    if(s.stato==='errore'){ box.remove(); aggiungi('Non sono riuscito ad aggiornarmi: '+esc(s.errore||'errore'),'bolla lui'); return; }
+    if(s.stato==='errore'){ box.remove(); aggiungi(turno, 'Non sono riuscito ad aggiornarmi: '+esc(s.errore||'errore'),'risposta'); return; }
     if(s.stato==='rifiutato'){ box.remove(); return; }
     if(s.stato==='pronto'){
       box.remove();
       const nm=s.skill?.nome||'questa capacità';
-      const card=aggiungi(`<div style="font-weight:600;color:#1c3a5e">Ho preparato una capacità nuova: ${esc(nm)}</div><div style="font-size:14px;color:#3a577a;margin:4px 0 10px">${esc(s.skill?.descrizione||'')}</div><div class="row"><button class="attiva" style="background:#2f6fb0;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-weight:600;cursor:pointer">Attiva e vai</button><button class="nolla" style="background:transparent;color:#51708f;border:none;padding:9px 12px;cursor:pointer">No, grazie</button></div>`,'bolla lui');
+      const card=aggiungi(turno, `<div style="font-weight:600;color:#1c3a5e">Ho preparato una capacità nuova: ${esc(nm)}</div><div style="font-size:14px;color:#3a577a;margin:4px 0 10px">${esc(s.skill?.descrizione||'')}</div><div class="row"><button class="attiva" style="background:#2f6fb0;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-weight:600;cursor:pointer">Attiva e vai</button><button class="nolla" style="background:transparent;color:#51708f;border:none;padding:9px 12px;cursor:pointer">No, grazie</button></div>`,'risposta');
       parla(`Mi sono preparato per ${nm}. La attivo?`);
       await new Promise((risolvi)=>{
-        card.querySelector('.attiva').onclick=async()=>{ card.remove(); await attivaPotenziamento(id); risolvi(); };
+        card.querySelector('.attiva').onclick=async()=>{ card.remove(); await attivaPotenziamento(turno, id); risolvi(); };
         card.querySelector('.nolla').onclick=async()=>{ card.remove(); try{ await fetch(`/api/autopotenzia/${id}/conferma`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{"ok":false}'}); }catch{} risolvi(); };
       });
       return;
@@ -235,13 +350,13 @@ async function seguiPotenziamento(id){
   }
 }
 
-async function attivaPotenziamento(id){
-  const box=aggiungi('<div class="capo"><div class="spin"></div><span class="ora">Mi sto aggiornando…</span></div>','lavoro');
-  let s; try{ s=await (await fetch(`/api/autopotenzia/${id}/conferma`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{"ok":true}'})).json(); }catch(e){ box.remove(); aggiungi('Attivazione non riuscita: '+esc(e.message),'bolla lui'); return; }
+async function attivaPotenziamento(turno, id){
+  const box=aggiungi(turno, '<div class="capo"><div class="spin"></div><span class="ora">Mi sto aggiornando…</span></div>','lavoro');
+  let s; try{ s=await (await fetch(`/api/autopotenzia/${id}/conferma`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{"ok":true}'})).json(); }catch(e){ box.remove(); aggiungi(turno, 'Attivazione non riuscita: '+esc(e.message),'risposta'); return; }
   box.remove();
   const nm=s.skill?.nome||'la nuova capacità';
   const testa=`Mi sono aggiornato: ora posso usare «${esc(nm)}».`;
-  aggiungi(`<div style="font-weight:600;color:#1c3a5e">${testa}</div>${s.risultato?`<div class="parz" style="margin-top:6px">${esc(s.risultato)}</div>`:''}`,'bolla lui');
+  aggiungi(turno, `<div style="font-weight:600;color:#1c3a5e">${testa}</div>${s.risultato?`<div class="parz" style="margin-top:6px">${esc(s.risultato)}</div>`:''}`,'risposta');
   parla('Mi sono aggiornato. '+(s.risultato?String(s.risultato).slice(0,400):'Fatto.'));
 }
 
@@ -250,20 +365,22 @@ async function invia(){
   const testo=ingresso.value.trim();
   if((!testo && !allegati.length)||occupato) return;
   occupato=true; $('#invia').disabled=true; stato.textContent='';
-  if(allegati.length) aggiungi(allegati.map(a=>a.type.startsWith('image')?`<img src="${a.dataUrl}" style="width:60px;height:60px;object-fit:cover;border-radius:8px">`:`<span class="chip">${esc(a.name)}</span>`).join(''),'allegati');
-  if(testo) aggiungi(esc(testo),'bolla io');
+  const turno = nuovoTurno();
+  if(allegati.length) aggiungi(turno, allegati.map(a=>a.type.startsWith('image')?`<img src="${a.dataUrl}" style="width:60px;height:60px;object-fit:cover;border-radius:8px">`:`<span class="chip">${esc(a.name)}</span>`).join(''),'allegati');
+  if(testo) aggiungi(turno, esc(testo),'io');
   const inviati=allegati.slice(); allegati=[]; disegnaAllegati();
   ingresso.value=''; ingresso.style.height='auto';
-  const lavoro=aggiungi('<div class="capo"><div class="spin"></div><span class="ora">Sto pensando…</span><span class="tmr">0:00</span></div><ol class="passi"></ol><div class="parz"></div>','lavoro');
+  const lavoro=aggiungi(turno, '<div class="capo"><div class="spin"></div><span class="ora">Sto pensando…</span><span class="tmr">0:00</span></div><ol class="passi"></ol><div class="parz"></div>','lavoro');
   try {
     await assicuraChat();
-    await fetch(`/api/chats/${chatId}/messages`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:testo,attachments:inviati})});
-    await seguiChat(lavoro);
-  } catch(e){ lavoro.remove(); aggiungi('Non sono riuscito a rispondere: '+esc(e.message),'bolla lui'); }
+    const chat = await richiesta(`/api/chats/${chatId}/messages`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:testo,attachments:inviati})});
+    const messaggio = [...(chat.messages || [])].reverse().find(m => m.role === 'user');
+    if (!messaggio?.id) throw new Error('Il server non ha confermato il comando.');
+    await seguiChat(turno, lavoro, messaggio.id);
+  } catch(e){ lavoro.remove(); aggiungi(turno, 'Non sono riuscito a rispondere: '+esc(e.message),'risposta'); }
   finally { occupato=false; $('#invia').disabled=false; ingresso.focus(); }
 }
-$('#invia').onclick=invia;
-ingresso.focus();
+$('#portale').addEventListener('submit', (event) => { event.preventDefault(); invia(); });
 </script>
 </body>
 </html>
