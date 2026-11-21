@@ -317,6 +317,21 @@ def load_base(spec: ModelSpec):
             pipe.vae.config.force_upcast = True
         except Exception:  # noqa: BLE001
             pass
+    # DIAGNOSI del rumore: una riga che dice, per OGNI caricamento, con cosa stiamo generando. Se un'immagine esce
+    # rumorosa, questa riga nel log del motore dice subito quale percorso ha fallito (dtype fp16 invece di bf16? VAE
+    # non sostituito? force_upcast non preso?), senza doverlo indovinare. Costa niente ed è la differenza fra un
+    # difetto che si ripara in un minuto e uno che si insegue per ore.
+    try:
+        dt = str(getattr(pipe, "dtype", "?")).replace("torch.", "")
+        vae_dt = str(getattr(getattr(pipe, "vae", None), "dtype", "?")).replace("torch.", "")
+        upc = getattr(getattr(getattr(pipe, "vae", None), "config", None), "force_upcast", "?")
+        diag = f"pipe={type(pipe).__name__} arch={spec.arch} dtype={dt} vae_dtype={vae_dt} force_upcast={upc}"
+        _loaded["diag"] = diag
+        print(f"[ideax] DIAGNOSI generazione · {diag}", flush=True)
+        if "XL" in type(pipe).__name__ and dt == "float16" and upc is not True:
+            print("[ideax] ATTENZIONE: SDXL in fp16 SENZA force_upcast → rischio RUMORE. Segnala questa riga.", flush=True)
+    except Exception as err:  # noqa: BLE001
+        print(f"[ideax] diagnosi non riuscita: {err}", flush=True)
     _loaded.update(key=spec.path, pipe=pipe, derived={})
     return pipe
 

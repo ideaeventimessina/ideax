@@ -1,5 +1,11 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.2.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.3.exe** e aprilo.
+
+## Velocità: la chat non ricarica più il cervello per una battuta
+- Con "nessun filtro" attivo, per scrivere ideax provava **per primo il cervello scrittore** — spesso un modello DIVERSO da quello già acceso: `llama-server` lo **ricaricava da zero** (~5 GB), decine di secondi, anche per una barzelletta. Ora usa **prima il cervello già acceso** e passa allo scrittore **solo se il principale rifiuta** davvero. Le risposte normali sono molto più rapide.
+
+## Rumore nel generatore immagini: ora si DIAGNOSTICA in una riga
+- Il motore ha già quattro difese contro il rumore colorato di SDXL (bf16 dove la scheda lo regge, VAE "fp16-safe", force_upcast, niente ripiego silenzioso sulle cartelle). Se il rumore resta, è un **percorso preciso**: ora a ogni caricamento il log del motore scrive una riga **DIAGNOSI** con modello, dtype e stato del VAE, e **urla** se trova la combinazione a rischio (SDXL in fp16 senza force_upcast). Così si ripara la causa, invece di inseguirla.
 
 ## Regia: la chat ora SCORRE, e le risposte brevi restano brevi
 - **La chat non si scrollava**: un testo lungo riempiva lo schermo e la cima diventava irraggiungibile (un difetto noto di layout: i messaggi erano ancorati in basso in un modo che taglia l'alto). Corretto: ora i messaggi stanno in basso quando sono pochi e la chat **scorre** quando sono tanti.
