@@ -7,6 +7,7 @@ di ai-toolkit in un processo separato. Il risultato è un file .safetensors che 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -15,6 +16,7 @@ import subprocess
 import sys
 import threading
 import time
+import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -175,6 +177,33 @@ def config_for(req: TrainRequest, dataset: Path, out: Path) -> dict:
     }
 
 
+def percorso_training(req: TrainRequest) -> Path:
+    model = Path(req.base if req.arch == "sdxl" else args.model)
+    info = model.stat() if model.exists() else None
+    firma = hashlib.sha256(json.dumps([
+        req.arch, str(model.resolve()) if info else str(model),
+        [info.st_size, info.st_mtime_ns] if info else None,
+        req.trigger, req.rank, req.lr, req.low_vram,
+    ]).encode())
+    for src in map(Path, req.images):
+        firma.update(src.suffix.lower().encode())
+        with src.open("rb") as stream:
+            firma.update(hashlib.file_digest(stream, "sha256").digest())
+    return WORK / req.name / firma.hexdigest()
+
+
+def passi_checkpoint(file: Path) -> int:
+    try:
+        with file.open("rb") as stream:
+            size = int.from_bytes(stream.read(8), "little")
+            if not 0 < size <= min(1024 * 1024, file.stat().st_size - 8):
+                return 0
+            header = json.loads(stream.read(size))
+        return int(json.loads(header["__metadata__"]["training_info"])["step"])
+    except (OSError, ValueError, TypeError, KeyError):
+        return 0
+
+
 def log(line: str) -> None:
     line = line.rstrip()
     if not line:
@@ -246,6 +275,8 @@ def health():
 def train(req: TrainRequest):
     if len(req.images) < 8:
         raise HTTPException(400, "Servono almeno 8 foto (meglio 15-30)")
+    if req.steps < 1:
+        raise HTTPException(400, "Il numero di passi deve essere positivo")
     if not re.fullmatch(r"[a-z0-9_]{2,40}", req.name):
         raise HTTPException(400, "Nome non valido")
     if not training_lock.acquire(blocking=False):
@@ -254,15 +285,30 @@ def train(req: TrainRequest):
     state.update(status="running", step=0, total=req.steps, phase="Avvio", log=[], output=None, error=None,
                  name=req.name, started=started, train_started=None, log_at=started)
     try:
-        base = WORK / req.name
+        base = percorso_training(req)
         dataset = base / "foto"
         out = base / "output"
-        shutil.rmtree(dataset, ignore_errors=True)
-        dataset.mkdir(parents=True)
-        for i, src in enumerate(req.images):
-            ext = Path(src).suffix.lower() or ".jpg"
-            shutil.copyfile(src, dataset / f"{i:03d}{ext}")
-            (dataset / f"{i:03d}.txt").write_text("photo of [trigger]", encoding="utf-8")
+        final = out / req.name / f"{req.name}.safetensors"
+        completati = passi_checkpoint(final)
+        if completati >= req.steps:
+            log(f"LoRA già addestrata: {completati} passi. Riutilizzo il checkpoint.")
+            state.update(status="done", step=req.steps, output=str(final), phase=None)
+            training_lock.release()
+            return {"ok": True, "reused": True, "checkpoint_step": completati}
+        base.mkdir(parents=True, exist_ok=True)
+        if not dataset.exists():
+            with tempfile.TemporaryDirectory(dir=base) as tmp:
+                staged = Path(tmp) / "foto"
+                staged.mkdir()
+                for i, src in enumerate(req.images):
+                    ext = Path(src).suffix.lower() or ".jpg"
+                    shutil.copyfile(src, staged / f"{i:03d}{ext}")
+                    (staged / f"{i:03d}.txt").write_text("photo of [trigger]", encoding="utf-8")
+                staged.rename(dataset)
+        else:
+            log("Riutilizzo il dataset e le preparazioni già in cache.")
+        if completati:
+            log(f"Riprendo dal checkpoint al passo {completati}.")
         cfg_path = base / "config.yaml"
         # Il JSON è YAML valido: niente dipendenze in più
         cfg_path.write_text(json.dumps(config_for(req, dataset, out), indent=2), encoding="utf-8")

@@ -259,15 +259,40 @@ async function parla(testo){
 }
 
 // i media creati arrivano come "jobs": si seguono e si mostrano
+function mostraRisultati(box, risultati){
+  box.replaceChildren();
+  for(const risultato of risultati){
+    let url;
+    try { url = new URL(risultato.url, location.href); } catch { continue; }
+    if(!['http:', 'https:'].includes(url.protocol)) continue;
+    const tipo = String(risultato.type || '').split('/')[0];
+    const tag = {video:'video', audio:'audio', image:'img'}[tipo] || 'a';
+    const elemento = document.createElement(tag);
+    if(tag === 'a'){
+      elemento.href = url.href;
+      elemento.download = '';
+      elemento.textContent = risultato.role === 'subtitles' ? 'Scarica i sottotitoli' : 'Scarica il file';
+    } else {
+      elemento.src = url.href;
+      if(tag === 'img') elemento.alt = risultato.role === 'cover' ? 'Copertina' : 'Risultato generato';
+      else elemento.controls = true;
+      if(tag === 'video') elemento.playsInline = true;
+    }
+    box.append(elemento);
+  }
+  if(!box.childNodes.length) box.textContent = 'Completato.';
+}
+
 async function seguiLavoro(turno, id){
   const box=aggiungi(turno, '<div class="pensa">Lo sto creando…</div>','media');
   for(let i=0;i<800;i++){
     await new Promise(r=>setTimeout(r,1500));
     let j; try{ j=await (await fetch(`/v1/jobs/${id}`)).json(); }catch{ continue; }
     if(j.progress?.phase) box.innerHTML=`<div class="pensa">${esc(j.progress.phase)}${j.progress.total?` · ${j.progress.step}/${j.progress.total}`:''}</div>`;
-    if(j.status==='done'){ box.innerHTML=(j.results||[]).map(m=>/^video\//.test(m.type)?`<video src="${m.url}" controls playsinline></video>`:/^audio\//.test(m.type)?`<audio src="${m.url}" controls></audio>`:`<img src="${m.url}">`).join('')||'<div class="pensa">Fatto.</div>'; return; }
+    if(j.status==='done'){ mostraRisultati(box, j.results || []); return; }
     if(j.status==='error'||j.status==='cancelled'){ box.innerHTML=`<div class="pensa">Non è riuscito: ${esc(j.error||'errore')}</div>`; return; }
   }
+  box.textContent = 'Attesa terminata. Controlla lo stato del lavoro nella Cronologia di IDEAX.';
 }
 
 async function assicuraChat(){

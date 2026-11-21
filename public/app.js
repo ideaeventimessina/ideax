@@ -3156,12 +3156,13 @@ twinForm.addEventListener('submit', async (e) => {
   btn.disabled = true;
   err.textContent = '';
   try {
-    await api('/api/twin/photo', { method: 'POST', body: { name: twinForm.name.value, photos: twinState.photos, consent: twinForm.consent.checked } });
+    const gemello = await api('/api/twin/photo', { method: 'POST', body: { name: twinForm.name.value, photos: twinState.photos, consent: twinForm.consent.checked } });
     twinForm.reset();
     twinState.photos = [];
     $('#twin-thumbs').innerHTML = '';
     $('[data-twin-count]').textContent = 'nessuna';
     loadTwin();
+    if (gemello.reused) $('[data-twin-count]').textContent = 'Gemello già pronto. Ho riutilizzato l’addestramento.';
   } catch (x) {
     err.textContent = x.message;
   } finally {

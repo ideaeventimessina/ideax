@@ -1070,7 +1070,12 @@ def compose(req: ComposeRequest):
         COMPOSE.update(frame=0, frames=frames)
         # Ogni scena: immagine un po' più grande dell'inquadratura, per poter zoomare e spostarsi
         bases = [cover(Image.open(s.image), round(W * 1.12), round(H * 1.12)) for s in req.scenes]
-        overlays = [(c, caption_overlay(c.text, W, H, req.caption_position)) for c in req.captions]
+        overlays = []
+        for caption in req.captions:
+            layer = caption_overlay(caption.text, W, H, req.caption_position)
+            bounds = layer.getbbox()
+            if bounds:
+                overlays.append((caption, layer.crop(bounds), bounds[:2]))
         silent = req.output + ".video.mp4"
         writer = imageio.get_writer(silent, fps=fps, codec="libx264", quality=8, macro_block_size=8,
                                     ffmpeg_params=["-pix_fmt", "yuv420p", "-preset", "veryfast"])
@@ -1089,9 +1094,9 @@ def compose(req: ComposeRequest):
                 left = max(0, min(base.width - cw, round((base.width - cw) / 2 + pan)))
                 top = (base.height - ch) // 2
                 frame = base.crop((left, top, left + cw, top + ch)).resize((W, H), Image.BILINEAR)
-                for c, ov in overlays:
+                for c, ov, offset in overlays:
                     if c.start <= t < c.end:
-                        frame.paste(ov, (0, 0), ov)
+                        frame.paste(ov, offset, ov)
                         break
                 writer.append_data(np.asarray(frame))
                 COMPOSE["frame"] = i + 1

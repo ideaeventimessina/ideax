@@ -1,5 +1,16 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.12.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.13.exe**.
+
+## Voce, musica e reel
+- Le letture e i reel completano la sintesi anche con «Tieni la voce pronta» attivo.
+- ACE-Step riusa i pesi già installati e su Windows usa il backend PyTorch per il pianificatore. Il sottofondo dei reel usa la generazione strumentale rapida.
+- Sulle schede NVIDIA fino a 16 GB, la scelta automatica del reel preferisce un SDXL locale adatto, quando disponibile. La scelta esplicita del modello resta disponibile.
+- In Regia i sottotitoli sono scaricabili dal risultato.
+- Chiedendo un’anteprima video in Regia si attiva il profilo veloce quando il motore lo supporta.
+
+## Memoria e addestramento
+- «Ricorda che» salva subito il dato. La generazione di codice consulta i ricordi pertinenti anche in una chat nuova.
+- Il Gemello riusa la LoRA pronta quando carichi le stesse foto con lo stesso nome. Se manca il risultato, può riprendere dai checkpoint compatibili invece di ricostruire il dataset.
 
 ## Montaggio con Impagino
 - IDEAX rileva il montatore locale con il prefisso corretto e si autentica con la password del montatore.
