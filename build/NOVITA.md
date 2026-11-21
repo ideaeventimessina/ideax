@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.4.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.5.exe** e aprilo.
+
+## Basta risposte inventate: sui dati online ideax CERCA, non immagina
+- Alla domanda "quanti follower ha … sui social" il cervello locale a volte si **inventava** un'identità o un numero (es. "è un sistema legacy di gestione contabile"). Ora c'è una **guardia**: quando la domanda chiede un dato online (follower, iscritti, recensioni, numeri sui social o su Google), ideax è **obbligato a cercarlo** (cerca_web → leggi_pagina_dinamica) invece di rispondere a memoria, e se non lo trova **lo dice** invece di inventarlo. Più una regola dura: non inventare mai identità, numeri o descrizioni di aziende, account o progetti. *Provato dal vivo: una risposta inventata viene soppressa e sostituita da una ricerca + una risposta onesta.*
 
 ## Autopotenziamento: provato navigando dentro ideax, nel browser
 - Ho fatto girare ideax e **navigato la Regia in un browser vero**: il flusso completo funziona — il cancello **«Attiva e vai»**, poi **«Mi sono aggiornato: ora posso usare …»** con i risultati — senza errori. Sistemata una sbavatura di testo (ora il nome della capacità resta intero e corretto).
