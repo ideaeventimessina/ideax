@@ -1,5 +1,11 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.7.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.8.exe**.
+
+## Regia · Modalità Dio
+- Il logo IDEAX rimane al centro. L'orizzonte si anima e il portale si illumina quando scrivi.
+- La risposta compare sopra il portale. I risultati multimediali restano legati al comando nella cronologia.
+- Il pannello **Voce e allegati** contiene microfono, scelta della voce e caricamento dei file.
+- Se l'invio viene rifiutato, la Regia mostra l'errore e riabilita il campo.
 
 ## Il volto del gemello torna: nomini "Marzia", esce Marzia
 - Chiedendo "Marzia che prende un caffè al bar" usciva una donna qualsiasi: il cervello, traducendo il prompt in inglese, **perdeva il nome** e così la LoRA del volto non si agganciava. Ora: (1) una **rete di sicurezza** rimette il nome del gemello/personaggio nel prompt se il cervello lo perde — presa dalla tua richiesta originale; (2) il cervello è istruito a **tenere il nome esatto** e a descrivere **fedelmente** luogo e azione; (3) il gemello SDXL ora usa sempre la **base pulita** (file-singolo realistica), non la prima che capita, quindi niente rumore né stile "cartoon". Il volto si aggancia solo se il nome resta nel prompt: ora ci resta.
