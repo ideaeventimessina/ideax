@@ -1,5 +1,14 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.9.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.10.exe**.
+
+## Codice e chiamate concorrenti
+- Le richieste esplicite di codice restano nella chat anche se citano immagini o video.
+- Studio Code controlla la sintassi del JavaScript inline e ritenta quando la prima pagina contiene un errore di sintassi.
+- Le chiamate simultanee condividono l'avvio del modello. Quando il worker richiede la GPU in esclusiva, aspetta le risposte in corso prima di prenderla.
+
+## API diretta
+- Con `prompt_mode: "literal"`, `model` e `task` espliciti, IDEAX invia al motore il prompt preparato dal chiamante.
+- L'API musicale inoltra il numero di iterazioni richiesto ad ACE-Step.
 
 ## Flux su GPU con poca VRAM
 - Flux carica sulla GPU gruppi di blocchi alla volta quando è attivo l'offload. Anche l'encoder T5 trasferisce piccoli gruppi di pesi, così il primo passo non deve fare spazio all'intero componente.
