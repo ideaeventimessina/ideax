@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.1.exe** e aprilo.
+Premi **Aggiorna ora** in ideax, oppure scarica **ideax-setup-1.27.2.exe** e aprilo.
+
+## Regia: la chat ora SCORRE, e le risposte brevi restano brevi
+- **La chat non si scrollava**: un testo lungo riempiva lo schermo e la cima diventava irraggiungibile (un difetto noto di layout: i messaggi erano ancorati in basso in un modo che taglia l'alto). Corretto: ora i messaggi stanno in basso quando sono pochi e la chat **scorre** quando sono tanti.
+- **Una barzelletta non diventa più un racconto lungo**: il cervello generava fino a 2500 parole anche per una battuta — lento *e* fuori misura. Ora il tetto di default è più basso (risposte **più corte e più veloci**) e il cervello è istruto ad **adattare la lunghezza alla richiesta**: breve se chiedi una cosa breve, lungo solo se chiedi esplicitamente un racconto o un articolo.
 
 ## Correzione: niente più "request exceeds the available context size"
 - Con tutti gli strumenti (compresi quelli imparati) e un po' di conversazione, la richiesta superava la finestra da 8k e il cervello la **rifiutava**. Ora la finestra è di nuovo **16k** (sicura), la cronologia inviata è più snella, e se mai dovesse succedere di nuovo il messaggio è **in italiano e dice cosa fare** (apri una chat nuova, o alza `IDEAX_LLM_CTX`) invece dell'errore tecnico in inglese.
