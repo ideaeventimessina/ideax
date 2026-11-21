@@ -148,6 +148,10 @@
             <button class="tondo" id="mic" type="button" aria-label="Parla">🎙</button>
             <button class="tondo" id="voce" type="button" aria-label="Risposta a voce" aria-pressed="true">🔊</button>
             <select id="voci" aria-label="Scegli la voce"></select>
+            <select id="tono-voce" aria-label="Tono della risposta">
+              <option value="naturale">Naturale</option><option value="calma">Calmo</option>
+              <option value="vivace">Vivace</option><option value="narrativa">Narrativo</option>
+            </select>
           </div>
         </details>
         <span id="stato" role="status"></span>
@@ -177,6 +181,9 @@ for (let index = 0; index < 18; index++) {
 let chatId = null, allegati = [], vocePub = true, registra = null, occupato = false;
 let voceId = 'if_sara';   // Sara, italiana, donna (Kokoro) — predefinita
 const parlante = new Audio(); let audioSbloccato = false;
+const strumentiVoce = import('./regia-voce.js');
+let lettura = null;
+let tonoComando = '';
 
 const esc = (t) => (t||'').replace(/[&<>]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const mmss = (ms) => { const s=Math.max(0,Math.floor(ms/1000)); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; };
@@ -208,11 +215,15 @@ ingresso.addEventListener('keydown', (e)=>{ if(e.key==='Enter'&&!e.shiftKey&&!e.
 $('#piu').onclick=()=>$('#file').click();
 $('#file').onchange=async(e)=>{ for(const f of e.target.files) allegati.push(await leggiFile(f)); disegnaAllegati(); e.target.value=''; };
 anteprime.onclick=(e)=>{ const i=e.target.dataset?.i; if(i!=null){ allegati.splice(+i,1); disegnaAllegati(); } };
-$('#voce').onclick=()=>{ vocePub=!vocePub; $('#voce').classList.toggle('muto',!vocePub); $('#voce').setAttribute('aria-pressed', String(vocePub)); };
+$('#voce').onclick=()=>{ vocePub=!vocePub; $('#voce').classList.toggle('muto',!vocePub); $('#voce').setAttribute('aria-pressed', String(vocePub)); if(!vocePub) fermaVoce(); };
 $('#voci').onchange=()=>{ voceId=$('#voci').value||null; };
 
 // audio sbloccato al primo gesto, o il browser blocca la riproduzione automatica
-function sbloccaAudio(){ if(audioSbloccato) return; audioSbloccato=true; parlante.play().catch(()=>{}); parlante.pause(); }
+function sbloccaAudio(){
+  if(audioSbloccato || !vocePub) return;
+  audioSbloccato=true;
+  fetch('/v1/audio/kokoro/prepara',{method:'POST'}).catch(()=>{});
+}
 
 // il menu: le voci DONNA della libreria Kokoro (veloce), Sara italiana di default
 async function caricaVoci(){
@@ -246,16 +257,66 @@ $('#mic').onclick=async()=>{
   } catch { stato.textContent='Microfono non disponibile.'; }
 };
 
+function fermaVoce(){
+  lettura?.abort();
+  lettura=null;
+  parlante.pause();
+}
+
 async function parla(testo){
   if(!vocePub||!testo) return;
-  stato.textContent='🔊 preparo la voce…';
+  fermaVoce();
+  const controller=new AbortController();
+  lettura=controller;
+  const { signal }=controller;
+  const voce=voceId||'if_sara';
+  const tono=$('#tono-voce').value;
+  const carica=async (segmento)=>{
+    try {
+      const r=await fetch('/v1/audio/kokoro',{method:'POST',signal,headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({...segmento,voce,lingua:'it'})});
+      if(!r.ok) throw new Error('Sintesi non riuscita');
+      return await r.blob();
+    } catch(error) { return error; }
+  };
   try {
-    const r=await fetch('/v1/audio/kokoro',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({input:testo.slice(0,1000),voce:voceId||'if_sara',lingua:'it'})});
-    if(!r.ok){ stato.textContent='La voce non è partita.'; return; }
-    parlante.src=URL.createObjectURL(await r.blob());
-    stato.textContent='';
-    parlante.play().catch(()=>{ stato.textContent='Tocca lo schermo una volta per la voce.'; });
-  } catch { stato.textContent='Voce non disponibile ora.'; }
+    const { segmentiVoce, tonoRichiesto }=await strumentiVoce;
+    const pezzi=segmentiVoce(testo, tonoRichiesto(tonoComando)||tono);
+    if(!pezzi.length || signal.aborted) return;
+    stato.textContent='🔊 preparo la voce…';
+    let prossimo=carica(pezzi[0]);
+    for(let i=0;i<pezzi.length && !signal.aborted;i++){
+      const chunk=await prossimo;
+      if(signal.aborted) break;
+      if(chunk instanceof Error) throw chunk;
+      const url=URL.createObjectURL(chunk);
+      try {
+        parlante.src=url;
+        await new Promise((resolve,reject)=>{
+          const fine=()=>{
+            signal.removeEventListener('abort',fine);
+            parlante.removeEventListener('ended',fine);
+            parlante.removeEventListener('error',errore);
+            resolve();
+          };
+          const errore=()=>{ reject(new Error('Riproduzione non riuscita')); fine(); };
+          signal.addEventListener('abort',fine,{once:true});
+          parlante.addEventListener('ended',fine,{once:true});
+          parlante.addEventListener('error',errore,{once:true});
+          parlante.play().then(()=>{
+            if (!signal.aborted) {
+              stato.textContent='';
+              if(pezzi[i+1]) prossimo=carica(pezzi[i+1]);
+            }
+          },(e)=>{ reject(e); fine(); });
+        });
+      } finally { URL.revokeObjectURL(url); }
+    }
+  } catch(error) {
+    if(!signal.aborted) stato.textContent=error.name==='NotAllowedError'?'Tocca lo schermo per la voce.':'Voce non disponibile ora.';
+  } finally {
+    if(lettura===controller) lettura=null;
+  }
 }
 
 // i media creati arrivano come "jobs": si seguono e si mostrano
@@ -389,6 +450,8 @@ async function invia(){
   sbloccaAudio();
   const testo=ingresso.value.trim();
   if((!testo && !allegati.length)||occupato) return;
+  fermaVoce();
+  tonoComando=testo;
   occupato=true; $('#invia').disabled=true; stato.textContent='';
   const turno = nuovoTurno();
   if(allegati.length) aggiungi(turno, allegati.map(a=>a.type.startsWith('image')?`<img src="${a.dataUrl}" style="width:60px;height:60px;object-fit:cover;border-radius:8px">`:`<span class="chip">${esc(a.name)}</span>`).join(''),'allegati');

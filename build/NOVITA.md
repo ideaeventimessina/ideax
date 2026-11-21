@@ -1,7 +1,11 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.15.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.16.exe**.
 
 ## Voce, musica e reel
+- La voce della Regia legge per frasi e prepara la successiva durante la riproduzione. Il controllo Tono modifica ritmo e pause, con profili naturale, calmo, vivace e narrativo.
+- Il sottofondo veloce del reel parte senza caricare il pianificatore musicale. Le opzioni di composizione completa restano disponibili.
+- Per le voci sintetiche della libreria senza impostazioni di clonazione personalizzate, il reel può usare direttamente la voce originale su CPU.
+- Le anteprime Wan con compito già selezionato partono senza una riscrittura del comando. Il lip-sync veloce usa un percorso di inferenza più leggero.
 - I reel rispettano la durata selezionata. Voce e sottotitoli seguono la stessa linea temporale e il montaggio verticale usa 24 fotogrammi al secondo.
 - Sulle GPU da 16 GB IDEAX lascia più spazio alle immagini SDXL quando il cervello ha un contesto lungo, per evitare di rallentare con la memoria condivisa.
 - I reel che chiedono un elenco numerato verificano che il copione contenga tutti i punti prima di registrare la voce e generare le immagini.

@@ -957,10 +957,14 @@ const server = http.createServer(async (req, res) => {
     // Compatibile OpenAI TTS: client.audio.speech.create(model=…, voice="Marco", input=…)
     // Parlato VELOCE per la Regia: Kokoro diretto (CPU, non scarica i 12 GB del worker immagini come Chatterbox).
     if (p === '/v1/audio/kokoro/voci' && req.method === 'GET') return send(res, 200, { voci: voicelib.VOCI_REGIA });
+    if (p === '/v1/audio/kokoro/prepara' && req.method === 'POST') {
+      if (voicelib.list().ready) voicelib.preparaKokoro().catch(() => {});
+      return send(res, 202, { ok: true });
+    }
     if (p === '/v1/audio/kokoro' && req.method === 'POST') {
       const b = await readJson(req);
       try {
-        const wav = await voicelib.parla(b.input || '', { voce: b.voce, lingua: b.lingua });
+        const wav = await voicelib.parla(b.input || '', { voce: b.voce, lingua: b.lingua, velocita: b.velocita, pausa: b.pausa });
         if (!wav) return send(res, 400, { error: { message: 'niente da leggere' } });
         res.writeHead(200, { 'Content-Type': 'audio/wav' });
         return res.end(wav);
@@ -1555,4 +1559,4 @@ server.listen(PORT, HOST, () => {
 for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) {
   process.on(sig, () => { runtime.stopWorker(); process.exit(0); });
 }
-process.on('exit', () => { runtime.stopWorker(); engines.stopAll(); llama.stop(); apikeys.flushKeys(); });
+process.on('exit', () => { voicelib.fermaKokoro(); runtime.stopWorker(); engines.stopAll(); llama.stop(); apikeys.flushKeys(); });
