@@ -9,6 +9,10 @@ const aud = [{ type: 'audio/ogg' }];
 const vid = [{ type: 'video/mp4' }];
 
 const CASI = [
+  ['Genera solo codice JavaScript: scrivi una funzione per classificare un’immagine o un video', [], null, 'codice'],
+  ['Implementa una funzione Python che normalizza i nomi dei file video', [], null, 'codice'],
+  ['Write a JavaScript function that detects a video MIME type', [], null, 'codice'],
+  ['Genera un codice QR per un invito', [], null, 'immagine'],
   // testo
   ['raccontami una barzelletta', [], null, 'scrittura'],
   ['raccontami una scena erotica', [], null, 'scrittura'],

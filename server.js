@@ -223,6 +223,9 @@ async function createJob(body, ctx = {}) {
     if (body.prompt.length > 20000) throw new Error('Testo troppo lungo: massimo 20.000 caratteri per richiesta');
   }
   if (!body.prompt?.trim()) throw new Error('Scrivi un prompt');
+  if (body.prompt_mode === 'literal' && (!body.task || !(body.model || body.modelId))) {
+    throw new Error('prompt_mode literal richiede model e task.');
+  }
   const blocked = blockedReason(`${body.prompt} ${body.reel?.style || ''}`);
   if (blocked) throw new Error(blocked);
   if (body.task && !(body.task in store.TASKS)) throw new Error(`Compito sconosciuto: ${body.task}`);
@@ -234,6 +237,7 @@ async function createJob(body, ctx = {}) {
     attachments: await normalizeAttachments(body.attachments),
     forceModelId: body.model || body.modelId || null,
     forceTask: body.task || null,
+    literalPrompt: body.prompt_mode === 'literal',
     params: body.params && typeof body.params === 'object' ? body.params : {},
     kind: body.kind || 'media',
     speech: body.speech,
@@ -520,7 +524,9 @@ async function processJob(job) {
     // prompt_style nei parametri: lo stile del prompt per questo lavoro, al posto di quello del modello
     const forceStyle = typeof job.params?.prompt_style === 'string' ? job.params.prompt_style : null;
     if (job.params) delete job.params.prompt_style;
-    const d = await route(job.prompt, job.attachments, { forceModelId: job.forceModelId, forceTask: job.forceTask, forceStyle });
+    const d = await route(job.prompt, job.attachments, {
+      forceModelId: job.forceModelId, forceTask: job.forceTask, forceStyle, literalPrompt: job.literalPrompt,
+    });
     if (job.cancelled) throw new Error('Annullato');
     // Parametri dello stile (es. clip_skip per Pony) < parametri del modello < parametri della richiesta
     job.params = { ...(d.styleParams || {}), ...(d.model.params || {}), ...job.params };
@@ -920,10 +926,13 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/v1/music' && req.method === 'POST') {
       const body = await readBody(req);
-      const { prompt, lyrics, duration, instrumental, language, bpm, key, seed, format, quality, title } = body;
+      const { prompt, lyrics, duration, instrumental, language, bpm, key, seed, format, quality, title, steps } = body;
+      if (steps != null && (!Number.isInteger(steps) || steps < 1 || steps > 100)) {
+        throw new Error('steps deve essere un intero da 1 a 100.');
+      }
       const job = await createJob({
         ...body, prompt: prompt || body.description, kind: 'music',
-        music: { lyrics, duration, instrumental, language, bpm, key, seed, format, quality, title },
+        music: { lyrics, duration, instrumental, language, bpm, key, seed, format, quality, title, steps },
       }, ctx);
       if (body.wait === false || (job.callbackUrl && body.wait !== true)) {
         return send(res, 202, { id: job.id, status: job.status, status_url: `${origin}/v1/jobs/${job.id}` });

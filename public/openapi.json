@@ -793,6 +793,13 @@
           ],
           "default": "high"
          },
+         "steps": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 8,
+          "description": "Iterazioni di generazione passate al motore ACE-Step."
+         },
          "format": {
           "type": "string",
           "enum": [
@@ -1498,6 +1505,11 @@
      "model": {
       "type": "string",
       "description": "Id o nome di un modello (GET /v1/models). Se manca lo sceglie ideax"
+     },
+     "prompt_mode": {
+      "type": "string",
+      "enum": ["literal"],
+      "description": "Con literal, model e task sono obbligatori. Usa il prompt già preparato dal chiamante, senza traduzione, riscrittura o selezione automatica di stile e LoRA."
      },
      "params": {
       "type": "object",
