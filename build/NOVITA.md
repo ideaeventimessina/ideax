@@ -13,7 +13,7 @@ Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.12.exe**.
 - Se nomini un personaggio salvato e il formato è ambiguo, IDEAX chiede se vuoi un’immagine o un video. Puoi rispondere con il solo formato per avviare la richiesta originale.
 
 ## Ricerca nell’Operatore
-- Le richieste di conteggio follower cercano dati pubblici e mostrano conteggi, fonti e piattaforme senza un valore verificabile, anche con l’Orchestratore attivo.
+- Le richieste di conteggio follower cercano dati pubblici e mostrano conteggi, fonti e piattaforme senza un valore verificabile, anche con l’Orchestratore attivo. Quando i dati sono disponibili solo per alcuni social, il totale è parziale.
 
 ## Video e Gemello
 - Wan 5B e 14B sono entrambi selezionabili. La modalità veloce preferisce il 5B, con dimensioni di anteprima più contenute.
