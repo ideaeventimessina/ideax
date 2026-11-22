@@ -26,6 +26,7 @@ import * as personaggi from './lib/personaggi.js';
 import * as webdemo from './lib/webdemo.js';
 import * as operatore from './lib/operatore.js';
 import * as giochi from './lib/progetti-guida.js';
+import { documentoIsolato, leggiAnteprima } from './lib/anteprima-web.js';
 import * as autopotenzia from './lib/autopotenzia.js';
 import * as skills from './lib/skills.js';
 import * as siti from './lib/siti.js';
@@ -827,10 +828,17 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/operatore/giochi' && req.method === 'GET') return send(res, 200, { giochi: giochi.elencaGiochi() });
     {
       const g = p.match(/^\/api\/operatore\/giochi\/([a-f0-9]{8})(\/apri)?$/);
-      if (g && locale && g[2] && req.method === 'POST') return send(res, 200, await giochi.gioca(g[1]));
+      if (g && locale && g[2] && req.method === 'POST') return send(res, 200, await giochi.gioca(g[1], PORT));
       if (g && !g[2] && req.method === 'GET') {
         res.setHeader('Content-Disposition', `attachment; filename="ideax-gioco-${g[1]}.json"`);
         return send(res, 200, giochi.leggiGioco(g[1]));
+      }
+    }
+    {
+      const match = p.match(/^\/api\/anteprime-web\/([a-f0-9]{8})$/);
+      if (match && req.method === 'GET') {
+        const anteprima = leggiAnteprima(match[1]);
+        return anteprima ? send(res, 200, { ...anteprima, html: documentoIsolato(anteprima.html) }) : send(res, 404, { error: 'Anteprima non trovata.' });
       }
     }
     { const mz = p.match(/^\/api\/operatore\/([\w-]+)\/zip$/);
@@ -997,7 +1005,7 @@ const server = http.createServer(async (req, res) => {
       if (!chat) chat = chats.createChat({ client: ctx.client, title: body.title || '' });
       const msg = await agent.send(chat, { text: body.message || body.prompt, attachments: body.attachments, ctx });
       return send(res, 200, {
-        chat_id: chat.id, reply: msg.content, steps: msg.steps || [], remembered: msg.remembered || [],
+        chat_id: chat.id, reply: msg.content, steps: msg.steps || [], remembered: msg.remembered || [], anteprima: msg.anteprima || undefined,
         jobs: (msg.jobs || []).map((id) => ({ id, status_url: `${origin}/v1/jobs/${id}` })),
       });
     }

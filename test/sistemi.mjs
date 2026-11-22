@@ -12,6 +12,14 @@ const { saveSystem, deleteSystem } = await import('../lib/systems.js');
 const { validaSintassi } = await import('../lib/operatore.js');
 const { collauda, preparaCollaudo } = await import('../lib/collaudo.js');
 const { letturaGitHub } = await import('../lib/github-regia.js');
+const { richiestaInterattiva, documentoIsolato } = await import('../lib/anteprima-web.js');
+
+test('le creazioni giocabili hanno un percorso distinto dalla scrittura di codice', () => {
+  assert.equal(richiestaInterattiva('Crea un videogioco 3D'), true);
+  assert.equal(richiestaInterattiva('Ok è un gioco 3D in prima persona'), true);
+  assert.equal(richiestaInterattiva('Scrivi solo il codice per un gioco'), false);
+  assert.match(documentoIsolato('<button>Avvia</button>'), /connect-src 'none'.*<button>Avvia<\/button>/);
+});
 
 test('una lettura GitHub ha precedenza sullo scrittore, senza intercettare richieste di modifica', () => {
   assert.equal(letturaGitHub('Potresti collegarti al mio repo su GitHub, Andrea Gentile, e leggere le mie memorie').memorie, true);

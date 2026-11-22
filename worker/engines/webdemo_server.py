@@ -335,6 +335,56 @@ class CollaudoGioco(BaseModel):
     url: str
 
 
+class CollaudoAnteprima(BaseModel):
+    html: str
+
+
+@app.post("/br/collauda-anteprima")
+def collauda_anteprima(r: CollaudoAnteprima):
+    if len(r.html) > 80000:
+        raise HTTPException(400, "Anteprima troppo grande.")
+    if not _chromium_ok():
+        raise HTTPException(503, "Prepara Chromium dal motore Regista web.")
+    from playwright.sync_api import sync_playwright
+    errors = []
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(executable_path=os.environ.get("IDEAX_CHROMIUM") or None)
+        try:
+            context = browser.new_context(service_workers="block", accept_downloads=False)
+            context.route("**/*", lambda route: route.abort())
+            page = context.new_page()
+            page.set_default_timeout(3000)
+            page.on("pageerror", lambda err: errors.append(str(err)))
+            page.set_content('<iframe title="Anteprima" sandbox="allow-scripts"></iframe>')
+            page.locator("iframe").evaluate("(frame, html) => frame.srcdoc = html", r.html)
+            frame = page.frame_locator("iframe")
+            body = frame.locator("body")
+            body.wait_for()
+            initial = body.inner_text()
+            start = frame.locator("#ideax-start")
+            if start.count() == 0:
+                start = frame.get_by_role("button", name=re.compile(r"avvia|inizia|gioca|start|esegui|calcola", re.I)).first
+            if start.count() == 0:
+                raise AssertionError('Manca un pulsante visibile con id="ideax-start" o etichetta Avvia.')
+            start.click()
+            changed = body.evaluate("""(el, initial) => new Promise(resolve => {
+                let checks = 0;
+                const timer = setInterval(() => {
+                    const changed = el.innerText !== initial;
+                    if (changed || ++checks >= 20) { clearInterval(timer); resolve(changed); }
+                }, 50);
+            })""", initial)
+            if not changed:
+                raise AssertionError("Il pulsante non ha cambiato alcuno stato visibile.")
+            if errors:
+                raise AssertionError(errors[0])
+            return {"ok": True}
+        except Exception as exc:
+            return {"ok": False, "errore": (errors[0] if errors else str(exc))[:420]}
+        finally:
+            browser.close()
+
+
 @app.post("/br/collauda-guida")
 def collauda_guida(r: CollaudoGioco):
     """Collaudo senza sessioni, credenziali o accesso alla rete esterna."""

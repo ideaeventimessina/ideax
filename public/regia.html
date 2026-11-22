@@ -69,6 +69,11 @@
   .pensa { font-size: .88rem; }
   .media img, .media video { display: block; max-width: 100%; max-height: 230px; margin: 8px auto; border-radius: 12px; }
   .media audio { max-width: 100%; }
+  .anteprima-dialogo { width: min(1100px, 96vw); padding: 0; border: 1px solid #a8bbcc; border-radius: 16px; background: #f6f8fb; color: #183348; }
+  .anteprima-dialogo::backdrop { background: #102334a8; }
+  .anteprima-dialogo header { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 16px; }
+  .anteprima-dialogo iframe { display:block; width:100%; height:min(76dvh, 740px); background:#fff; border:0; }
+  .anteprima-azione { color:#183348; background:#fff; border:1px solid #8299aa; border-radius:9px; padding:8px 13px; font:inherit; cursor:pointer; }
   .barra { position: relative; }
   .campo {
     position: relative; display: flex; align-items: flex-end; min-height: 66px; gap: 4px;
@@ -344,6 +349,52 @@ function mostraRisultati(box, risultati){
   if(!box.childNodes.length) box.textContent = 'Completato.';
 }
 
+function mostraAnteprima(turno, dato){
+  if(!/^[a-f0-9]{8}$/.test(dato.id)) return;
+  const scheda = aggiungi(turno, '', 'media');
+  const apri = document.createElement('button');
+  apri.className = 'anteprima-azione';
+  apri.textContent = `Apri · ${dato.titolo}`;
+  scheda.append(apri);
+  const stato = document.createElement('p');
+  stato.setAttribute('role','status');
+  scheda.append(stato);
+  apri.onclick = async () => {
+    apri.disabled = true;
+    stato.textContent = '';
+    try {
+      const progetto = dato.gioco
+        ? await richiesta(`/api/operatore/giochi/${dato.id}/apri`, {method:'POST'})
+        : await richiesta(`/api/anteprime-web/${dato.id}`);
+      const dialogo = document.createElement('dialog');
+      dialogo.className = 'anteprima-dialogo';
+      const barra = document.createElement('header');
+      const titolo = document.createElement('strong');
+      titolo.textContent = dato.titolo;
+      const chiudi = document.createElement('button');
+      chiudi.className = 'anteprima-azione';
+      chiudi.textContent = 'Chiudi';
+      chiudi.onclick = () => dialogo.close();
+      barra.append(titolo, chiudi);
+      const frame = document.createElement('iframe');
+      frame.title = dato.titolo;
+      frame.referrerPolicy = 'no-referrer';
+      frame.setAttribute('sandbox', 'allow-scripts');
+      if(dato.gioco){
+        const url = new URL(progetto.url);
+        if(url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || url.origin === location.origin) throw Error('Indirizzo anteprima non valido.');
+        frame.sandbox.add('allow-same-origin');
+        frame.src = url.href;
+      } else frame.srcdoc = progetto.html;
+      dialogo.append(barra, frame);
+      dialogo.addEventListener('close', () => { dialogo.remove(); apri.focus(); }, {once:true});
+      document.body.append(dialogo);
+      dialogo.showModal();
+    } catch(e) { stato.textContent = e.message; }
+    finally { apri.disabled = false; }
+  };
+}
+
 async function seguiLavoro(turno, id){
   const box=aggiungi(turno, '<div class="pensa">Lo sto creando…</div>','media');
   for(let i=0;i<800;i++){
@@ -405,6 +456,7 @@ async function seguiChat(turno, lavoro, messaggioId){
         parla(ultimo.content);
       }
       for(const id of (ultimo.jobs||[])) seguiLavoro(turno, id);
+      if(ultimo.anteprima) mostraAnteprima(turno, ultimo.anteprima);
       if(ultimo.potenziamento) seguiPotenziamento(turno, ultimo.potenziamento);
     } else aggiungi(turno, '<span class="pensa">(nessuna risposta)</span>','pensa');
     return;

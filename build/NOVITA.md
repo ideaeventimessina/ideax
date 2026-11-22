@@ -1,8 +1,13 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.21.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.22.exe**.
+
+## Anteprime nella Regia
+- Le richieste di giochi e app interattive generano anteprime web. Dopo una prova del pulsante principale in Chromium, «Apri» mostra il risultato in una finestra dentro la Regia.
+- Per giocare a un titolo già collaudato, scrivi «Apri» seguito dal titolo. Puoi anche chiedere «Apri l’ultimo gioco».
 
 ## Regia e GitHub
 - Le richieste esplicite di lettura usano GitHub anche dopo una risposta di scrittura. Se manca il repository o il file, IDEAX chiede il link e riporta gli errori del collegamento.
+- La ricerca delle memorie GitHub usa anche la descrizione del repository e può aprire l’indice delle memorie.
 
 ## Giochi di guida
 - In Operatore, «Gioco di guida 3D collaudato» genera frontend e backend e usa Regista web per provare la partita in Chromium. IDEAX rimanda al modello gli errori di collaudo e salva i giochi che superano le prove in «Giochi collaudati».
