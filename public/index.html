@@ -160,7 +160,7 @@
             <button class="btn" id="code-aggiorna" type="button">Aggiorna anteprima</button></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem" id="code-split">
             <textarea id="code-sorgente" spellcheck="false" style="font-family:ui-monospace,monospace;font-size:12px;min-height:50vh;white-space:pre;overflow:auto"></textarea>
-            <iframe id="code-anteprima" title="Anteprima" style="width:100%;min-height:50vh;border:1px solid #333;border-radius:8px;background:#fff"></iframe>
+            <iframe id="code-anteprima" title="Anteprima" sandbox="allow-scripts" style="width:100%;min-height:50vh;border:1px solid #333;border-radius:8px;background:#fff"></iframe>
           </div>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-top:.75rem">
             <input id="code-nome" placeholder="Nome del sito (es. studio-foto)" style="flex:1;min-width:180px">
@@ -169,6 +169,14 @@
           <p class="muted small" id="code-pubblicato" hidden></p>
         </div>
 
+        <div class="card">
+          <h2>Progetti</h2>
+          <div id="code-progetti" class="stack-sm"></div>
+        </div>
+        <dialog id="code-progetto-dialogo" style="width:min(1120px,96vw);padding:0;border:1px solid #536178;border-radius:14px">
+          <div class="row" style="padding:.75rem 1rem"><strong id="code-progetto-titolo" class="grow"></strong><button type="button" id="code-progetto-chiudi" class="btn small">Chiudi</button></div>
+          <iframe id="code-progetto-frame" title="Progetto" referrerpolicy="no-referrer" sandbox="allow-scripts" style="display:block;width:100%;height:76dvh;border:0;background:#fff"></iframe>
+        </dialog>
         <div class="card" id="code-elenco-card" hidden>
           <h2>Pubblicati</h2>
           <div id="code-elenco" class="stack-sm"></div>

@@ -26,7 +26,8 @@ import * as personaggi from './lib/personaggi.js';
 import * as webdemo from './lib/webdemo.js';
 import * as operatore from './lib/operatore.js';
 import * as giochi from './lib/progetti-guida.js';
-import { documentoIsolato, leggiAnteprima } from './lib/anteprima-web.js';
+import { documentoIsolato, leggiAnteprima, salvaAnteprima } from './lib/anteprima-web.js';
+import { progettiCode } from './lib/code-progetti.js';
 import * as autopotenzia from './lib/autopotenzia.js';
 import * as skills from './lib/skills.js';
 import * as siti from './lib/siti.js';
@@ -838,7 +839,8 @@ const server = http.createServer(async (req, res) => {
       const match = p.match(/^\/api\/anteprime-web\/([a-f0-9]{8})$/);
       if (match && req.method === 'GET') {
         const anteprima = leggiAnteprima(match[1]);
-        return anteprima ? send(res, 200, { ...anteprima, html: documentoIsolato(anteprima.html) }) : send(res, 404, { error: 'Anteprima non trovata.' });
+        const valida = anteprima && (!/^ritorno dalla giungla$/i.test(anteprima.titolo) || anteprima.collaudo === 'missione');
+        return valida ? send(res, 200, { ...anteprima, html: documentoIsolato(anteprima.html) }) : send(res, 404, { error: 'Anteprima da collaudare o non trovata.' });
       }
     }
     { const mz = p.match(/^\/api\/operatore\/([\w-]+)\/zip$/);
@@ -867,7 +869,14 @@ const server = http.createServer(async (req, res) => {
       const split = store.getSettings().gpu?.split || 'auto';
       return send(res, 200, { schede, split, immagini, motori, attivo: schede.length >= 2 && split !== 'off' && immagini !== motori });
     }
-    if (p === '/api/code/genera' && req.method === 'POST') return send(res, 200, await siti.genera(await readJson(req)));
+    if (p === '/api/code/progetti' && req.method === 'GET') return send(res, 200, { progetti: progettiCode() });
+    if (p === '/api/code/genera' && req.method === 'POST') {
+      const b = await readJson(req);
+      const v = await siti.genera(b);
+      const titolo = (v.html.match(/<title>([^<]{1,90})<\/title>/i)?.[1] || String(b.descrizione || 'Pagina web').slice(0, 90)).trim();
+      const anteprima = salvaAnteprima(titolo, v.html, { collaudo: 'bozza' });
+      return send(res, 200, { ...v, anteprima });
+    }
     if (p === '/api/code/pubblica' && req.method === 'POST') return send(res, 200, siti.pubblica(await readJson(req)));
     if (p === '/api/code/siti' && req.method === 'GET') return send(res, 200, { siti: siti.elenca() });
     { const ms = p.match(/^\/api\/code\/siti\/([\w-]+)$/);

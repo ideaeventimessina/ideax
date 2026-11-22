@@ -337,6 +337,45 @@ class CollaudoGioco(BaseModel):
 
 class CollaudoAnteprima(BaseModel):
     html: str
+    missione: bool = False
+
+
+def prova_missione(page, frame):
+    status = frame.locator("#ideax-status")
+    body = frame.locator("body")
+
+    def atteso(testo):
+        if testo not in status.inner_text():
+            raise AssertionError(f"Atteso {testo!r}; stato: {status.inner_text()}")
+
+    def orienta(expr):
+        delta = body.evaluate(expr)
+        turns = round(delta / .14)
+        for _ in range(abs(turns)):
+            page.keyboard.press("ArrowRight" if turns > 0 else "ArrowLeft")
+
+    def raggiungi_base():
+        orienta("() => angle(-a)")
+        for _ in range(46):
+            page.keyboard.press("w")
+
+    raggiungi_base()
+    page.keyboard.press("e")
+    atteso("Completa il percorso")
+    frame.locator("#ideax-start").click()
+    page.keyboard.press("e")
+    atteso("Avvicinati")
+    for i in range(1, 101):
+        orienta("() => angle(Math.atan2(enemy.y-y,enemy.x-x)-a)")
+        page.keyboard.press("Space")
+        atteso(f" · {i}/100")
+    page.keyboard.press("e")
+    atteso("Avvicinati")
+    raggiungi_base()
+    page.keyboard.press("e")
+    atteso("Missione completata. Compagno liberato.")
+    frame.locator("#ideax-start").click()
+    atteso(" · 0/100")
 
 
 @app.post("/br/collauda-anteprima")
@@ -376,6 +415,8 @@ def collauda_anteprima(r: CollaudoAnteprima):
             })""", initial)
             if not changed:
                 raise AssertionError("Il pulsante non ha cambiato alcuno stato visibile.")
+            if r.missione:
+                prova_missione(page, frame)
             if errors:
                 raise AssertionError(errors[0])
             return {"ok": True}

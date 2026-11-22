@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.22.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.23.exe**.
+
+## Progetti Code e missioni
+- Code riunisce le anteprime della Regia, i giochi in archivio e le nuove bozze web. I collegamenti ai progetti locali si possono aggiungere nei dati di IDEAX.
+- Per «Ritorno dalla Giungla», IDEAX corregge la regola di vittoria, verifica tutte le transizioni e gioca in Chromium fino al soccorso. «Apri» appare dopo la vittoria e il riavvio verificati.
 
 ## Anteprime nella Regia
 - Le richieste di giochi e app interattive generano anteprime web. Dopo una prova del pulsante principale in Chromium, «Apri» mostra il risultato in una finestra dentro la Regia.

@@ -13,6 +13,19 @@ const { validaSintassi } = await import('../lib/operatore.js');
 const { collauda, preparaCollaudo } = await import('../lib/collaudo.js');
 const { letturaGitHub } = await import('../lib/github-regia.js');
 const { richiestaInterattiva, documentoIsolato } = await import('../lib/anteprima-web.js');
+const { REGOLA_PRECEDENTE, richiestaMissione, verificaRegola, preparaMissione } = await import('../lib/missione-giungla.js');
+
+test('la missione scarta la vittoria prematura prima di produrre un documento', async () => {
+  assert.ok(richiestaMissione('Correggi Ritorno dalla Giungla'));
+  assert.match((await verificaRegola(REGOLA_PRECEDENTE)).errore, /regola\(0, false, "soccorso"\)/);
+  const corretta = REGOLA_PRECEDENTE.replace("evento === 'soccorso'", "evento === 'soccorso' && inBase && passati === 100");
+  const prova = await verificaRegola(corretta);
+  assert.equal(prova.ok, true);
+  assert.equal(prova.tabella.length, 101);
+  assert.equal(prova.tabella[100][0].soccorso.vittoria, false);
+  assert.equal(prova.tabella[100][1].soccorso.vittoria, true);
+  assert.doesNotMatch(preparaMissione(prova.tabella), /__MISSIONE_TABELLA__/);
+});
 
 test('le creazioni giocabili hanno un percorso distinto dalla scrittura di codice', () => {
   assert.equal(richiestaInterattiva('Crea un videogioco 3D'), true);

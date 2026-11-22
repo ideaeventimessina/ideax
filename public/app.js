@@ -2375,6 +2375,36 @@ let codePronto = false;
 function loadCode() {
   if (codePronto) { loadCodeElenco(); return; }
   codePronto = true;
+  const dialogo = $('#code-progetto-dialogo');
+  const frame = $('#code-progetto-frame');
+  $('#code-progetto-chiudi').onclick = () => dialogo.close();
+  dialogo.addEventListener('close', () => {
+    frame.removeAttribute('srcdoc');
+    frame.removeAttribute('src');
+  });
+  $('#code-progetti').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-code-apri]');
+    if (!b) return;
+    const { codeApri: id, codeTipo: tipo } = b.dataset;
+    if (!/^[a-f0-9]{8}$/.test(id)) return;
+    b.disabled = true;
+    try {
+      frame.setAttribute('sandbox', 'allow-scripts');
+      if (tipo === 'gioco') {
+        const { url } = await api(`/api/operatore/giochi/${id}/apri`, { method: 'POST' });
+        const destinazione = new URL(url);
+        if (destinazione.protocol !== 'http:' || destinazione.hostname !== '127.0.0.1' || destinazione.origin === location.origin) throw Error('Indirizzo non valido.');
+        frame.sandbox.add('allow-same-origin');
+        frame.src = destinazione.href;
+      } else {
+        frame.srcdoc = (await api(`/api/anteprime-web/${id}`)).html;
+      }
+      $('#code-progetto-titolo').textContent = b.dataset.codeTitolo;
+      frame.title = b.dataset.codeTitolo;
+      dialogo.showModal();
+    } catch (err) { $('#code-stato').textContent = err.message; }
+    finally { b.disabled = false; }
+  });
 
   $('#code-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -2390,6 +2420,7 @@ function loadCode() {
       codeAnteprima();
       $('#code-stato').textContent = 'Fatto. Ritocca il codice o pubblica.';
       $('#code-prompt').value = '';
+      void loadCodeProgetti();
     } catch (err) { $('#code-stato').innerHTML = `<span class="error-text">${esc(err.message || 'errore')}</span>`; }
     finally { btn.disabled = false; }
   });
@@ -2421,6 +2452,7 @@ function loadCode() {
 }
 
 async function loadCodeElenco() {
+  void loadCodeProgetti();
   let v;
   try { v = await api('/api/code/siti'); } catch { return; }
   const lista = v.siti || [];
@@ -2428,6 +2460,20 @@ async function loadCodeElenco() {
   $('#code-elenco').innerHTML = lista.map((s) => `<div style="display:flex;gap:.5rem;align-items:center;justify-content:space-between">
     <a href="${esc(s.url)}" target="_blank"><strong>${esc(s.nome)}</strong> <span class="muted small">${esc(s.url)}</span></a>
     <button class="btn small danger" data-code-del="${esc(s.slug)}">Togli</button></div>`).join('');
+}
+
+async function loadCodeProgetti() {
+  const box = $('#code-progetti');
+  try {
+    const { progetti } = await api('/api/code/progetti');
+    box.innerHTML = progetti.map((p) => {
+      const azione = p.tipo === 'locale'
+        ? `<a class="btn small" href="${esc(p.url)}" target="_blank" rel="noopener">Apri</a>`
+        : `<button class="btn small" data-code-apri="${esc(p.id)}" data-code-tipo="${esc(p.tipo)}" data-code-titolo="${esc(p.titolo)}">Apri</button>`;
+      const tipo = p.tipo === 'locale' ? 'App locale' : p.collaudo === 'bozza' ? 'Bozza web' : p.collaudo === 'missione' || p.tipo === 'gioco' ? 'Gioco collaudato' : 'Anteprima web';
+      return `<div class="row"><span class="grow"><strong>${esc(p.titolo)}</strong> <span class="muted small">${tipo}</span></span>${azione}${p.sorgenti ? `<a class="btn small" href="${esc(p.sorgenti)}">Sorgenti</a>` : ''}</div>`;
+    }).join('') || '<p class="muted small">I giochi e le pagine web salvati compaiono qui.</p>';
+  } catch (err) { box.textContent = err.message; }
 }
 
 // Markdown essenziale e sicuro: prima si fa l'escape, poi si aggiunge la formattazione
