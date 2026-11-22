@@ -54,7 +54,9 @@ test('la missione scarta la vittoria prematura prima di produrre un documento', 
   assert.equal(prova.tabella.length, 101);
   assert.equal(prova.tabella[100][0].soccorso.vittoria, false);
   assert.equal(prova.tabella[100][1].soccorso.vittoria, true);
-  assert.doesNotMatch(preparaMissione(prova.tabella), /__MISSIONE_TABELLA__/);
+  const html = preparaMissione(prova.tabella);
+  assert.doesNotMatch(html, /__MISSIONE_TABELLA__|__MOTORE_GIUNGLA__/);
+  assert.match(html, /scenarioVista/);
 });
 
 test('le creazioni giocabili hanno un percorso distinto dalla scrittura di codice', () => {

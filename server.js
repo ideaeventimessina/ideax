@@ -839,7 +839,7 @@ const server = http.createServer(async (req, res) => {
       const match = p.match(/^\/api\/anteprime-web\/([a-f0-9]{8})$/);
       if (match && req.method === 'GET') {
         const anteprima = leggiAnteprima(match[1]);
-        const valida = anteprima && (!/^ritorno dalla giungla$/i.test(anteprima.titolo) || anteprima.collaudo === 'missione');
+        const valida = anteprima && (!/^ritorno dalla giungla$/i.test(anteprima.titolo) || anteprima.collaudo === 'missione-3d');
         return valida ? send(res, 200, { ...anteprima, html: documentoIsolato(anteprima.html) }) : send(res, 404, { error: 'Anteprima da collaudare o non trovata.' });
       }
     }

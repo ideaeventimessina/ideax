@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import math
 import os
 import re
 import subprocess
@@ -348,16 +349,40 @@ def prova_missione(page, frame):
         if testo not in status.inner_text():
             raise AssertionError(f"Atteso {testo!r}; stato: {status.inner_text()}")
 
-    def orienta(expr):
-        delta = body.evaluate(expr)
-        turns = round(delta / .14)
-        for _ in range(abs(turns)):
-            page.keyboard.press("ArrowRight" if turns > 0 else "ArrowLeft")
+    canvas = frame.locator("canvas[data-renderer=webgl]")
+    canvas.wait_for()
+    rect = canvas.bounding_box()
+    if not rect or rect["width"] < 500:
+        raise AssertionError("Area WebGL non disponibile.")
+
+    def orienta(delta):
+        while abs(delta) > .015:
+            step = min(.85, max(-.85, delta))
+            x, y = rect["x"] + rect["width"] / 2, rect["y"] + rect["height"] / 2
+            page.mouse.move(x, y)
+            page.mouse.down()
+            page.mouse.move(x - step / .004, y)
+            page.mouse.up()
+            delta -= step
 
     def raggiungi_base():
-        orienta("() => angle(-a)")
-        for _ in range(46):
-            page.keyboard.press("w")
+        yaw = body.evaluate("() => scenarioVista().yaw")
+        orienta(-math.atan2(math.sin(yaw), math.cos(yaw)))
+        page.keyboard.down("w")
+        try:
+            reached = body.evaluate("""() => new Promise(resolve => {
+                const start = performance.now();
+                const timer = setInterval(() => {
+                    const base = scenarioVista().base;
+                    if (base || performance.now()-start > 22000) {
+                        clearInterval(timer); resolve(base);
+                    }
+                }, 30);
+            })""", timeout=24000)
+        finally:
+            page.keyboard.up("w")
+        if not reached:
+            raise AssertionError(f"Il movimento tenuto premuto non raggiunge la base: {body.evaluate('() => scenarioVista()')}")
 
     raggiungi_base()
     page.keyboard.press("e")
@@ -366,35 +391,38 @@ def prova_missione(page, frame):
     page.keyboard.press("e")
     atteso("Avvicinati")
     for i in range(1, 101):
-        orienta("() => angle(Math.atan2(enemy.y-y,enemy.x-x)-a)")
+        orienta(body.evaluate("() => scenarioVista().delta"))
         page.keyboard.press("Space")
-        atteso(f" · {i}/100")
+        if frame.locator("#progresso").inner_text() != f"{i} / 100":
+            raise AssertionError(f"Contatto {i}: {status.inner_text()}")
     page.keyboard.press("e")
     atteso("Avvicinati")
     raggiungi_base()
     page.keyboard.press("e")
     atteso("Missione completata. Compagno liberato.")
     frame.locator("#ideax-start").click()
-    atteso(" · 0/100")
+    if frame.locator("#progresso").inner_text() != "0 / 100":
+        raise AssertionError("Il riavvio non azzera il progresso.")
 
 
 @app.post("/br/collauda-anteprima")
 def collauda_anteprima(r: CollaudoAnteprima):
-    if len(r.html) > 80000:
+    if len(r.html) > (1_000_000 if r.missione else 80_000):
         raise HTTPException(400, "Anteprima troppo grande.")
     if not _chromium_ok():
         raise HTTPException(503, "Prepara Chromium dal motore Regista web.")
     from playwright.sync_api import sync_playwright
     errors = []
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(executable_path=os.environ.get("IDEAX_CHROMIUM") or None)
+        flags = ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] if r.missione else []
+        browser = pw.chromium.launch(executable_path=os.environ.get("IDEAX_CHROMIUM") or None, args=flags)
         try:
-            context = browser.new_context(service_workers="block", accept_downloads=False)
+            context = browser.new_context(service_workers="block", accept_downloads=False, viewport={"width": 1120, "height": 770})
             context.route("**/*", lambda route: route.abort())
             page = context.new_page()
             page.set_default_timeout(3000)
             page.on("pageerror", lambda err: errors.append(str(err)))
-            page.set_content('<iframe title="Anteprima" sandbox="allow-scripts"></iframe>')
+            page.set_content('<iframe title="Anteprima" sandbox="allow-scripts" style="width:1050px;height:680px;border:0"></iframe>')
             page.locator("iframe").evaluate("(frame, html) => frame.srcdoc = html", r.html)
             frame = page.frame_locator("iframe")
             body = frame.locator("body")

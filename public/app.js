@@ -2493,7 +2493,7 @@ async function loadCodeProgetti() {
           ? `<button class="btn small" data-code-avvia="${esc(p.avvia)}">Apri</button>`
           : `<a class="btn small" href="${esc(p.url)}" target="_blank" rel="noopener">Apri</a>`)
         : `<button class="btn small" data-code-apri="${esc(p.id)}" data-code-tipo="${esc(p.tipo)}" data-code-titolo="${esc(p.titolo)}">Apri</button>`;
-      const tipo = p.tipo === 'locale' ? 'App locale' : p.collaudo === 'bozza' ? 'Bozza web' : p.collaudo === 'missione' || p.tipo === 'gioco' ? 'Gioco collaudato' : 'Anteprima web';
+      const tipo = p.tipo === 'locale' ? 'App locale' : p.collaudo === 'bozza' ? 'Bozza web' : p.collaudo === 'missione-3d' || p.tipo === 'gioco' ? 'Gioco collaudato' : 'Anteprima web';
       return `<div class="row"><span class="grow"><strong>${esc(p.titolo)}</strong> <span class="muted small">${tipo}</span></span>${azione}${p.sorgenti ? `<a class="btn small" href="${esc(p.sorgenti)}">Sorgenti</a>` : ''}</div>`;
     }).join('') || '<p class="muted small">I giochi e le pagine web salvati compaiono qui.</p>';
   } catch (err) { box.textContent = err.message; }

@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.25.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.26.exe**.
+
+## Ritorno dalla Giungla in WebGL
+- La missione usa Three.js con terreno texturizzato, ombre, personaggi articolati e movimento continuo. Il tasto V alterna prima e terza persona.
+- Chromium verifica l’attivazione di WebGL, il movimento, tutti i 100 incontri, il soccorso e il riavvio. Solo a collaudo riuscito compare «Apri» in Regia e il gioco viene salvato in Code.
 
 ## Avvio da Code
 - «Apri» avvia i progetti locali registrati quando il loro server è spento e apre la pagina appena risponde. I server avviati da IDEAX si chiudono insieme a IDEAX.

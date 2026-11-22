@@ -11,3 +11,4 @@ __pycache__/
 dist/
 build/.cache/
 runtime/
+public/giungla3d.bundle.js

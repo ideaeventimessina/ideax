@@ -7,6 +7,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
+import '../browser/build-giungla.mjs';
 import * as ResEdit from 'resedit';
 import * as PE from 'pe-library';
 
