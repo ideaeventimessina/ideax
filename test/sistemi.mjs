@@ -31,7 +31,7 @@ test('le creazioni giocabili hanno un percorso distinto dalla scrittura di codic
   assert.equal(richiestaInterattiva('Crea un videogioco 3D'), true);
   assert.equal(richiestaInterattiva('Ok è un gioco 3D in prima persona'), true);
   assert.equal(richiestaInterattiva('Scrivi solo il codice per un gioco'), false);
-  assert.match(documentoIsolato('<button>Avvia</button>'), /connect-src 'none'.*<button>Avvia<\/button>/);
+  assert.match(documentoIsolato('<button>Avvia</button>'), /connect-src 'none'[\s\S]*scrollIntoView[\s\S]*<button>Avvia<\/button>/);
 });
 
 test('una lettura GitHub ha precedenza sullo scrittore, senza intercettare richieste di modifica', () => {
