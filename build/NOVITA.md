@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.24.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.25.exe**.
+
+## Avvio da Code
+- «Apri» avvia i progetti locali registrati quando il loro server è spento e apre la pagina appena risponde. I server avviati da IDEAX si chiudono insieme a IDEAX.
 
 ## Progetti Code e missioni
 - Code riunisce le anteprime della Regia, i giochi in archivio e le nuove bozze web. I collegamenti ai progetti locali si possono aggiungere nei dati di IDEAX.

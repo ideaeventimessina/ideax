@@ -27,7 +27,7 @@ import * as webdemo from './lib/webdemo.js';
 import * as operatore from './lib/operatore.js';
 import * as giochi from './lib/progetti-guida.js';
 import { documentoIsolato, leggiAnteprima, salvaAnteprima } from './lib/anteprima-web.js';
-import { progettiCode } from './lib/code-progetti.js';
+import { apriProgettoLocale, progettiCode } from './lib/code-progetti.js';
 import * as autopotenzia from './lib/autopotenzia.js';
 import * as skills from './lib/skills.js';
 import * as siti from './lib/siti.js';
@@ -870,6 +870,10 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { schede, split, immagini, motori, attivo: schede.length >= 2 && split !== 'off' && immagini !== motori });
     }
     if (p === '/api/code/progetti' && req.method === 'GET') return send(res, 200, { progetti: progettiCode() });
+    if (/^\/api\/code\/progetti\/[a-z0-9-]{1,48}\/apri$/.test(p) && req.method === 'POST') {
+      if (!richiestaLocale(req, PORT)) return send(res, 403, { error: 'Avvia il progetto da Code sullo stesso PC.' });
+      return send(res, 200, await apriProgettoLocale(p.split('/')[4]));
+    }
     if (p === '/api/code/genera' && req.method === 'POST') {
       const b = await readJson(req);
       const v = await siti.genera(b);

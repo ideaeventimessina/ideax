@@ -2383,6 +2383,27 @@ function loadCode() {
     frame.removeAttribute('src');
   });
   $('#code-progetti').addEventListener('click', async (e) => {
+    const locale = e.target.closest('[data-code-avvia]');
+    if (locale) {
+      const id = locale.dataset.codeAvvia;
+      if (!/^[a-z0-9-]{1,48}$/.test(id)) return;
+      const tab = window.open('about:blank', '_blank');
+      if (tab) tab.opener = null;
+      locale.disabled = true;
+      $('#code-stato').textContent = 'Avvio il progetto locale…';
+      try {
+        const { url } = await api(`/api/code/progetti/${id}/apri`, { method: 'POST' });
+        const indirizzo = new URL(url);
+        if (indirizzo.protocol !== 'http:' || indirizzo.hostname !== '127.0.0.1') throw new Error('Indirizzo non valido.');
+        if (tab) tab.location.href = indirizzo.href;
+        else location.href = indirizzo.href;
+        $('#code-stato').textContent = '';
+      } catch (err) {
+        tab?.close();
+        $('#code-stato').textContent = err.message;
+      } finally { locale.disabled = false; }
+      return;
+    }
     const b = e.target.closest('[data-code-apri]');
     if (!b) return;
     const { codeApri: id, codeTipo: tipo } = b.dataset;
@@ -2468,7 +2489,9 @@ async function loadCodeProgetti() {
     const { progetti } = await api('/api/code/progetti');
     box.innerHTML = progetti.map((p) => {
       const azione = p.tipo === 'locale'
-        ? `<a class="btn small" href="${esc(p.url)}" target="_blank" rel="noopener">Apri</a>`
+        ? (p.avvia
+          ? `<button class="btn small" data-code-avvia="${esc(p.avvia)}">Apri</button>`
+          : `<a class="btn small" href="${esc(p.url)}" target="_blank" rel="noopener">Apri</a>`)
         : `<button class="btn small" data-code-apri="${esc(p.id)}" data-code-tipo="${esc(p.tipo)}" data-code-titolo="${esc(p.titolo)}">Apri</button>`;
       const tipo = p.tipo === 'locale' ? 'App locale' : p.collaudo === 'bozza' ? 'Bozza web' : p.collaudo === 'missione' || p.tipo === 'gioco' ? 'Gioco collaudato' : 'Anteprima web';
       return `<div class="row"><span class="grow"><strong>${esc(p.titolo)}</strong> <span class="muted small">${tipo}</span></span>${azione}${p.sorgenti ? `<a class="btn small" href="${esc(p.sorgenti)}">Sorgenti</a>` : ''}</div>`;

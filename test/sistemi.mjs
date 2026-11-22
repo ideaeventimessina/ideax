@@ -12,6 +12,36 @@ const { saveSystem, deleteSystem } = await import('../lib/systems.js');
 const { validaSintassi } = await import('../lib/operatore.js');
 const { collauda, preparaCollaudo } = await import('../lib/collaudo.js');
 const { letturaGitHub } = await import('../lib/github-regia.js');
+const { progettiCode, apriProgettoLocale } = await import('../lib/code-progetti.js');
+
+test('Code avvia il progetto registrato solo quando viene aperto', async (t) => {
+  const riserva = createServer();
+  riserva.listen(0, '127.0.0.1');
+  await once(riserva, 'listening');
+  const port = riserva.address().port;
+  await new Promise(resolve => riserva.close(resolve));
+  const cartella = fs.mkdtempSync(path.join(os.tmpdir(), 'ideax code-'));
+  const url = `http://127.0.0.1:${port}/`;
+  t.after(async () => {
+    await fetch(url + 'chiudi', { signal: AbortSignal.timeout(1000) }).catch(() => {});
+    await fs.promises.rm(cartella, { recursive: true, force: true, maxRetries: 8, retryDelay: 100 });
+  });
+  fs.writeFileSync(path.join(cartella, 'server.mjs'),
+    `import {createServer} from 'node:http';
+    const server = createServer((req,res) => {
+      res.end('Code online');
+      if (req.url === '/chiudi') server.close();
+    }).listen(${port},'127.0.0.1');`);
+  const registro = path.join(process.env.IDEAX_HOME, 'data', 'code-progetti-locali.json');
+  fs.writeFileSync(registro, JSON.stringify([{ id: 'avvio-test', titolo: 'Progetto', url, avvio: { node: process.execPath, cartella } }]));
+  t.after(() => fs.rmSync(registro, { force: true }));
+  assert.equal(progettiCode().find(p => p.titolo === 'Progetto').avvia, 'avvio-test');
+  await assert.rejects(fetch(url));
+  const avvii = await Promise.all([apriProgettoLocale('avvio-test'), apriProgettoLocale('avvio-test')]);
+  assert.deepEqual(avvii, [{ url }, { url }]);
+  assert.equal(await (await fetch(url)).text(), 'Code online');
+  await assert.rejects(apriProgettoLocale('sconosciuto'), /non registrato/);
+});
 const { richiestaInterattiva, documentoIsolato } = await import('../lib/anteprima-web.js');
 const { REGOLA_PRECEDENTE, richiestaMissione, verificaRegola, preparaMissione } = await import('../lib/missione-giungla.js');
 
