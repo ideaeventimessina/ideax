@@ -473,22 +473,36 @@ def collauda_anteprima(r: CollaudoAnteprima):
             frame = page.frame_locator("iframe")
             body = frame.locator("body")
             body.wait_for()
-            initial = body.inner_text()
+            stato_visibile = """(el, includeCanvas) => JSON.stringify([
+                el.innerText,
+                [...el.querySelectorAll('button,input,select,[aria-pressed],[aria-expanded],[data-cell],[data-square],[role=gridcell],[role=status]')]
+                    .slice(0, 100).map(e => [e.disabled, e.value, e.checked, e.hidden,
+                        e.getAttribute('aria-pressed'), e.getAttribute('aria-expanded'),
+                        e.getAttribute('aria-selected'), e.dataset.value, e.className]),
+                includeCanvas && [...el.querySelectorAll('canvas')].slice(0, 2).map(c => {
+                    try { return c.toDataURL(); } catch { return ''; }
+                })
+            ])"""
+            iniziale = body.evaluate(stato_visibile, False)
+            canvas_prima = body.evaluate(stato_visibile, True)
+            page.wait_for_timeout(120)
+            canvas_stabile = canvas_prima == body.evaluate(stato_visibile, True) and frame.locator("canvas").count() > 0
             start = frame.locator("#ideax-start")
             if start.count() == 0:
                 start = frame.get_by_role("button", name=re.compile(r"avvia|inizia|gioca|start|esegui|calcola", re.I)).first
             if start.count() == 0:
                 raise AssertionError('Manca un pulsante visibile con id="ideax-start" o etichetta Avvia.')
             start.click()
-            changed = body.evaluate("""(el, initial) => new Promise(resolve => {
-                let checks = 0;
-                const timer = setInterval(() => {
-                    const changed = el.innerText !== initial;
-                    if (changed || ++checks >= 20) { clearInterval(timer); resolve(changed); }
-                }, 50);
-            })""", initial)
+            changed = False
+            for _ in range(12):
+                if body.evaluate(stato_visibile, False) != iniziale or (
+                    canvas_stabile and body.evaluate(stato_visibile, True) != canvas_prima
+                ):
+                    changed = True
+                    break
+                page.wait_for_timeout(100)
             if not changed:
-                raise AssertionError("Il pulsante non ha cambiato alcuno stato visibile.")
+                raise AssertionError("Chromium ha premuto il pulsante, ma non ha rilevato cambiamenti nel testo, nei controlli o nel canvas statico.")
             if r.missione:
                 prova_missione(page, frame)
             if r.tris:

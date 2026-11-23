@@ -400,7 +400,13 @@ async function seguiLavoro(turno, id){
   const box=aggiungi(turno, '<div class="pensa">Lo sto creando…</div>','media');
   for(let i=0;i<800;i++){
     await new Promise(r=>setTimeout(r,1500));
-    let j; try{ j=await (await fetch(`/v1/jobs/${id}`)).json(); }catch{ continue; }
+    let j;
+    try { j = await richiesta(`/v1/jobs/${id}`); }
+    catch(err) {
+      if (err.status === 404) { box.textContent = 'Il backend non trova più questo lavoro.'; return; }
+      box.textContent = 'Ricollegamento al lavoro…';
+      continue;
+    }
     if(j.progress?.phase) box.innerHTML=`<div class="pensa">${esc(j.progress.phase)}${j.progress.total?` · ${j.progress.step}/${j.progress.total}`:''}</div>`;
     if(j.status==='done'){ mostraRisultati(box, j.results || []); return; }
     if(j.status==='error'||j.status==='cancelled'){ box.innerHTML=`<div class="pensa">Non è riuscito: ${esc(j.error||'errore')}</div>`; return; }
@@ -411,14 +417,81 @@ async function seguiLavoro(turno, id){
 async function assicuraChat(){
   if(chatId) return chatId;
   const c=await richiesta('/v1/chats',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
-  chatId=c.id; return chatId;
+  conservaChat(c.id);
+  return chatId;
+}
+
+const chiaveChat = 'ideax-regia-chat';
+function conservaChat(id) {
+  chatId = id;
+  try {
+    if (id) sessionStorage.setItem(chiaveChat, id);
+    else sessionStorage.removeItem(chiaveChat);
+  } catch {}
+  const url = new URL(location.href);
+  if (id) url.searchParams.set('chat', id);
+  else url.searchParams.delete('chat');
+  history.replaceState(null, '', url);
+}
+
+function mostraRisposta(turno, msg, dalVivo) {
+  if(msg.content) {
+    const risposta = aggiungi(turno, esc(msg.content), 'risposta');
+    risposta.setAttribute('role', 'status');
+    if(dalVivo) parla(msg.content);
+  }
+  for(const id of (msg.jobs||[])) void seguiLavoro(turno, id);
+  if(msg.anteprima) mostraAnteprima(turno, { ...msg.anteprima, apriSubito: dalVivo && msg.anteprima.apriSubito });
+  if(msg.potenziamento) void seguiPotenziamento(turno, msg.potenziamento);
+}
+
+function mostraAttesa(turno) {
+  return aggiungi(turno, '<div class="capo"><div class="spin"></div><span class="ora">Sto pensando…</span><span class="tmr">0:00</span></div><ol class="passi"></ol><div class="parz"></div>', 'lavoro');
+}
+
+async function ripristinaChat() {
+  let id = new URL(location.href).searchParams.get('chat');
+  try { id ||= sessionStorage.getItem(chiaveChat); } catch {}
+  if (!id || !/^[\w-]{1,80}$/.test(id)) return;
+  conservaChat(id);
+  occupato = true;
+  $('#invia').disabled = true;
+  try {
+    const chat = await richiesta(`/v1/chats/${id}`);
+    let turno, ultimoUtente;
+    for (const msg of chat.messages || []) {
+      if (msg.role === 'user') {
+        ultimoUtente = msg;
+        turno = nuovoTurno();
+        if (msg.content) aggiungi(turno, esc(msg.content), 'io');
+        const allegati = [...(msg.attachments || []), ...(msg.files || [])];
+        if (allegati.length) aggiungi(turno, allegati.map(a => `<span class="chip">${esc(a.name || 'Allegato')}</span>`).join(''), 'allegati');
+      } else if (msg.role === 'assistant') {
+        turno ||= nuovoTurno();
+        mostraRisposta(turno, msg, false);
+      }
+    }
+    if (chat.pending && turno && ultimoUtente) {
+      const lavoro = mostraAttesa(turno);
+      try { await seguiChat(turno, lavoro, ultimoUtente.id); }
+      catch (err) { lavoro.textContent = err.message; }
+    }
+  } catch(err) {
+    if (err.status === 404) conservaChat(null);
+    else stato.textContent = 'La chat è salvata. Ricarica la Regia per riprovare a leggerla.';
+  } finally {
+    occupato = false;
+    $('#invia').disabled = false;
+  }
 }
 
 async function richiesta(url, options) {
   const response = await fetch(url, { ...options, signal: AbortSignal.timeout(15000) });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new Error(typeof body.error === 'string' ? body.error : `Errore HTTP ${response.status}`);
+    const err = new Error(typeof body.error === 'string' ? body.error : `Errore HTTP ${response.status}`);
+    err.status = response.status;
+    throw err;
   }
   return response.json();
 }
@@ -433,7 +506,10 @@ async function seguiChat(turno, lavoro, messaggioId){
       c = await richiesta(`/v1/chats/${chatId}`);
       errori = 0;
     } catch (errore) {
-      if (++errori >= 3) throw errore;
+      if (errore.status === 404) throw errore;
+      lavoro.querySelector('.ora').textContent = 'Ricollegamento alla chat…';
+      if (++errori >= 10) throw new Error('Stato temporaneamente irraggiungibile. Ricarica la Regia per ritrovare questa chat.');
+      await new Promise(r => setTimeout(r, Math.min(errori * 500, 4000)));
       continue;
     }
     const p=c.pending;
@@ -450,16 +526,8 @@ async function seguiChat(turno, lavoro, messaggioId){
     const inviato = messaggi.findIndex(m => m.id === messaggioId);
     const ultimo = inviato < 0 ? null : messaggi.slice(inviato + 1).find(m => m.role === 'assistant');
     lavoro.remove();
-    if(ultimo){
-      if(ultimo.content) {
-        const risposta = aggiungi(turno, esc(ultimo.content), 'risposta');
-        risposta.setAttribute('role', 'status');
-        parla(ultimo.content);
-      }
-      for(const id of (ultimo.jobs||[])) seguiLavoro(turno, id);
-      if(ultimo.anteprima) mostraAnteprima(turno, ultimo.anteprima);
-      if(ultimo.potenziamento) seguiPotenziamento(turno, ultimo.potenziamento);
-    } else aggiungi(turno, '<span class="pensa">(nessuna risposta)</span>','pensa');
+    if(ultimo) mostraRisposta(turno, ultimo, true);
+    else aggiungi(turno, 'Il progetto è rimasto senza esito salvato. Puoi riprovare dalla stessa chat.','pensa');
     return;
   }
 }
@@ -511,7 +579,7 @@ async function invia(){
   if(testo) aggiungi(turno, esc(testo),'io');
   const inviati=allegati.slice(); allegati=[]; disegnaAllegati();
   ingresso.value=''; ingresso.style.height='auto';
-  const lavoro=aggiungi(turno, '<div class="capo"><div class="spin"></div><span class="ora">Sto pensando…</span><span class="tmr">0:00</span></div><ol class="passi"></ol><div class="parz"></div>','lavoro');
+  const lavoro=mostraAttesa(turno);
   try {
     await assicuraChat();
     const chat = await richiesta(`/api/chats/${chatId}/messages`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:testo,attachments:inviati})});
@@ -522,6 +590,7 @@ async function invia(){
   finally { occupato=false; $('#invia').disabled=false; ingresso.focus(); }
 }
 $('#portale').addEventListener('submit', (event) => { event.preventDefault(); invia(); });
+void ripristinaChat();
 </script>
 </body>
 </html>

@@ -42,7 +42,14 @@ test('Code avvia il progetto registrato solo quando viene aperto', async (t) => 
   assert.equal(await (await fetch(url)).text(), 'Code online');
   await assert.rejects(apriProgettoLocale('sconosciuto'), /non registrato/);
 });
-const { richiestaInterattiva, richiestaTrisCpu, richiestaSnake, seguitoAnteprima, documentoIsolato } = await import('../lib/anteprima-web.js');
+const { domandaStatoProgetto, richiestaInterattiva, richiestaTrisCpu, richiestaSnake, seguitoAnteprima, documentoIsolato } = await import('../lib/anteprima-web.js');
+
+test('le domande sullo stato della creazione sono riconosciute direttamente', () => {
+  assert.equal(domandaStatoProgetto('Dimmi lo stato del progetto'), true);
+  assert.equal(domandaStatoProgetto('A che punto è?'), true);
+  assert.equal(domandaStatoProgetto('Vedi lo stato?'), true);
+  assert.equal(domandaStatoProgetto('Controlla lo stato del meteo'), false);
+});
 const { REGOLA_PRECEDENTE, richiestaMissione, verificaRegola, preparaMissione } = await import('../lib/missione-giungla.js');
 
 test('la missione scarta la vittoria prematura prima di produrre un documento', async () => {

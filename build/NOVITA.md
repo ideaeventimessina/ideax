@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.28.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.29.exe**.
+
+## Regia
+- Dopo il passaggio alla Console, la Regia ripristina la chat della scheda con risposte, anteprime e lavori in corso.
+- Lo stato del progetto viene letto dai risultati salvati. Il collaudo delle anteprime rileva anche i cambiamenti dei controlli e dei canvas statici.
 
 ## Riparazione dei giochi nella Regia
 - «Non funziona» dopo una creazione interattiva ripara il progetto della stessa chat. Dopo il collaudo la Regia riapre la finestra.
