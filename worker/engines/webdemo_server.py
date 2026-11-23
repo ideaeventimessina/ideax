@@ -340,6 +340,30 @@ class CollaudoAnteprima(BaseModel):
     html: str
     missione: bool = False
     tris: bool = False
+    snake: bool = False
+
+
+def prova_snake(frame):
+    start = frame.locator("#ideax-start")
+    score = frame.locator("#score")
+    status = frame.locator("#ideax-status")
+    start.click()
+    score.filter(has_text="1").wait_for()
+    y = frame.locator("body").evaluate("() => snake[0][1]")
+    frame.locator("#world").press("ArrowUp")
+    frame.locator("body").evaluate("""(_body, y) => new Promise((resolve, reject) => {
+        const start = performance.now();
+        const timer = setInterval(() => {
+            if (snake[0][1] < y) { clearInterval(timer); resolve(); }
+            else if (performance.now()-start > 1200) {
+                clearInterval(timer); reject(Error('La freccia non ha cambiato direzione.'));
+            }
+        }, 40);
+    })""", y)
+    status.filter(has_text="Partita finita").wait_for(timeout=5000)
+    start.click()
+    if score.inner_text() != "0" or status.inner_text() != "In gioco":
+        raise AssertionError("Il riavvio deve azzerare il punteggio.")
 
 
 def prova_tris(frame):
@@ -469,6 +493,8 @@ def collauda_anteprima(r: CollaudoAnteprima):
                 prova_missione(page, frame)
             if r.tris:
                 prova_tris(frame)
+            if r.snake:
+                prova_snake(frame)
             if errors:
                 raise AssertionError(errors[0])
             return {"ok": True}

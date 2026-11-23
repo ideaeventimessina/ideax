@@ -393,6 +393,7 @@ function mostraAnteprima(turno, dato){
     } catch(e) { stato.textContent = e.message; }
     finally { apri.disabled = false; }
   };
+  if(dato.apriSubito) void apri.onclick();
 }
 
 async function seguiLavoro(turno, id){

@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.27.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.28.exe**.
+
+## Riparazione dei giochi nella Regia
+- «Non funziona» dopo una creazione interattiva ripara il progetto della stessa chat. Dopo il collaudo la Regia riapre la finestra.
+- Snake integrato viene collaudato per movimento, punti, game over e riavvio.
 
 ## Tris nella Regia
 - «Crea il gioco del tris contro la CPU» avvia il gioco integrato. Chromium prova la risposta della CPU, la vittoria e il riavvio prima di mostrare «Apri» nella Regia.

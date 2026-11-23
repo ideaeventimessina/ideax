@@ -1,0 +1,47 @@
+<!doctype html><html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Snake tascabile</title>
+<style>
+:root{font:16px system-ui,sans-serif;color:#e9edcf;background:#192423}*{box-sizing:border-box}body{min-height:100vh;margin:0;padding:clamp(10px,3vw,30px);display:grid;place-items:start center}main{width:min(100%,550px);border:1px solid #637463;border-radius:22px;padding:clamp(14px,3vw,27px);background:#233331}header,.meta,.keys{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}h1{font:500 44px/1 Georgia,serif;margin:0}.lcd{background:#aeb882;color:#23361e;padding:10px;border-radius:12px;margin:12px 0}.meta{padding:5px 3px;font-weight:650}canvas{display:block;width:100%;height:auto;aspect-ratio:1;background:#aeb882;image-rendering:pixelated;border:2px solid #526142;border-radius:4px}button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid #83907d;background:#354841;color:#e9edcf;padding:7px 12px}button:focus-visible{outline:3px solid #f5d58d;outline-offset:2px}#ideax-start{background:#c9d69a;color:#1c2c1b;font-weight:700}.hint{font-size:.85rem;margin:0}
+</style><body><main><header><h1>Snake</h1><button id="ideax-start" type="button" disabled>Avvia</button></header><div class="lcd"><div class="meta"><span id="ideax-status" role="status">Pronto</span><span>Punti <strong id="score">0</strong></span></div><canvas width="360" height="360" id="world" tabindex="0" aria-label="Campo di Snake"></canvas></div><div class="keys" aria-label="Comandi a schermo"><button type="button" data-dir="ArrowLeft" aria-label="Sinistra">←</button><button type="button" data-dir="ArrowUp" aria-label="Su">↑</button><button type="button" data-dir="ArrowDown" aria-label="Giù">↓</button><button type="button" data-dir="ArrowRight" aria-label="Destra">→</button><p class="hint">Frecce o WASD · Spazio per pausa</p></div></main>
+<script>
+'use strict';
+const board=document.querySelector('#world'), g=board.getContext('2d');
+const start=document.querySelector('#ideax-start'), status=document.querySelector('#ideax-status'), score=document.querySelector('#score');
+const N=18,S=20, directions={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1],a:[-1,0],d:[1,0],w:[0,-1],s:[0,1]};
+let snake, food, direction, next, active=false, paused=false, points=0, timer;
+function draw(){
+ g.fillStyle='#aeb882';g.fillRect(0,0,360,360);
+ g.fillStyle='#929e6d';for(let y=0;y<N;y++)for(let x=0;x<N;x++)g.fillRect(x*S+10,y*S+10,1,1);
+ snake.forEach(([x,y],i)=>{g.fillStyle=i?'#35482a':'#21351d';g.fillRect(x*S+1,y*S+1,S-2,S-2);});
+ if(food){g.fillStyle='#23361e';g.fillRect(food[0]*S+5,food[1]*S+5,10,10);}
+}
+function reset(){
+ snake=[[6,9],[5,9],[4,9]];direction=next=[1,0];food=[8,9];points=0;score.textContent='0';paused=false;draw();
+}
+function placeFood(){
+ const free=[];
+ for(let y=0;y<N;y++)for(let x=0;x<N;x++)if(!snake.some(([a,b])=>a===x&&b===y))free.push([x,y]);
+ return free.length?free[(Math.random()*free.length)|0]:null;
+}
+function end(message){active=false;clearInterval(timer);status.textContent=message;}
+function step(){
+ if(!active||paused)return;
+ direction=next;
+ const [x,y]=[snake[0][0]+direction[0],snake[0][1]+direction[1]];
+ const eats=food&&x===food[0]&&y===food[1];
+ if(x<0||x>=N||y<0||y>=N||snake.slice(0,eats?snake.length:-1).some(([a,b])=>a===x&&b===y)){
+  end('Partita finita');return;
+ }
+ snake.unshift([x,y]);
+ if(eats){score.textContent=String(++points);food=placeFood();if(!food)end('Hai vinto!');}
+ else snake.pop();
+ draw();
+}
+function key(k){
+ if(k===' '&&active){paused=!paused;status.textContent=paused?'Pausa':'In gioco';return;}
+ const d=directions[k];if(active&&d&&d[0]*direction[0]+d[1]*direction[1]!==-1)next=d;
+}
+start.onclick=()=>{clearInterval(timer);reset();active=true;status.textContent='In gioco';start.textContent='Ricomincia';timer=setInterval(step,145);board.focus();};
+document.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;if((k===' '||directions[k])&&e.target.tagName!=='BUTTON'){e.preventDefault();key(k);}});
+document.querySelectorAll('[data-dir]').forEach(b=>b.onclick=()=>{key(b.dataset.dir);board.focus();});
+reset();start.disabled=false;
+</script></body></html>
