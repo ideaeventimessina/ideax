@@ -101,6 +101,9 @@ test('un personaggio salvato chiarisce il formato anche dopo una risposta di scr
   assert.equal(decide({ ...contesto, testo: 'Genera un’immagine di Anita sul balcone' }).azione, 'immagine');
   assert.equal(decide({ ...contesto, testo: 'Scrivi un racconto di Anita' }).azione, 'scrittura');
   assert.equal(decide({ testo: 'Fammi Anita sul balcone' }), null);
+  assert.equal(decide({ testo: 'OK CREA BABBO NATALE CON UNA SCIARPA', ultima: 'immagine' }).azione, 'immagine');
+  assert.equal(decide({ testo: 'OK CREA BABBO NATALE CON UNA SCIARPA' }), null);
+  assert.equal(decide({ testo: 'OK CREA UN VIDEO DI BABBO NATALE', ultima: 'immagine' }).azione, 'video');
 });
 
 test('un testo per un servizio fotografico o un reel resta un testo', () => {
