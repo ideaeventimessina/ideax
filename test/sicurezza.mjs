@@ -70,3 +70,9 @@ test('sola lettura: niente strumenti di scrittura GitHub, qualunque sia allowWri
   store.saveSettings({ github: { token: 'finto', allowWrite: false } });
   for (const t of SCRIVONO) assert.ok(!availableTools({}).includes(t), `allowWrite spento: ${t} non deve esserci`);
 });
+test('Riconosce il rifiuto con predica o diversivo senza confonderlo con un dialogo', async () => {
+  const { isRefusal } = await import('../lib/agent.js');
+  assert.equal(isRefusal('Impossibile generare contenuti di questo tipo. Per rispettare le norme etiche, mi fermo.'), true);
+  assert.equal(isRefusal('Ecco il testo:\n\nNon esiste alcuna versione del personaggio.\nSe invece vuoi qualcosa di etico, ti propongo una barzelletta.'), true);
+  assert.equal(isRefusal('«Non posso venire», disse Anna. Poi scoppiò a ridere.'), false);
+});
