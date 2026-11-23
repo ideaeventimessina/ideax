@@ -1,0 +1,66 @@
+<!doctype html><html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tris contro la CPU</title>
+<style>
+:root{color-scheme:dark;font:16px system-ui,sans-serif;color:#f4ecdf;background:#152522}*{box-sizing:border-box}body{margin:0;padding:clamp(12px,4vw,42px);background:radial-gradient(ellipse at 15% 0,#3d5445,#152522 62%);min-height:100vh}main{max-width:570px;margin:auto}h1{font:500 clamp(36px,7vw,68px)/1 Georgia,serif;margin:0 0 14px}p{color:#dde8d8}.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;max-width:460px}button,select{font:inherit;color:inherit;border:1px solid #799789;border-radius:8px;background:#263b33;padding:8px 12px}button{cursor:pointer}button:focus-visible,select:focus-visible{outline:3px solid #f3c280;outline-offset:2px}.grid button{aspect-ratio:1;font:500 clamp(35px,9vw,76px)/1 Georgia;padding:0;background:#263f36;color:#f8d69c}.grid button[data-value=O]{color:#b4e5d8}.grid button:disabled{opacity:1;cursor:default}#ideax-start{background:#e9b975;color:#20170f;font-weight:700}#ideax-status{min-height:1.4em;font-weight:700}
+</style><body><main><h1>Tris contro la CPU</h1><p>Tu giochi con X. Metti tre simboli in fila.</p>
+<div class="controls"><label for="difficolta">Difficoltà</label><select id="difficolta"><option value="easy">Facile</option><option value="hard" selected>Difficile</option></select><button type="button" id="ideax-start" disabled>Avvia</button></div>
+<p id="ideax-status" role="status">Pronto per una partita.</p><div class="grid" role="group" aria-label="Scacchiera del tris" id="board"></div>
+</main><script>
+'use strict';
+const area=document.querySelector('#board'),status=document.querySelector('#ideax-status'),start=document.querySelector('#ideax-start'),level=document.querySelector('#difficolta');
+const lines=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+const board=Array(9).fill(''), cells=[];
+let active=false;
+function winner(){return lines.find(([a,b,c])=>board[a]&&board[a]===board[b]&&board[b]===board[c]);}
+function empty(){return board.flatMap((v,i)=>v?[]:[i]);}
+function score(cpu,depth){
+ const line=winner(); if(line)return board[line[0]]==='O'?10-depth:depth-10;
+ const free=empty(); if(!free.length)return 0;
+ let best=cpu?-Infinity:Infinity;
+ for(const i of free){
+  board[i]=cpu?'O':'X'; const value=score(!cpu,depth+1);board[i]='';
+  best=cpu?Math.max(best,value):Math.min(best,value);
+ }
+ return best;
+}
+function cpuMove(){
+ const free=empty(); if(level.value==='easy')return free[0];
+ let best=-Infinity, move=free[0];
+ for(const i of free){
+  board[i]='O'; const value=score(false,0);board[i]='';
+  if(value>best){ best=value;move=i; }
+ }
+ return move;
+}
+function render(){
+ cells.forEach((b,i)=>{
+  b.textContent=board[i]; b.dataset.value=board[i];b.disabled=!active||Boolean(board[i]);
+  b.setAttribute('aria-label','Casella '+(i+1)+(board[i]?' '+board[i]:' vuota'));
+ });
+}
+function fine(){
+ const line=winner();
+ if(!line&&empty().length)return false;
+ active=false;
+ status.textContent=line?(board[line[0]]==='X'?'Hai vinto!':'Vince la CPU.'):'Patta.';
+ return true;
+}
+function move(i){
+ if(!active||board[i])return;
+ board[i]='X';
+ if(!fine()){
+  board[cpuMove()]='O';
+  if(!fine())status.textContent='Tocca a te.';
+ }
+ render();
+}
+for(let i=0;i<9;i++){
+ const b=document.createElement('button');b.type='button';b.dataset.cell=String(i);
+ b.addEventListener('click',()=>move(i));cells.push(b);area.append(b);
+}
+start.addEventListener('click',()=>{
+ board.fill('');active=true;status.textContent='Tocca a te.';
+ start.textContent='Nuova partita';render();cells[0].focus();
+});
+level.addEventListener('change',()=>{if(active){active=false;status.textContent='Premi Nuova partita.';render();}});
+render();start.disabled=false;
+</script></body></html>

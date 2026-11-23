@@ -42,7 +42,7 @@ test('Code avvia il progetto registrato solo quando viene aperto', async (t) => 
   assert.equal(await (await fetch(url)).text(), 'Code online');
   await assert.rejects(apriProgettoLocale('sconosciuto'), /non registrato/);
 });
-const { richiestaInterattiva, documentoIsolato } = await import('../lib/anteprima-web.js');
+const { richiestaInterattiva, richiestaTrisCpu, documentoIsolato } = await import('../lib/anteprima-web.js');
 const { REGOLA_PRECEDENTE, richiestaMissione, verificaRegola, preparaMissione } = await import('../lib/missione-giungla.js');
 
 test('la missione scarta la vittoria prematura prima di produrre un documento', async () => {
@@ -63,6 +63,9 @@ test('le creazioni giocabili hanno un percorso distinto dalla scrittura di codic
   assert.equal(richiestaInterattiva('Crea un videogioco 3D'), true);
   assert.equal(richiestaInterattiva('Ok è un gioco 3D in prima persona'), true);
   assert.equal(richiestaInterattiva('Scrivi solo il codice per un gioco'), false);
+  assert.equal(richiestaTrisCpu('Crea il gioco del tris 1 giocatore contro la CPU'), true);
+  assert.equal(richiestaTrisCpu('Crea un gioco di scacchi contro la CPU'), false);
+  assert.equal(richiestaTrisCpu('Crea un tris per due giocatori'), false);
   assert.match(documentoIsolato('<button>Avvia</button>'), /connect-src 'none'[\s\S]*scrollIntoView[\s\S]*<button>Avvia<\/button>/);
 });
 

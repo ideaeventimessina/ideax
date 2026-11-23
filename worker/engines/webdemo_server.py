@@ -339,6 +339,28 @@ class CollaudoGioco(BaseModel):
 class CollaudoAnteprima(BaseModel):
     html: str
     missione: bool = False
+    tris: bool = False
+
+
+def prova_tris(frame):
+    status = frame.locator("#ideax-status")
+    cell = lambda i: frame.locator(f'[data-cell="{i}"]')
+    frame.locator("#difficolta").select_option("easy")
+    frame.locator("#ideax-start").click()
+    cell(0).click()
+    if cell(0).inner_text() != "X" or cell(1).inner_text() != "O" or not cell(0).is_disabled():
+        raise AssertionError("La CPU deve rispondere con una mossa legale.")
+    cell(4).click()
+    cell(8).click()
+    if status.inner_text() != "Hai vinto!" or not cell(3).is_disabled():
+        raise AssertionError("La diagonale deve concludere la partita.")
+    frame.locator("#difficolta").select_option("hard")
+    frame.locator("#ideax-start").click()
+    if frame.locator("[data-cell][data-value='']").count() != 9:
+        raise AssertionError("La nuova partita deve azzerare la scacchiera.")
+    cell(4).click()
+    if frame.locator("[data-cell][data-value='O']").count() != 1:
+        raise AssertionError("La CPU a difficoltà alta deve fare una sola mossa.")
 
 
 def prova_missione(page, frame):
@@ -445,6 +467,8 @@ def collauda_anteprima(r: CollaudoAnteprima):
                 raise AssertionError("Il pulsante non ha cambiato alcuno stato visibile.")
             if r.missione:
                 prova_missione(page, frame)
+            if r.tris:
+                prova_tris(frame)
             if errors:
                 raise AssertionError(errors[0])
             return {"ok": True}

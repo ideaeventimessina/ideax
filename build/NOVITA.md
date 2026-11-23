@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.26.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.27.exe**.
+
+## Tris nella Regia
+- «Crea il gioco del tris contro la CPU» avvia il gioco integrato. Chromium prova la risposta della CPU, la vittoria e il riavvio prima di mostrare «Apri» nella Regia.
 
 ## Ritorno dalla Giungla in WebGL
 - La missione usa Three.js con terreno texturizzato, ombre, personaggi articolati e movimento continuo. Il tasto V alterna prima e terza persona.
