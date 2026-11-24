@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.41.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.42.exe**.
+
+## "Anima questa foto" ora fa il video (non una seconda immagine)
+- Chiedendo di animare una foto appena generata usciva **una nuova immagine**: il motore a regole riconosceva "anima" solo su una foto **allegata**, e con una foto generata prima la parola "foto" faceva partire una creazione. Ora "anima questa foto", "muovila", "falla muovere", "fai un video di questa", "mettila in video" partono dall'**ultima immagine della chat** con foto→video. Il video nuovo da testo ("fai un video di una donna che balla") resta distinto.
 
 ## Immagini SDXL
 - I checkpoint in cartella con scheduler EDM e curva beta incompatibile usano DPM++ Karras. Verificato con CyberRealistic Pony, Lustify e Pony Realism.
