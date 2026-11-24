@@ -137,3 +137,11 @@ test('la ricerca follower riconosce la richiesta e somma solo i profili verifica
   assert.match(report, /1\.405 su 2 piattaforme/);
   assert.doesNotMatch(report, /altro-profilo/);
 });
+test('Studio instrada una foto da animare invece di ritoccarla', async () => {
+  const { studioPhotoMotion } = await import('../lib/router.js');
+  const prompt = 'Anima questa foto: camera ferma, 3 secondi';
+  assert.deepEqual(studioPhotoMotion({ prompt, task: 'image_edit', attachments: img }), {
+    task: 'image_to_video', params: { seconds: 3, veloce: true },
+  });
+  assert.equal(studioPhotoMotion({ prompt: 'Cambia lo sfondo in questa foto', task: 'image_edit', attachments: img }), null);
+});

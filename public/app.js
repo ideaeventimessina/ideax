@@ -495,7 +495,7 @@ $('#stage').addEventListener('click', async (e) => {
     const url = btn.dataset.url;
     const blob = await (await fetch(url)).blob();
     await addAttachments([new File([blob], url.split('/').pop(), { type: blob.type })]);
-    setFormat('image');
+    setFormat('auto');
     $('#prompt').focus();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }

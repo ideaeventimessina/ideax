@@ -10,7 +10,7 @@ import { exec } from 'node:child_process';
 import * as store from './lib/store.js';
 import { scanModels, readSafetensorsHeader, readGgufArchitecture, classifyKeys, ARCH_LABELS, KIND_LABELS } from './lib/scanner.js';
 import { snapshot } from './lib/hfdownload.js';
-import { route, buildCatalog, PROMPT_STYLES, styleFor, heuristicTask } from './lib/router.js';
+import { route, buildCatalog, PROMPT_STYLES, styleFor, heuristicTask, studioPhotoMotion } from './lib/router.js';
 import { resolveBrain } from './lib/brain.js';
 import { runModel, cancelOnWorker, inGpuQueue, localBusy } from './lib/backends.js';
 import * as engines from './lib/engines.js';
@@ -1506,6 +1506,14 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/api/generate' && req.method === 'POST') {
       const body = await readJson(req);
+      const movimento = studioPhotoMotion(body);
+      if (movimento) {
+        if (body.model && !buildCatalog().generators.some(m => (m.id === body.model || m.name === body.model) && m.capabilities.includes('image_to_video'))) {
+          delete body.model;
+          movimento.params.veloce = body.params?.veloce ?? true;
+        }
+        Object.assign(body, movimento);
+      }
       // "fammi un reel su…" dallo Studio
       if (!body.task && !body.attachments?.length && /\b(reel|reels|tiktok|short|shorts)\b/i.test(body.prompt || '')) {
         const sec = (body.prompt || '').match(/(\d+)\s*(s\b|sec|secondi)/i);
