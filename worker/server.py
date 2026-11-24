@@ -16,6 +16,7 @@ import base64
 import gc
 import inspect
 import io
+import json
 import subprocess
 import sys
 import os
@@ -146,6 +147,11 @@ def use_offload(arch: str = "") -> bool:
     if OFFLOAD == "off":
         return False
     # Flux (transformer + encoder T5) e i modelli video superano i 16 GB: le parti non in uso vanno in RAM
+    # Su Windows una scheda da 16 GiB con SDXL completamente residente può saturarsi durante il denoising
+    # e finire nella memoria GPU condivisa. Teniamo sulla scheda solo il componente in uso.
+    if arch == "sdxl" and sys.platform == "win32":
+        free, total = torch().cuda.mem_get_info()
+        return total <= 16 * 1024**3 or free < 14 * 1024**3
     needed = 24 if arch in ("flux", "diffusers") else 16
     return (info["vram_gb"] or 0) < needed
 
@@ -306,6 +312,19 @@ def load_base(spec: ModelSpec):
             fix = _sdxl_fix_vae(dtype)
             if fix is not None:
                 extra["vae"] = fix
+            scheduler_path = Path(spec.path) / "scheduler" / "scheduler_config.json"
+            try:
+                config = json.loads(scheduler_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                config = {}
+            if (isinstance(config, dict) and config.get("_class_name") == "EDMDPMSolverMultistepScheduler"
+                    and config.get("beta_schedule") == "scaled_linear"
+                    and config.get("prediction_type") == "epsilon"
+                    and all(k in config for k in ("beta_start", "beta_end"))):
+                # Le conversioni SDXL con configurazione beta/epsilon non sono checkpoint EDM.
+                # Lo scheduler EDM ignora la curva beta e lascia rumore anche dopo tutti i passi.
+                extra["scheduler"] = d.DPMSolverMultistepScheduler.from_config(config, use_karras_sigmas=True)
+                print("[ideax] SDXL: uso DPM++ Karras per il checkpoint con curva beta scaled_linear", flush=True)
         try:
             pipe = d.DiffusionPipeline.from_pretrained(spec.path, torch_dtype=dtype, low_cpu_mem_usage=False, **extra)
             print("[ideax] cartella diffusers caricata (low_cpu_mem_usage=False)", flush=True)

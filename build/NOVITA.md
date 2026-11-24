@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.37.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.41.exe**.
+
+## Immagini SDXL
+- I checkpoint in cartella con scheduler EDM e curva beta incompatibile usano DPM++ Karras. Verificato con CyberRealistic Pony, Lustify e Pony Realism.
+- Su Windows il motore può spostare in RAM i componenti SDXL inattivi per ridurre la pressione sulla memoria video.
 
 ## Operatore
 - Pipeline e Orchestratore riprendono i lavori di codice dal checkpoint dopo il riavvio.
