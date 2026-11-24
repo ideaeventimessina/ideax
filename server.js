@@ -1579,6 +1579,7 @@ server.listen(PORT, HOST, () => {
   console.log(`  I tuoi dati: ${store.ROOT}`);
   console.log('');
   runtime.startWorker();
+  operatore.riprendiCodice();
   updater.scheduleChecks();
   systems.startAll();
   fixes.autoFix();

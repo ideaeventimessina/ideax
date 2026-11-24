@@ -859,10 +859,11 @@ async function seguiCivitai() {
 }
 
 // ---------- Operatore autonomo ----------
-let operatore = { id: null, timer: null };
+let operatore = { id: localStorage.getItem('ideax-operatore-codice'), timer: null };
 
 function loadOperatore() {
   void caricaGiochiCollaudati();
+  if (operatore.id) void seguiOperatore();
   // Non ri-aggancia i listener due volte: una guardia sul form.
   const form = $('#operatore-form');
   if (form && !form.dataset.pronto) {
@@ -887,6 +888,7 @@ function loadOperatore() {
         const collaudo = form.collaudo.value.trim() ? JSON.parse(form.collaudo.value) : undefined;
         const v = await api('/api/operatore', { method: 'POST', body: { obiettivo, modalita, cartella, collaudo } });
         operatore.id = v.id;
+        if (['pipeline', 'orchestratore'].includes(modalita)) localStorage.setItem('ideax-operatore-codice', v.id);
         $('#operatore-stato').hidden = false;
         $('#operatore-risultato').hidden = true;
         seguiOperatore();

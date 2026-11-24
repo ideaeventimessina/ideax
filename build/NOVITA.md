@@ -1,5 +1,10 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.30.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.36.exe**.
+
+## Operatore
+- Pipeline e Orchestratore riprendono i lavori di codice dal checkpoint dopo il riavvio.
+- L’Orchestratore esegue fino a due task indipendenti per volta, ciascuno sul suo file.
+- La Pipeline ritenta le risposte malformate, consulta la documentazione tecnica su errori supportati e conserva i casi superati con la soluzione.
 
 ## Contenuti per adulti più forti e più fedeli
 - L'esplicito usciva "soft" per due motivi tecnici, ora corretti: (1) il riconoscimento del contenuto adulto **non capiva vari termini** (slang italiano compreso), quindi non instradava sul modello esplicito né metteva i tag giusti — ora il vocabolario è molto più ampio; (2) ai modelli **Pony** mancava il tag di rating (`rating_explicit`) e ai **realistici** il `uncensored`: senza, l'immagine resta attenuata. Ora ideax li aggiunge **solo** quando la richiesta è adulta (le immagini normali non cambiano). Perché funzioni serve un **checkpoint esplicito** installato (in Modelli: Lustify realistico, oppure CyberRealistic Pony) e, per la pelle vera, un modello realistico; il contenuto lo mettono il prompt e le LoRA.
