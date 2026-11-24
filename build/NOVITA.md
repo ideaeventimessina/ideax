@@ -1,5 +1,5 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.36.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.37.exe**.
 
 ## Operatore
 - Pipeline e Orchestratore riprendono i lavori di codice dal checkpoint dopo il riavvio.
