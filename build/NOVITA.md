@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.42.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.45.exe**.
+
+## Bill e reel
+- Le immagini per Bill superano il controllo tecnico e la verifica del brief prima della consegna. Se il primo risultato è scartato, IDEAX prova a rigenerarlo una volta.
+- I reel rigenerano le scene rumorose e, con Cervello visivo disponibile, quelle fuori copione. Il montaggio verifica durata e decodifica audio e video prima di pubblicare il file tra i risultati.
 
 ## "Anima questa foto" ora fa il video (non una seconda immagine)
 - Chiedendo di animare una foto appena generata usciva **una nuova immagine**: il motore a regole riconosceva "anima" solo su una foto **allegata**, e con una foto generata prima la parola "foto" faceva partire una creazione. Ora "anima questa foto", "muovila", "falla muovere", "fai un video di questa", "mettila in video" partono dall'**ultima immagine della chat** con foto→video. Il video nuovo da testo ("fai un video di una donna che balla") resta distinto.

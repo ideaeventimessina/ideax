@@ -1027,6 +1027,7 @@ class ComposeRequest(BaseModel):
     music_volume: float = 0.18
     caption_position: float = 0.70  # altezza del centro dei sottotitoli, da 0 (alto) a 1 (basso)
     static_frames: bool = False
+    verify: bool = False
 
 
 def load_font(size: int):
@@ -1202,7 +1203,47 @@ def compose(req: ComposeRequest):
             raise HTTPException(500, f"Montaggio non riuscito: {proc.stderr[-600:]}")
         # Copertina: il primo fotogramma con il titolo, utile per l'anteprima
         COMPOSE.update(frame=0, frames=0)
-    return {"output": req.output, "seconds": round(total, 2), "frames": frames, "voice_tempo": req.voice_tempo}
+    durata_verificata = None
+    if req.verify:
+        reader = imageio_ffmpeg.read_frames(req.output)
+        try:
+            meta = next(reader)
+            next(reader)
+            durata_verificata = float(meta.get("duration", 0))
+        except (OSError, RuntimeError, StopIteration) as err:
+            raise HTTPException(422, "Controllo reel: MP4 illeggibile") from err
+        finally:
+            reader.close()
+        if abs(durata_verificata - total) > .12 or not durata_verificata:
+            raise HTTPException(422, f"Controllo reel: durata {durata_verificata:g} s, attesi {total:g} s")
+        tracks = ["-map", "0:v:0", *(["-map", "0:a:0"] if req.voice or req.music else [])]
+        verifica = subprocess.run([ff, "-v", "error", "-xerror", "-i", req.output, *tracks, "-f", "null", "-"], capture_output=True, text=True)
+        if verifica.returncode != 0:
+            raise HTTPException(422, "Controllo reel: traccia audio o video non decodificabile")
+    return {"output": req.output, "seconds": round(total, 2), "frames": frames, "voice_tempo": req.voice_tempo, "verified_seconds": durata_verificata}
+
+
+class ImageCheck(BaseModel):
+    image: str
+
+
+@app.post("/quality/image")
+def quality_image(req: ImageCheck):
+    import numpy as np
+    try:
+        image = Image.open(io.BytesIO(decode_data_url(req.image))).convert("RGB")
+        if min(image.size) < 128:
+            return {"ok": False, "reason": "risoluzione troppo bassa"}
+        pixels = np.asarray(image, dtype=np.float32)
+        spread = float(pixels.std())
+        if spread < 2:
+            return {"ok": False, "reason": "immagine uniforme"}
+        small = np.asarray(image.resize((32, 32), Image.Resampling.BOX), dtype=np.float32)
+        detail = (np.abs(np.diff(pixels, axis=0)).mean() + np.abs(np.diff(pixels, axis=1)).mean()) / 2
+        noisy = small.std() / spread < .28 and detail / spread > .16
+        return {"ok": not bool(noisy), "reason": "rumore privo di struttura" if noisy else None}
+    except (OSError, ValueError):
+        return {"ok": False, "reason": "immagine illeggibile"}
 
 
 @app.post("/refine")

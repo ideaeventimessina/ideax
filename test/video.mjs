@@ -52,6 +52,8 @@ test('un reel con cinque punti richiede cinque scene di elenco distinte e numera
   assert.equal(elencoCompleto(scene(['Introduzione', '1. Primo', '2. Secondo', '3. Terzo', '4. Quarto', 'Chiusura']), punti), false);
   assert.equal(elencoCompleto(scene(['Introduzione', '1. Primo', '2. Secondo', '3. Terzo', '4. Quarto', '5. Quinto', 'Chiusura']), punti), true);
   assert.equal(puntiRichiesti('Crea un reel di 30 secondi sulla trattativa'), 0);
+  assert.equal(puntiRichiesti('5 controlli prima di pubblicare un sito'), 5);
+  assert.equal(puntiRichiesti('5 dettagli da fotografare durante un matrimonio'), 5);
 });
 
 test('la scheda preferisce un’icona coerente quando il copione propone quella sbagliata', () => {
