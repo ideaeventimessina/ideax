@@ -241,6 +241,7 @@ async function createJob(body, ctx = {}) {
     forceModelId: body.model || body.modelId || null,
     forceTask: body.task || null,
     literalPrompt: body.prompt_mode === 'literal',
+    preservePrompt: body.prompt_mode === 'original' && body.task === 'image_generate',
     params: body.params && typeof body.params === 'object' ? body.params : {},
     kind: body.kind || 'media',
     speech: body.speech,
@@ -532,7 +533,7 @@ async function processJob(job) {
     const fastVideo = ['true', '1', 'si', 'sì'].includes(String(job.params.veloce).toLowerCase());
     const d = await route(job.prompt, job.attachments, {
       forceModelId: job.forceModelId, forceTask: job.forceTask, forceStyle, literalPrompt: job.literalPrompt,
-      fastVideo,
+      fastVideo, preservePrompt: job.preservePrompt,
     });
     if (job.cancelled) throw new Error('Annullato');
     // Parametri dello stile (es. clip_skip per Pony) < parametri del modello < parametri della richiesta
@@ -552,7 +553,7 @@ async function processJob(job) {
     { const g = adultGuard(job.routedPrompt, job.negativePrompt); job.routedPrompt = g.prompt; job.negativePrompt = g.negative; }
     // La parola imparata da una LoRA (il viso del gemello) deve stare nel prompt, altrimenti la LoRA non "riconosce" la richiesta
     for (const l of d.loras || []) {
-      if (l.promptToken && !job.routedPrompt.includes(l.promptToken)) job.routedPrompt = `${l.promptToken}, ${job.routedPrompt}`;
+      if (!job.preservePrompt && l.promptToken && !job.routedPrompt.includes(l.promptToken)) job.routedPrompt = `${l.promptToken}, ${job.routedPrompt}`;
     }
     log(`Compito: ${store.TASKS[d.task]} → ${d.model.name}`);
     if (d.reason) log(d.reason);
