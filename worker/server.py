@@ -1091,6 +1091,7 @@ class SchedaReel(BaseModel):
 class IllustrazioniReel(BaseModel):
     serie: str = Field(max_length=100)
     schede: list[SchedaReel] = Field(max_length=20)
+    controlli_sito: list[str] = Field(default_factory=list, max_length=5)
     cartella: str
     musica: bool = False
     durata: float = Field(gt=0, le=120)
@@ -1099,6 +1100,10 @@ class IllustrazioniReel(BaseModel):
 @app.post("/reel/illustrazioni")
 def illustrazioni_reel(req: IllustrazioniReel):
     from reel_editoriale import accompagnamento, scheda
+    from reel_sito import CONTROLLI, schermata
+
+    if req.controlli_sito and (req.schede or sorted(req.controlli_sito) != sorted(CONTROLLI)):
+        raise HTTPException(422, "Servono i cinque controlli del sito, una volta ciascuno.")
 
     out = Path(req.cartella)
     immagini = []
@@ -1106,10 +1111,14 @@ def illustrazioni_reel(req: IllustrazioniReel):
         image = out / f"scheda-{i:02d}.png"
         scheda(card.titolo, req.serie, card.icona, card.badge, i, len(req.schede), load_font).save(image, compress_level=2)
         immagini.append(str(image))
+    for i, controllo in enumerate(req.controlli_sito):
+        image = out / f"sito-{i:02d}-{controllo}.png"
+        schermata(controllo, load_font).save(image, compress_level=2)
+        immagini.append(str(image))
     music = out / "accompagnamento.wav" if req.musica else None
     if music:
         accompagnamento(music, req.durata)
-    return {"images": immagini, "music": str(music) if music else None}
+    return {"images": immagini, "music": str(music) if music else None, "controlli_sito": req.controlli_sito}
 
 
 @app.post("/compose")

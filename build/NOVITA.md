@@ -1,7 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.45.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.46.exe**.
 
 ## Bill e reel
+- Bill usa il motore fotografico per i brief senza scritte e dà più tempo alla verifica visiva.
+- I cinque controlli per il lancio di un sito sono mostrati con schermate della stessa demo. Il worker verifica il piano e il montaggio prima della consegna.
 - Le immagini per Bill superano il controllo tecnico e la verifica del brief prima della consegna. Se il primo risultato è scartato, IDEAX prova a rigenerarlo una volta.
 - I reel rigenerano le scene rumorose e, con Cervello visivo disponibile, quelle fuori copione. Il montaggio verifica durata e decodifica audio e video prima di pubblicare il file tra i risultati.
 
