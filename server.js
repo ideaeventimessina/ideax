@@ -1186,6 +1186,7 @@ const server = http.createServer(async (req, res) => {
     if (/^\/api\/systems\/[\w-]+\/chiave$/.test(p) && req.method === 'GET') return send(res, 200, systems.systemKey(p.split('/')[3]));
     if (/^\/api\/systems\/[\w-]+$/.test(p) && req.method === 'DELETE') { systems.deleteSystem(p.split('/').pop()); return send(res, 200, { ok: true }); }
     if (/^\/api\/systems\/[\w-]+\/test$/.test(p) && req.method === 'POST') return send(res, 200, await systems.test(p.split('/')[3]));
+    if (/^\/api\/systems\/[\w-]+\/controlla$/.test(p) && req.method === 'POST') return send(res, 200, systems.controllaOra(p.split('/')[3]));
     // ----- La farm (più PC che lavorano insieme) -----
     // GET: stato (ruolo, chiave, operai online). POST: diventa capofila / torna solo. /chiave: rigenera la chiave.
     if (p === '/api/farm' && req.method === 'GET') {

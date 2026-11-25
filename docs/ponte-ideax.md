@@ -20,10 +20,42 @@ POST {url}/api/ponte/ideax/lavori/{id}
      { "ok": true, "risultato": { … }, "secondi": 12 }  oppure  { "ok": false, "errore": "…" }
 ```
 
-- La GET può aspettare fino a `attendi` secondi prima di rispondere vuota (attesa lunga).
+- La GET risponde SUBITO con la coda (`attendi=0`): dalla sveglia push (sotto) ideax non usa più l'attesa lunga.
 - `capacita` dice cosa sa fare ideax adesso: `json` e `chat` solo con un cervello caricato,
   `musica` con il motore musica, `voce` e `reel` con il motore voce.
-- Se il sistema non vede ideax da 90 secondi, lo consideri spento e usi il suo motore di riserva.
+
+## La sveglia push: le app non vengono più interrogate a vuoto (dal 2026-11)
+
+Prima ideax teneva aperta `GET /lavori?attendi=25` 24/7 su ogni app: in autoscale le app non scendevano
+mai a zero e il database non si sospendeva (centinaia di $/mese). Ora ideax **non interroga più a vuoto**:
+apre UNA sola connessione in uscita verso un canale gratuito (**ntfy.sh**) e aspetta. Quando un'app ha un
+lavoro, è l'**app** a pubblicare una "sveglia"; ideax la riceve e solo allora fa `GET /lavori?attendi=0` su
+quell'app, svuota la coda, consegna i risultati e torna in silenzio. A riposo: zero richieste, database
+sospeso. Il canale porta solo un ping; i dati del lavoro restano sul ponte autenticato (`x-ideax-key`).
+
+**Cosa cambia lato app (da applicare in ogni app):**
+
+1. **Il topic** si ricava dalla chiave, uguale sui due lati, segreto come la chiave:
+   `topic = "ideax-" + sha256(IDEAX_KEY esadecimale)[primi 32 caratteri]`.
+2. **Pubblica una sveglia quando metti in coda un lavoro per ideax** (fire-and-forget, non bloccante):
+   `POST https://ntfy.sh/<topic>` con corpo `"job"`. (Base configurabile: se ideax usa `IDEAX_NTFY_BASE`,
+   l'app deve usare lo stesso host.)
+3. **Disponibilità senza heartbeat** — sostituisci "ideax visto negli ultimi 90s" (`segnaContatto`) con
+   **sveglia-e-attendi**: metti il lavoro in coda → pubblica la sveglia → aspetta un breve istante (≈3 s) che
+   il lavoro risulti **preso** (la `GET /lavori` di ideax lo marca già come preso). Se non viene preso entro
+   3 s → ideax è spento/occupato: usa la **riserva (OpenAI)**. Se viene preso → aspetta il risultato su
+   `POST /lavori/{id}` fino al timeout del tipo di lavoro; se non arriva → riserva. Così l'app sa se ideax è
+   disponibile **al momento del lavoro**, senza tenersi sveglia tra un lavoro e l'altro.
+4. **`GET /lavori?attendi=0` deve rispondere subito**: niente ciclo di attesa che interroga il database ogni
+   1,5 s. Il ramo di attesa lunga (`attendi>0`) non viene più chiamato da ideax e si può togliere.
+5. **`capacita`**: memorizza l'ultimo `capacita=` ricevuto su `GET /lavori` (con un TTL ragionevole) e usalo
+   per decidere se un tipo di lavoro conviene mandarlo a ideax; se non lo conosci, prova comunque (sveglia-e-
+   attendi) e in caso di timeout usa la riserva.
+
+**Ordine di applicazione:** quando ideax passa alla sveglia, finché un'app non è aggiornata vedrà ideax come
+"spento" (non riceve più i poll) e userà la riserva OpenAI per quei lavori — funziona, costa solo di più su
+quell'app, mentre il costo grosso (hosting + database sempre svegli) sparisce subito. Aggiorna le app una
+alla volta, con calma.
 
 ## I lavori
 
