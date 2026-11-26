@@ -31,6 +31,7 @@ import * as giochi from './lib/progetti-guida.js';
 import { documentoIsolato, leggiAnteprima, salvaAnteprima } from './lib/anteprima-web.js';
 import { apriProgettoLocale, progettiCode } from './lib/code-progetti.js';
 import * as autopotenzia from './lib/autopotenzia.js';
+import * as competenze from './lib/competenze.js';
 import * as skills from './lib/skills.js';
 import * as siti from './lib/siti.js';
 import * as civitai from './lib/civitai.js';
@@ -937,6 +938,8 @@ const server = http.createServer(async (req, res) => {
     { const ma = p.match(/^\/api\/autopotenzia\/([\w-]+)\/ferma$/);
       if (ma && req.method === 'POST') return send(res, 200, autopotenzia.ferma(ma[1])); }
     if (p === '/api/capacita' && req.method === 'GET') return send(res, 200, { skills: skills.elenca().map((s) => ({ slug: s.slug, nome: s.nome, descrizione: s.descrizione, come_si_usa: s.come_si_usa, origine: s.origine })) });
+    if (p === '/api/competenze' && req.method === 'GET') return send(res, 200, { competenze: competenze.elenco() });
+    if (p === '/api/competenze/semina' && req.method === 'POST') return send(res, 200, await competenze.semina({ forza: true }));
     // Code: genera/modifica una pagina web col cervello, pubblicala (ideax la serve a /siti/<slug>/)
     // Tutte le schede video viste da ideax + chi fa cosa (il Node vede tutte le schede, il worker solo la sua).
     if (p === '/api/gpu' && req.method === 'GET') {
@@ -1668,6 +1671,7 @@ server.listen(PORT, HOST, () => {
   operatore.riprendiCodice();
   updater.scheduleChecks();
   systems.startAll();
+  competenze.semina().catch(() => {}); // insegna a ideax il METODO delle competenze di base (in memoria, una volta)
   fixes.autoFix();
   riscaldaVoceSeServe(); // "tieni la voce pronta": scalda il motore voce all'avvio, così la prima lettura non aspetta
   // Se una pagina di ideax è già aperta (es. dopo un aggiornamento) si ricollega da sola: niente schede doppie
