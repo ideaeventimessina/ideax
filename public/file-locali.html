@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="it" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>File locali · IDEAX</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/file-locali.js"></script>
+</head>
+<body>
+  <main style="width:min(1050px,94vw);margin:36px auto">
+    <a href="/">← IDEAX</a>
+    <h1>File locali</h1>
+    <p>Apri un file UTF-8. Controlla l’anteprima prima di confermare la scrittura.</p>
+    <section class="card stack-sm">
+      <label>Cartella progetto <input id="cartella" autocomplete="off"></label>
+      <button class="btn" id="analizza" type="button">Analizza progetto</button>
+      <label>File del progetto <select id="progetto-file"></select></label>
+      <p id="collegamenti"></p>
+      <button class="btn" id="proponi-progetto" type="button">Prepara modifica nel progetto</button>
+    </section>
+    <section class="card stack-sm">
+      <label>Percorso assoluto <input id="percorso" autocomplete="off" placeholder="C:\Documenti\preventivo.csv"></label>
+      <button class="btn" id="apri" type="button">Apri</button>
+      <label>Modifica richiesta a IDEAX <textarea id="richiesta" rows="2"></textarea></label>
+      <button class="btn" id="proponi" type="button">Proponi con IDEAX</button>
+      <div class="grid2">
+        <label>Originale <textarea id="prima" rows="14" readonly></textarea></label>
+        <label>Testo proposto <textarea id="dopo" rows="14"></textarea></label>
+      </div>
+      <div class="row">
+        <button class="btn" id="anteprima" type="button">Prepara anteprima</button>
+        <button class="btn primary" id="conferma" type="button" disabled>Conferma modifica</button>
+      </div>
+      <p id="motivo"></p>
+      <p id="stato" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+</body>
+</html>

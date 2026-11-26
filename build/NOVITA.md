@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.48.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.49.exe**.
+
+## File locali
+- Analizza una cartella di progetto, mostra i collegamenti e prepara una modifica al file selezionato con il modello locale. IDEAX mostra una spiegazione e salva la modifica e il backup solo dopo la conferma.
 
 ## Le app online non restano più sveglie 24 ore su 24 (risparmio grosso)
 - Prima ideax teneva aperta una richiesta su ogni app collegata **in continuazione**: in autoscale le app non scendevano mai a zero e il database restava sempre acceso — centinaia di $ al mese. Ora ideax **non interroga più a vuoto**: apre **una sola connessione in uscita** verso un canale gratuito (ntfy.sh) e aspetta. Quando un'app ha un lavoro è **l'app** a svegliare ideax; ideax prende il lavoro, lo consegna e **torna in silenzio**. A riposo: **zero richieste**, database sospeso. Nessuna porta aperta sul PC. Richiede un piccolo aggiornamento lato app (documentato in `docs/ponte-ideax.md`); finché un'app non è aggiornata usa la sua riserva, senza rompersi.
