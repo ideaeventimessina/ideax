@@ -1,3 +1,4 @@
+import { preparaIntervento, applicaIntervento } from './lib/intervento-progetto.js';
 import { analizzaProgetto, proponiNelProgetto } from './lib/progetto-locale.js';
 import { apriFileLocale, anteprimaFileLocale, confermaFileLocale } from './lib/file-locali.js';
 /* Questo codice è stato progettato, scritto e generato da Andrea Gentile C.f GNTNDR88S28F158M */
@@ -791,6 +792,15 @@ const server = http.createServer(async (req, res) => {
       const body = await readJson(req);
       try {
         if (p === '/api/file-locali/progetto') return send(res, 200, analizzaProgetto(body.folder));
+        if (p === '/api/file-locali/progetto/intervento') {
+          const brain = resolveBrain(buildCatalog().all);
+          if (brain.mode !== 'gguf') throw Error('Serve un cervello locale GGUF.');
+          return send(res, 200, await preparaIntervento(body.folder, body.instruction, body.test,
+            (system, context, schema) => askBrain(brain, system, JSON.stringify(context), schema)));
+        }
+        if (p === '/api/file-locali/progetto/applica' && body.confirmed === true) {
+          return send(res, 200, await applicaIntervento(body.id));
+        }
         if (p === '/api/file-locali/progetto/proponi') {
           const brain = resolveBrain(buildCatalog().all);
           if (brain.mode !== 'gguf') throw new Error('Serve un cervello locale GGUF.');
@@ -1671,7 +1681,13 @@ server.listen(PORT, HOST, () => {
   operatore.riprendiCodice();
   updater.scheduleChecks();
   systems.startAll();
-  competenze.semina().catch(() => {}); // insegna a ideax il METODO delle competenze di base (in memoria, una volta)
+  async function inizializzaCompetenze(tentativi) {
+    const result = await competenze.semina();
+    if (!result.ok && tentativi > 0) {
+      setTimeout(() => inizializzaCompetenze(tentativi - 1), 10_000).unref();
+    }
+  }
+  inizializzaCompetenze(6);
   fixes.autoFix();
   riscaldaVoceSeServe(); // "tieni la voce pronta": scalda il motore voce all'avvio, così la prima lettura non aspetta
   // Se una pagina di ideax è già aperta (es. dopo un aggiornamento) si ricollega da sola: niente schede doppie

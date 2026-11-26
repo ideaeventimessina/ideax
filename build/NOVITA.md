@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.51.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.52.exe**.
+
+## Modifiche coordinate ai progetti locali
+- IDEAX individua i file, mostra la proposta motivata e applica le modifiche con una conferma. Esegue il test Node indicato, ripristina gli originali in caso di errore e conserva il metodo verificato per lo stesso progetto.
+- Le competenze di base vengono salvate con un identificatore stabile e il caricamento viene riprovato se la memoria non è ancora pronta.
 
 ## I reel arrivano alle app online
 - Il video usciva quasi senza compressione (circa 45 MB per 25 secondi) e l'app lo rifiutava: l'hosting si ferma a 32 MB per invio. Ora il peso ha un tetto (30 secondi restano sotto i 20 MB), alle app torna solo il video e, se un risultato è comunque troppo grande, l'app riceve il motivo.

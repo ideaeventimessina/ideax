@@ -4,15 +4,18 @@ const prima = get('prima');
 const dopo = get('dopo');
 const stato = get('stato');
 const conferma = get('conferma');
-const buttons = ['apri', 'proponi', 'anteprima', 'analizza', 'proponi-progetto'].map(get);
+const buttons = ['apri', 'proponi', 'anteprima', 'analizza', 'proponi-progetto', 'intervento'].map(get);
 let attesa = null;
 
 function invalida() {
   attesa = null;
+  get('anteprima-progetto').replaceChildren();
   conferma.disabled = true;
 }
 file.addEventListener('input', invalida);
 dopo.addEventListener('input', invalida);
+get('richiesta').addEventListener('input', invalida);
+get('test-progetto').addEventListener('input', invalida);
 
 async function richiesta(azione, body) {
   const response = await fetch('/api/file-locali/' + azione, {
@@ -28,7 +31,7 @@ async function richiesta(azione, body) {
 async function esegui(work) {
   invalida();
   buttons.forEach(b => { b.disabled = true; });
-  const fields = [file, dopo, cartella, get('richiesta')];
+  const fields = [file, dopo, cartella, get('richiesta'), get('test-progetto')];
   fields.forEach(f => { f.readOnly = true; });
   elenco.disabled = true;
   stato.textContent = 'In corso…';
@@ -64,6 +67,19 @@ get('anteprima').onclick = () => esegui(async () => mostra(await richiesta('ante
 })));
 conferma.onclick = () => {
   const p = attesa;
+  if (p?.changes) {
+    if (!window.confirm('Applicare tutte le modifiche mostrate ed eseguire il test ' + p.test + '?')) return;
+    esegui(async () => {
+      const result = await richiesta('progetto/applica', { id: p.id, confirmed: true });
+      get('test-esito').textContent = result.output + '\n' + result.written.map(f => f.backup).join('\n');
+      stato.textContent = result.passed
+        ? 'Test superato. ' + (result.remembered ? 'Metodo salvato.' : 'Salvataggio del metodo non riuscito.')
+        : result.remaining.length
+          ? 'Test o scrittura falliti. Da ripristinare dai backup: ' + result.remaining.join(', ')
+          : 'Test o scrittura falliti. Originali ripristinati.';
+    });
+    return;
+  }
   if (!p || !window.confirm('Applicare la modifica mostrata a questo file?\n' + p.file)) return;
   esegui(async () => {
     const result = await richiesta('conferma', { id: p.id, confirmed: true });
@@ -101,4 +117,41 @@ get('proponi-progetto').onclick = () => esegui(async () => {
     folder: progetto.root, selected: elenco.value, instruction: get('richiesta').value,
   });
   mostra(result);
+});
+
+get('intervento').onclick = () => esegui(async () => {
+  get('test-esito').textContent = '';
+  const proposal = await richiesta('progetto/intervento', {
+    folder: cartella.value.trim(), instruction: get('richiesta').value, test: get('test-progetto').value.trim(),
+  });
+  const panel = get('anteprima-progetto');
+  const plan = document.createElement('p');
+  plan.textContent = proposal.motivo + ' · Test dopo conferma: node --test ' + proposal.test;
+  panel.append(plan);
+  if (proposal.memoria) {
+    const memory = document.createElement('p');
+    memory.textContent = 'Metodo recuperato dalla memoria: ' + proposal.memoria;
+    panel.append(memory);
+  }
+  for (const change of proposal.changes) {
+    const section = document.createElement('details');
+    section.open = true;
+    const heading = document.createElement('summary');
+    heading.textContent = change.relative + ' · ' + change.motivo;
+    section.append(heading);
+    for (const [label, content] of [['Originale', change.before], ['Proposta', change.after]]) {
+      const field = document.createElement('label');
+      field.textContent = label;
+      const view = document.createElement('textarea');
+      view.value = content;
+      view.readOnly = true;
+      view.rows = 7;
+      field.append(view);
+      section.append(field);
+    }
+    panel.append(section);
+  }
+  attesa = proposal;
+  conferma.disabled = false;
+  stato.textContent = 'Anteprima pronta. Controlla le modifiche e il test prima di confermare.';
 });

@@ -17,6 +17,8 @@
       <button class="btn" id="analizza" type="button">Analizza progetto</button>
       <label>File del progetto <select id="progetto-file"></select></label>
       <p id="collegamenti"></p>
+      <label>File di test Node (percorso relativo al progetto) <input id="test-progetto" placeholder="test/app.test.mjs"></label>
+      <button class="btn" id="intervento" type="button">Lascia scegliere i file a IDEAX</button>
       <button class="btn" id="proponi-progetto" type="button">Prepara modifica nel progetto</button>
     </section>
     <section class="card stack-sm">
@@ -33,6 +35,8 @@
         <button class="btn primary" id="conferma" type="button" disabled>Conferma modifica</button>
       </div>
       <p id="motivo"></p>
+      <section id="anteprima-progetto" aria-label="Anteprima intervento"></section>
+      <pre id="test-esito" style="white-space:pre-wrap"></pre>
       <p id="stato" role="status" aria-live="polite"></p>
     </section>
   </main>
