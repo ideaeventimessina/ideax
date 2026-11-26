@@ -1,5 +1,10 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.57.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.58.exe**.
+
+## Immagini controllate contro il brief
+- IDEAX conserva il prompt originale, controlla i dettagli con il cervello visivo e rigenera una volta se il risultato non corrisponde. Lo storico riporta il modello realmente usato.
+- MOSS-Image viene proposto solo quando sono presenti tutti i pesi richiesti.
+
 
 ## La posta interna dentro ideax
 - Se ideax è collegato a Bill, sul bordo destro compare la **busta oro** con i messaggi interni. Qui si leggono soltanto; si risponde da Bill o dal gestionale.
