@@ -799,7 +799,11 @@ const server = http.createServer(async (req, res) => {
             (system, context, schema) => askBrain(brain, system, JSON.stringify(context), schema)));
         }
         if (p === '/api/file-locali/progetto/applica' && body.confirmed === true) {
-          return send(res, 200, await applicaIntervento(body.id));
+          return send(res, 200, await applicaIntervento(body.id, (system, context, schema) => {
+            const brain = resolveBrain(buildCatalog().all);
+            if (brain.mode !== 'gguf') throw Error('Serve un cervello locale GGUF per la correzione.');
+            return askBrain(brain, system, JSON.stringify(context), schema);
+          }));
         }
         if (p === '/api/file-locali/progetto/proponi') {
           const brain = resolveBrain(buildCatalog().all);

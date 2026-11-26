@@ -32,12 +32,30 @@ test('un intervento approva i file insieme e conserva solo metodi verificati', a
   assert.equal(fs.readFileSync(result.written[1].backup, 'utf8'), '# Prima');
   await assert.rejects(applicaIntervento(proposal.id), /già usato/);
   const next = await prepare('Errore', 'Confronta i titoli dei file');
-  const failed = await applicaIntervento(next.id);
+  let sawFailure = false;
+  const failed = await applicaIntervento(next.id, (_, context) => {
+    assert.match(context.failure.output, /AssertionError/);
+    if (context.inventory) {
+      sawFailure = true;
+      assert.equal(read('README.md'), '# Dopo');
+      return { files: ['README.md'], tests: [], memoriaId: '', metodo: 'Correzione verificata' };
+    }
+    assert.equal(context.originale, '# Errore');
+    return { edits: [{ prima: '# Errore', dopo: '# Correzione', tutte: false }] };
+  });
   assert.equal(failed.passed, false);
+  assert.equal(sawFailure, true);
   assert.equal(failed.remembered, undefined);
   assert.equal(failed.written.length, 2);
   assert.deepEqual(failed.remaining, []);
   assert.equal(read('index.html'), '<title>Dopo</title>');
+  assert.equal(read('README.md'), '# Dopo');
+  assert.deepEqual(failed.repair.tests, ['test.mjs']);
+  assert.equal(failed.repair.isRepair, true);
+  const invalidRepair = await applicaIntervento(failed.repair.id, () => assert.fail('Non avviare una seconda correzione automatica.'));
+  assert.equal(invalidRepair.passed, false);
+  assert.deepEqual(invalidRepair.remaining, []);
+  assert.equal(read('README.md'), '# Dopo');
   const stale = await prepare('Nuovo', 'Confronta i titoli dei file');
   write('README.md', '# Esterno');
   await assert.rejects(applicaIntervento(stale.id), /è cambiato/);

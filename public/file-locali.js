@@ -70,13 +70,19 @@ conferma.onclick = () => {
   if (p?.changes) {
     if (!window.confirm('Applicare tutte le modifiche mostrate ed eseguire: ' + p.tests.join(', ') + '?')) return;
     esegui(async () => {
+      stato.textContent = 'Applico le modifiche approvate e avvio i test…';
       const result = await richiesta('progetto/applica', { id: p.id, confirmed: true });
       get('test-esito').textContent = result.output + '\n' + result.written.map(f => f.backup).join('\n');
+      if (result.repair) {
+        mostraIntervento(result.repair);
+        return;
+      }
       stato.textContent = result.passed
         ? 'Test superato. ' + (result.remembered ? 'Metodo salvato.' : 'Salvataggio del metodo non riuscito.')
         : result.remaining.length
           ? 'Test o scrittura falliti. Da ripristinare dai backup: ' + result.remaining.join(', ')
-          : 'Test o scrittura falliti. Originali ripristinati.';
+          : 'Test o scrittura falliti. Originali ripristinati.' +
+            (result.repairError ? ' Correzione non pronta: ' + result.repairError : '');
     });
     return;
   }
@@ -124,6 +130,10 @@ get('intervento').onclick = () => esegui(async () => {
   const proposal = await richiesta('progetto/intervento', {
     folder: cartella.value.trim(), instruction: get('richiesta').value, test: get('test-progetto').value.trim(),
   });
+  mostraIntervento(proposal);
+});
+
+function mostraIntervento(proposal) {
   const panel = get('anteprima-progetto');
   const plan = document.createElement('p');
   plan.textContent = 'Obiettivo: ' + proposal.obiettivo;
@@ -171,5 +181,7 @@ get('intervento').onclick = () => esegui(async () => {
   }
   attesa = proposal;
   conferma.disabled = false;
-  stato.textContent = 'Anteprima pronta. Controlla le modifiche e il test prima di confermare.';
-});
+  stato.textContent = proposal.isRepair
+    ? 'Test fallito. Originali ripristinati. Correzione pronta da confermare.'
+    : 'Anteprima pronta. Controlla le modifiche e il test prima di confermare.';
+}

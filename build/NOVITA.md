@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.55.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.56.exe**.
+
+## File locali: correzione dopo un test fallito
+- IDEAX ripristina gli originali, conserva il risultato dei test e prepara una nuova proposta usando la diagnosi. La correzione richiede la tua conferma e viene verificata con gli stessi test.
 
 ## File locali: test automatici e riuso tra progetti
 - IDEAX propone fino a dodici modifiche con un unico OK. Cerca i test Node nella cartella, indica quelli che eseguirà e mostra estratti ottenuti dal confronto dei file.
