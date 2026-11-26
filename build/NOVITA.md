@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.58.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.59.exe**.
+
+## Composizione di immagini a livelli
+- La nuova API POST /v1/immagini/componi sovrappone fino a otto soggetti trasparenti a uno sfondo, con riquadri relativi alla scena. Riceve brief, background e layers, con image, x, y, width, height per ciascun livello. Salva il PNG dopo i controlli tecnico e visivo.
+
 
 ## Immagini controllate contro il brief
 - IDEAX conserva il prompt originale, controlla i dettagli con il cervello visivo e rigenera una volta se il risultato non corrisponde. Lo storico riporta il modello realmente usato.

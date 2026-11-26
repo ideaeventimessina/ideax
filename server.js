@@ -925,6 +925,31 @@ const server = http.createServer(async (req, res) => {
       const b = await readJson(req);
       return send(res, 200, await visione.look(b.immagini || (b.immagine ? [b.immagine] : []), b.domanda, { schema: b.schema || null }));
     }
+    if (p === '/v1/immagini/componi' && req.method === 'POST') {
+      const { background, layers, brief } = await readJson(req);
+      if (typeof brief !== 'string' || !brief.trim() || brief.length > 4000) {
+        return send(res, 400, { error: 'Indica il brief da verificare.' });
+      }
+      const worker = await fetch(`${store.getSettings().workerUrl}/componi-immagine`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ background, layers }), signal: AbortSignal.timeout(30_000),
+      });
+      const composed = await worker.json();
+      if (!worker.ok) return send(res, worker.status, { error: composed.detail || 'Composizione non riuscita.' });
+      await checkGeneratedImage(composed.image);
+      try {
+        verificaVerdetto(await visione.look([composed.image], domandaImmagine(brief),
+          { schema: schemaImmagine, temperature: 0, maxTokens: 768 }));
+      } catch (error) {
+        if (error.fuoriBrief) return send(res, 422, {
+          error: error.message, dettaglio: error.dettaglio, anteprima: composed.image, verificata: false,
+        });
+        throw error;
+      }
+      const name = `composizione-${crypto.randomUUID()}.png`;
+      fs.writeFileSync(path.join(store.OUTPUT_DIR, name), Buffer.from(composed.image.split(',')[1], 'base64'), { flag: 'wx' });
+      return send(res, 201, { url: `${origin}/outputs/${name}`, type: 'image/png', brief, verificata: true });
+    }
     if (p === '/v1/personaggio' && req.method === 'POST') {
       const b = await readJson(req);
       const job = await createJob({ prompt: b.testo, kind: 'personaggio', personaggio: { descrizione: b.descrizione, voce: b.voce, lingua: b.lingua, formato: b.formato }, attachments: b.foto ? [{ name: 'foto', dataUrl: b.foto }] : [] }, ctx);

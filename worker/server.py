@@ -29,7 +29,7 @@ from typing import Any, Optional
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageOps
 from pydantic import BaseModel, Field
 
 # Il Python incorporato usa python._pth e può escludere la directory dello script.
@@ -944,6 +944,48 @@ def trascrivi(req: TrascriviRequest):
 class ScontornaRequest(BaseModel):
     image: str
     model: str = "birefnet-general"
+
+
+class LivelloImmagine(BaseModel):
+    image: str
+    x: float = Field(ge=0, lt=1)
+    y: float = Field(ge=0, lt=1)
+    width: float = Field(gt=0, le=1)
+    height: float = Field(gt=0, le=1)
+
+
+class ComponiImmagine(BaseModel):
+    background: str
+    layers: list[LivelloImmagine] = Field(min_length=1, max_length=8)
+
+
+def leggi_livello(value: str):
+    raw = value.split(",", 1)[-1]
+    with Image.open(io.BytesIO(base64.b64decode(raw, validate=True))) as image:
+        if image.width * image.height > 16_777_216:
+            raise ValueError("Livello troppo grande (massimo 16 megapixel).")
+        return ImageOps.exif_transpose(image).convert("RGBA")
+
+
+@app.post("/componi-immagine")
+def componi_immagine(req: ComponiImmagine):
+    try:
+        canvas = leggi_livello(req.background)
+        for layer in req.layers:
+            if layer.x + layer.width > 1.000001 or layer.y + layer.height > 1.000001:
+                raise ValueError("Il riquadro del livello deve stare nella scena.")
+            source = leggi_livello(layer.image)
+            alpha = source.getchannel("A")
+            bounds = alpha.getbbox()
+            if not bounds or alpha.getextrema()[0] == 255:
+                raise ValueError("Il soggetto deve avere uno sfondo trasparente e pixel visibili.")
+            source = source.crop(bounds)
+            fitted = ImageOps.contain(source, (max(1, round(canvas.width * layer.width)),
+                                               max(1, round(canvas.height * layer.height))), Image.Resampling.LANCZOS)
+            canvas.alpha_composite(fitted, (round(layer.x * canvas.width), round(layer.y * canvas.height)))
+        return {"image": "data:image/png;base64," + encode_png(canvas)["data"]}
+    except (ValueError, OSError, Image.DecompressionBombError) as error:
+        raise HTTPException(422, str(error)) from error
 
 
 _rembg: dict[str, Any] = {}
