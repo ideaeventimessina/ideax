@@ -69,7 +69,7 @@ const esci = (ok, m) => { console.log(ok ? `✅ ${m}` : `❌ ${m}`); if (!ok) pr
 // Avvio: sottoscrive ntfy + UN drain iniziale (coda vuota → 1 GET, 0 POST)
 sistemi.startAll();
 await new Promise((r) => setTimeout(r, 1500));
-esci(getLavori === 1, `all'avvio: 1 solo controllo della coda (GET=${getLavori}, POST=${postRisultato})`);
+esci(getLavori === 0, `all'avvio: ZERO richieste all'app (on-demand: GET=${getLavori}, POST=${postRisultato})`);
 
 // RIPOSO: 8 secondi senza sveglia → NESSUNA nuova richiesta all'app
 const getPrima = getLavori, totPrima = totali;

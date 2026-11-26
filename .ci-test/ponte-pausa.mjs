@@ -12,8 +12,10 @@ process.env.IDEAX_NTFY_BASE=`http://127.0.0.1:${ntfy.address().port}`; const app
 fs.writeFileSync(path.join(HOME,'data','settings.json'),JSON.stringify({systems:[{id:'a1',name:'Pausa',url:appUrl,path:'/api/ponte/ideax',key:KEY,enabled:true}]}));
 const sis=await import('../lib/systems.js'); const sv=await import('../lib/sveglia.js');
 const ok=(c,m)=>{console.log(c?`✅ ${m}`:`❌ ${m}`); if(!c)process.exit(1);};
-sis.startAll(); await new Promise(r=>setTimeout(r,1500));
-ok(get===1, `avvio: 1 controllo, l'app ha detto pausa (GET=${get})`);
+sis.startAll(); await new Promise(r=>setTimeout(r,1200));
+ok(get===0, `avvio: ZERO richieste (on-demand, GET=${get})`);
 await sv.pubblica(sv.topicPer(KEY),'x'); await new Promise(r=>setTimeout(r,1500));
-ok(get===1, `sveglia durante la pausa: NESSUNA nuova richiesta (GET ancora ${get})`);
+ok(get===1, `prima sveglia: 1 controllo, l'app risponde pausa (GET=${get})`);
+await sv.pubblica(sv.topicPer(KEY),'x'); await new Promise(r=>setTimeout(r,1500));
+ok(get===1, `seconda sveglia durante la pausa: NESSUNA nuova richiesta (GET ancora ${get})`);
 console.log('\n🎉 Back-off pausa: l\'host in pausa non viene ribussato finché non scade.'); process.exit(0);
