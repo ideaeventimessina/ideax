@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.53.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.54.exe**.
+
+## Ponte completamente on-demand: a riposo IDEAX non chiama NESSUNA app
+- Rifinitura dell'ultimo passo: ora **nemmeno all'avvio** ideax bussa alle app. All'accensione apre solo il canale di sveglia e resta in ascolto — **zero traffico**, così ogni Autoscale su Replit dorme. Un progetto viene contattato **solo** quando ha davvero un lavoro (pubblica una sveglia) o quando lo chiedi tu (Prova / controlla ora). Una sveglia arrivata appena prima dell'avvio non si perde (la recupera il canale). Si somma al back-off "pausa" per-host.
+
 
 ## Ponte: se un'app dice "sono in pausa", ideax la lascia dormire
 - Quando un'app collegata risponde `pausa` (ideax lì non serve, es. IDEAgame col ponte spento), ideax **non la ricontatta** per il tempo richiesto (5 min), **per quel solo host**. Così il suo Autoscale su Replit scende a zero invece di restare sveglio. Gli altri sistemi restano com'erano. Si somma alla sveglia push: insieme, le app online non si tengono più accese a vuoto.
