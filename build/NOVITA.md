@@ -1,5 +1,13 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.49.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.50.exe**.
+
+## Regia più leggibile, e la voce si stacca (e resta staccata)
+- Le risposte ora hanno la **formattazione vera** (grassetto, elenchi, codice, titoli) e sono **allineate a sinistra** in una colonna più larga: basta testo centrato, grezzo e confuso.
+- La **voce non legge più punteggiatura e parentesi**: il testo viene ripulito dai simboli prima di parlare.
+- Il tasto **muto resta muto**: una volta staccata la voce, resta staccata anche riaprendo (e il tasto parte già nello stato giusto).
+
+## Competenze: a ideax è stato insegnato il METODO
+- Dieci "competenze" (ricerca web, capire/scrivere/rivedere codice, debug, pianificare, scrivere, numeri, riassumere, e cosa fare quando non sa) messe nella **memoria**: il cervello le recupera e segue un buon processo invece di improvvisare. Non rende il modello locale potente come Claude — quello è il tetto del modello — ma gli dà un metodo solido sui compiti ricorrenti. L'autopotenziamento aggiunge poi le capacità che mancano.
 
 ## File locali
 - Analizza una cartella di progetto, mostra i collegamenti e prepara una modifica al file selezionato con il modello locale. IDEAX mostra una spiegazione e salva la modifica e il backup solo dopo la conferma.
