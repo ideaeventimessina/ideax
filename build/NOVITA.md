@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.50.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.51.exe**.
+
+## I reel arrivano alle app online
+- Il video usciva quasi senza compressione (circa 45 MB per 25 secondi) e l'app lo rifiutava: l'hosting si ferma a 32 MB per invio. Ora il peso ha un tetto (30 secondi restano sotto i 20 MB), alle app torna solo il video e, se un risultato è comunque troppo grande, l'app riceve il motivo.
 
 ## Regia più leggibile, e la voce si stacca (e resta staccata)
 - Le risposte ora hanno la **formattazione vera** (grassetto, elenchi, codice, titoli) e sono **allineate a sinistra** in una colonna più larga: basta testo centrato, grezzo e confuso.

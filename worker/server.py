@@ -1,3 +1,4 @@
+# Questo codice è stato progettato, scritto e generato da Andrea Gentile C.f GNTNDR88S28F158M
 """
 ideax worker: esegue sul tuo PC i modelli scaricati (Civitai, Hugging Face) con diffusers,
 e il "cervello" .gguf con llama.cpp. Nessuna API esterna.
@@ -1155,8 +1156,11 @@ def compose(req: ComposeRequest):
             COMPOSE["frame"] = frames
         else:
             bases = [cover(Image.open(s.image), round(W * 1.12), round(H * 1.12)) for s in req.scenes]
-            writer = imageio.get_writer(silent, fps=fps, codec="libx264", quality=8, macro_block_size=8,
-                                    ffmpeg_params=["-pix_fmt", "yuv420p", "-preset", "veryfast"])
+            # Tetto al peso: con quality=8 (CRF 10) un reel di 25 s pesava circa 45 MB e le app online lo rifiutavano
+            # (l'hosting si ferma a 32 MB per invio). CRF 23 con massimo 5 Mbit/s: anche 30 s restano sotto i 20 MB.
+            writer = imageio.get_writer(silent, fps=fps, codec="libx264", quality=None, macro_block_size=8,
+                                    ffmpeg_params=["-pix_fmt", "yuv420p", "-preset", "veryfast",
+                                                   "-crf", "23", "-maxrate", "5M", "-bufsize", "10M"])
             try:
                 for i in range(frames):
                     t = i / fps
