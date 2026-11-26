@@ -16,10 +16,11 @@ test('un intervento approva i file insieme e conserva solo metodi verificati', a
   write('test.mjs', "import assert from 'node:assert/strict'; import fs from 'node:fs'; assert.equal(fs.readFileSync('index.html','utf8'), '<title>Dopo</title>'); assert.equal(fs.readFileSync('README.md','utf8'), '# Dopo');");
   const prepare = (title, expectedMemory) => preparaIntervento(root, 'Allinea il nome', 'test.mjs', (_, context) => {
     if (context.inventory) {
-      assert.equal(context.metodo, expectedMemory);
-      return { files: ['index.html', 'README.md'], motivo: 'Allineamento', metodo: 'Confronta i titoli dei file' };
+      assert.equal(context.memories[0]?.testo || '', expectedMemory);
+      return { files: ['index.html', 'README.md'], tests: ['test.mjs'],
+        memoriaId: context.memories[0]?.id || '', metodo: 'Confronta i titoli dei file' };
     }
-    return { text: context.target === 'index.html' ? '<title>' + title + '</title>' : '# ' + title, motivo: 'Cambio titolo.' };
+    return { edits: [{ prima: context.originale, dopo: context.target === 'index.html' ? '<title>' + title + '</title>' : '# ' + title, tutte: false }] };
   });
 
   const proposal = await prepare('Dopo', '');
@@ -41,4 +42,26 @@ test('un intervento approva i file insieme e conserva solo metodi verificati', a
   write('README.md', '# Esterno');
   await assert.rejects(applicaIntervento(stale.id), /è cambiato/);
   assert.equal(read('index.html'), '<title>Dopo</title>');
+
+  const other = path.join(root, 'altro-progetto');
+  fs.mkdirSync(other);
+  const paths = ['uno.txt', 'due.txt', 'tre.txt', 'quattro.txt', 'cinque.txt'];
+  for (const file of paths) write(path.join('altro-progetto', file), 'Vecchio');
+  write('altro-progetto/scelto.test.mjs', "import test from 'node:test'; test('verifica', () => {});");
+  write('altro-progetto/escluso.test.mjs', "import test from 'node:test'; test('non pertinente', () => { throw Error('non eseguire'); });");
+  const cross = await preparaIntervento(other, 'Aggiorna le schede', '', (_, context) => {
+    if (context.inventory) {
+      assert.deepEqual(context.testInventory.map(v => v.file), ['escluso.test.mjs', 'scelto.test.mjs']);
+      assert.equal(context.memories[0].stessoProgetto, false);
+      return { files: paths, tests: ['scelto.test.mjs'], memoriaId: context.memories[0].id, metodo: 'Verifica le schede con il test pertinente.' };
+    }
+    return { edits: [{ prima: 'Vecchio', dopo: 'Nuovo', tutte: false }] };
+  });
+  assert.equal(cross.memoria.stessoProgetto, false);
+  assert.deepEqual(cross.tests, ['scelto.test.mjs']);
+  assert.equal(cross.changes.length, 5);
+  assert.deepEqual(cross.changes[0].differenza, { line: 1, beforeCount: 1, afterCount: 1, before: ['Vecchio'], after: ['Nuovo'] });
+  const crossResult = await applicaIntervento(cross.id);
+  assert.equal(crossResult.passed, true, crossResult.output);
+  assert.equal(crossResult.written.length, 5);
 });

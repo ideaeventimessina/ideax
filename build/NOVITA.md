@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.54.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.55.exe**.
+
+## File locali: test automatici e riuso tra progetti
+- IDEAX propone fino a dodici modifiche con un unico OK. Cerca i test Node nella cartella, indica quelli che eseguirà e mostra estratti ottenuti dal confronto dei file.
+- I metodi salvati dopo un test riuscito possono essere recuperati anche in altri progetti.
 
 ## Ponte completamente on-demand: a riposo IDEAX non chiama NESSUNA app
 - Rifinitura dell'ultimo passo: ora **nemmeno all'avvio** ideax bussa alle app. All'accensione apre solo il canale di sveglia e resta in ascolto — **zero traffico**, così ogni Autoscale su Replit dorme. Un progetto viene contattato **solo** quando ha davvero un lavoro (pubblica una sveglia) o quando lo chiedi tu (Prova / controlla ora). Una sveglia arrivata appena prima dell'avvio non si perde (la recupera il canale). Si somma al back-off "pausa" per-host.

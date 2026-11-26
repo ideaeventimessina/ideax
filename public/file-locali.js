@@ -68,7 +68,7 @@ get('anteprima').onclick = () => esegui(async () => mostra(await richiesta('ante
 conferma.onclick = () => {
   const p = attesa;
   if (p?.changes) {
-    if (!window.confirm('Applicare tutte le modifiche mostrate ed eseguire il test ' + p.test + '?')) return;
+    if (!window.confirm('Applicare tutte le modifiche mostrate ed eseguire: ' + p.tests.join(', ') + '?')) return;
     esegui(async () => {
       const result = await richiesta('progetto/applica', { id: p.id, confirmed: true });
       get('test-esito').textContent = result.output + '\n' + result.written.map(f => f.backup).join('\n');
@@ -126,19 +126,37 @@ get('intervento').onclick = () => esegui(async () => {
   });
   const panel = get('anteprima-progetto');
   const plan = document.createElement('p');
-  plan.textContent = proposal.motivo + ' · Test dopo conferma: node --test ' + proposal.test;
-  panel.append(plan);
+  plan.textContent = 'Obiettivo: ' + proposal.obiettivo;
+  const tests = document.createElement('p');
+  tests.textContent = 'Test dopo conferma: node --test ' + proposal.tests.join(' ');
+  panel.append(plan, tests);
   if (proposal.memoria) {
     const memory = document.createElement('p');
-    memory.textContent = 'Metodo recuperato dalla memoria: ' + proposal.memoria;
+    memory.textContent = (proposal.memoria.stessoProgetto ? 'Metodo recuperato per questo progetto: ' : 'Metodo recuperato da un altro progetto: ') + proposal.memoria.testo;
     panel.append(memory);
   }
   for (const change of proposal.changes) {
     const section = document.createElement('details');
     section.open = true;
     const heading = document.createElement('summary');
-    heading.textContent = change.relative + ' · ' + change.motivo;
-    section.append(heading);
+    heading.textContent = change.relative;
+    const diff = change.differenza;
+    const details = document.createElement('p');
+    details.textContent = 'Dalla riga ' + diff.line + ', blocco originale di ' + diff.beforeCount +
+      ' righe → blocco proposto di ' + diff.afterCount + ' righe.';
+    section.append(heading, details);
+    if (!change.replacements.length) {
+      const excerpt = document.createElement('pre');
+      excerpt.textContent = [...diff.before.map(line => '− ' + line), ...diff.after.map(line => '+ ' + line)].join('\n');
+      section.append(excerpt);
+    }
+    for (const replacement of change.replacements) {
+      const excerpt = document.createElement('pre');
+      excerpt.style.whiteSpace = 'pre-wrap';
+      excerpt.textContent = (replacement.occorrenze > 1 ? replacement.occorrenze + ' occorrenze\n' : '') +
+        '− ' + replacement.prima + '\n+ ' + replacement.dopo;
+      section.append(excerpt);
+    }
     for (const [label, content] of [['Originale', change.before], ['Proposta', change.after]]) {
       const field = document.createElement('label');
       field.textContent = label;
