@@ -1,0 +1,32 @@
+/* Questo codice è stato progettato, scritto e generato da Andrea Gentile C.f GNTNDR88S28F158M */
+
+.pi { --oro: oklch(0.83 0.14 88); --oro-caldo: oklch(0.73 0.15 66); --inchiostro: #241703; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+.pi-busta { position: fixed; right: 0; top: 68px; z-index: 900; display: flex; align-items: center; justify-content: center; width: 46px; height: 44px; border: 0; border-radius: 14px 0 0 14px;
+  background: linear-gradient(135deg, var(--oro), var(--oro-caldo)); color: var(--inchiostro); cursor: pointer; box-shadow: 0 6px 22px rgb(0 0 0 / .45); }
+@media (max-width: 640px) { .pi-busta { top: 136px; } }
+.pi-busta.via { visibility: hidden; }
+.pi-busta:focus-visible, .pi-x:focus-visible, .pi-riprova:focus-visible, .pi-nota a:focus-visible { outline: 3px solid var(--oro); outline-offset: 2px; }
+.pi-busta.nuove { animation: pi-trillo .9s ease-out 1; }
+@keyframes pi-trillo { 25% { transform: translateX(-6px) rotate(-6deg); } 50% { transform: translateX(-2px) rotate(5deg); } 75% { transform: translateX(-4px) rotate(-3deg); } }
+@media (prefers-reduced-motion: reduce) { .pi-busta.nuove { animation: none; } }
+.pi-conta { position: absolute; top: -7px; left: -7px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #b3261e; color: #fff; font-size: 11px; font-weight: 800; line-height: 20px; text-align: center; }
+.pi-velo { position: fixed; inset: 0; z-index: 950; background: rgb(0 0 0 / .55); }
+.pi-cassetto { position: fixed; top: 0; right: 0; bottom: 0; z-index: 960; width: min(420px, calc(100vw - 48px)); display: flex; flex-direction: column; background: #f4efe7; color: #241b10; box-shadow: -14px 0 40px rgb(0 0 0 / .5); }
+.pi-testa { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: calc(16px + env(safe-area-inset-top, 0px)) 20px 16px; background: linear-gradient(100deg, var(--oro-caldo), var(--oro)); color: var(--inchiostro); }
+.pi-titolo { font-size: 20px; font-weight: 800; }
+.pi-sotto { font-size: 13px; }
+.pi-x { width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgb(36 23 3 / .45); background: rgb(255 255 255 / .28); color: var(--inchiostro); font-size: 16px; cursor: pointer; }
+.pi-corpo { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.pi-nota { background: #fdfaf0; border: 1px solid #e4dccb; border-radius: 14px; padding: 12px 14px; font-size: 14px; line-height: 1.5; }
+.pi-nota.nuova { border-color: var(--oro-caldo); box-shadow: inset 4px 0 0 var(--oro-caldo); }
+.pi-nota header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.pi-nota time { margin-left: auto; font-size: 12px; color: #6d604c; }
+.pi-tag { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: #f0e2c4; color: #5c3f04; }
+.pi-nota p { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pi-richiesta { color: #6a4a07; font-weight: 600; }
+.pi-nota a { display: inline-block; margin: 8px 10px 0 0; color: #6a4a07; overflow-wrap: anywhere; }
+.pi-riprova { margin-left: 8px; border: 1px solid #c9b98f; background: transparent; border-radius: 999px; padding: 5px 12px; color: inherit; cursor: pointer; }
+.pi-vuoto { margin: auto; color: #6d604c; font-size: 14px; }
+.pi-piede { padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #e4dccb; font-size: 12.5px; color: #6d604c; }
+.pi [hidden] { display: none !important; }
+.pi { font-size: 14px; text-align: left; }

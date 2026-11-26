@@ -1,5 +1,9 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.56.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.57.exe**.
+
+## La posta interna dentro ideax
+- Se ideax è collegato a Bill, sul bordo destro compare la **busta oro** con i messaggi interni. Qui si leggono soltanto; si risponde da Bill o dal gestionale.
+- Si vede **solo su questo PC** (non dal telefono né dalle app con una chiave API). All'avvio non parte nessuna chiamata e non ci sono controlli a orologio: la busta si aggiorna quando usi ideax, al massimo ogni 5 minuti.
 
 ## File locali: correzione dopo un test fallito
 - IDEAX ripristina gli originali, conserva il risultato dei test e prepara una nuova proposta usando la diagnosi. La correzione richiede la tua conferma e viene verificata con gli stessi test.

@@ -59,6 +59,7 @@ import { blockedReason, adultGuard } from './lib/safety.js';
 import * as regia from './lib/regia.js';
 import { brainPair } from './lib/brain.js';
 import { richiestaLocale, origineAmmessa, originiExtra } from './lib/locale.js';
+import { leggiPosta } from './lib/posta.js';
 
 process.title = 'ideax';
 
@@ -1242,6 +1243,12 @@ const server = http.createServer(async (req, res) => {
       return send(res, job.status === 'done' ? 200 : 500, publicJob(job, origin));
     }
     // ----- Sistemi collegati (ideax va a prendere il lavoro) -----
+    // La posta interna è personale: solo la pagina aperta su QUESTO PC. Niente telefoni, tunnel o app con una chiave API.
+    if (p === '/api/posta-interna' && req.method === 'GET') {
+      if (!locale || client) return send(res, 403, { error: 'La posta si vede solo da questo PC.' });
+      res.setHeader('Cache-Control', 'no-store');
+      return send(res, 200, await leggiPosta(systems.listSystems({ withSecrets: true })));
+    }
     if (p === '/api/systems' && req.method === 'GET') return send(res, 200, { systems: systems.listSystems(), capabilities: systems.capabilities() });
     if (p === '/api/systems' && req.method === 'POST') return send(res, 200, systems.saveSystem(await readJson(req)));
     if (p === '/api/systems/ponte' && req.method === 'POST') return send(res, 200, systems.createBridge(await readJson(req)));
