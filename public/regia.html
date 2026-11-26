@@ -37,7 +37,7 @@
     animation: bloom 11s ease-in-out infinite alternate;
   }
   .shade { inset: 0; background: radial-gradient(ellipse at center,#2145753d,transparent 53%); }
-  main { min-height: 100svh; position: relative; margin-inline: auto; width: min(560px, calc(100% - 40px)); }
+  main { min-height: 100svh; position: relative; margin-inline: auto; width: min(680px, calc(100% - 32px)); }
   .scena { padding: max(48px, calc(50svh - clamp(23px, 6vw, 34px))) 0 24px; }
   h1 { margin: 0; display: flex; justify-content: center; }
   .logo {
@@ -56,9 +56,22 @@
   .turno > * + * { margin-top: 9px; }
   .filo .io, .filo .allegati { display: none; }
   .risposta, .parz {
-    white-space: pre-wrap; line-height: 1.55; font-size: clamp(.95rem, 2.4vw, 1.12rem);
+    white-space: pre-wrap; line-height: 1.6; font-size: clamp(1rem, 2.3vw, 1.12rem);
     text-shadow: 0 0 8px #fff, 0 0 16px #fff, 0 0 24px #fff;
+    text-align: left;
   }
+  /* risposte leggibili: a sinistra e con la formattazione vera (elenchi, grassetto, codice), non testo grezzo centrato */
+  .risposta { white-space: normal; }
+  .risposta > :first-child { margin-top: 0; } .risposta > :last-child { margin-bottom: 0; }
+  .risposta p { margin: .5em 0; }
+  .risposta ul, .risposta ol { margin: .45em 0 .45em 1.3em; padding: 0; }
+  .risposta li { margin: .25em 0; }
+  .risposta strong { font-weight: 700; }
+  .risposta code { font-family: ui-monospace, monospace; font-size: .9em; background: rgba(20,41,65,.1); padding: .05em .35em; border-radius: 5px; text-shadow: none; }
+  .risposta pre { background: rgba(20,41,65,.08); padding: 10px 12px; border-radius: 10px; overflow-x: auto; text-shadow: none; margin: .5em 0; }
+  .risposta pre code { background: none; padding: 0; }
+  .risposta h2, .risposta h3 { font-size: 1.08em; font-weight: 700; margin: .7em 0 .3em; }
+  .risposta a { color: #1d4e86; }
   .risposta, .parz:not(:empty), .media { animation: emerge 1.45s cubic-bezier(.2,.7,.2,1) both; }
   .capo { display: flex; justify-content: center; align-items: center; gap: 8px; font-size: .88rem; }
   .spin { width: 14px; height: 14px; flex: none; border: 2px solid #24416330; border-top-color: #244163; border-radius: 50%; animation: gira .8s linear infinite; }
@@ -183,7 +196,9 @@ for (let index = 0; index < 18; index++) {
   dust.append(mote);
 }
 
-let chatId = null, allegati = [], vocePub = true, registra = null, occupato = false;
+let chatId = null, allegati = [], registra = null, occupato = false;
+// La voce ricorda la scelta: una volta staccata, resta staccata anche riaprendo (localStorage).
+let vocePub = (() => { try { return localStorage.getItem('ideax_voce') !== 'off'; } catch { return true; } })();
 let voceId = 'if_sara';   // Sara, italiana, donna (Kokoro) — predefinita
 const parlante = new Audio(); let audioSbloccato = false;
 const strumentiVoce = import('./regia-voce.js');
@@ -198,6 +213,43 @@ function aggiungi(turno, html, cls) {
   elemento.innerHTML = html;
   turno.append(elemento);
   return elemento;
+}
+
+// Markdown leggero → HTML (titoli, grassetto, codice, elenchi, link). Si escapa PRIMA, così resta sicuro.
+function md(t){
+  let s = esc(String(t||''));
+  const blocchi = [];
+  s = s.replace(/```([\s\S]*?)```/g, (_, c) => { blocchi.push('<pre><code>'+c.replace(/^\n/, '')+'</code></pre>'); return '\u0001'+(blocchi.length-1)+'\u0001'; });
+  s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>').replace(/__([^_\n]+)__/g, '<strong>$1</strong>');
+  s = s.replace(/\[([^\]\n]+)\]\((https?:\/\/[^)\s]+)\)/g, (m, txt, url) => `<a href="${url}" target="_blank" rel="noopener">${txt}</a>`);
+  const righe = s.split('\n'), out = []; let lista = null;
+  const chiudi = () => { if (lista) { out.push('</'+lista+'>'); lista = null; } };
+  for (const r of righe) {
+    const h = r.match(/^\s*(#{2,3})\s+(.*)$/);
+    const li = r.match(/^\s*[-*]\s+(.*)$/);
+    const oli = r.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (h) { chiudi(); const n = h[1].length; out.push(`<h${n}>${h[2]}</h${n}>`); }
+    else if (li) { if (lista !== 'ul') { chiudi(); out.push('<ul>'); lista = 'ul'; } out.push(`<li>${li[1]}</li>`); }
+    else if (oli) { if (lista !== 'ol') { chiudi(); out.push('<ol>'); lista = 'ol'; } out.push(`<li>${oli[1]}</li>`); }
+    else if (!r.trim()) { chiudi(); }
+    else { chiudi(); out.push(`<p>${r}</p>`); }
+  }
+  chiudi();
+  return out.join('').replace(/\u0001(\d+)\u0001/g, (_, i) => blocchi[+i]);
+}
+
+// Testo ripulito per la VOCE: via i simboli markdown e le parentesi (la voce li "leggeva"), via gli URL. Le pause restano.
+function perVoce(t){
+  return String(t||'')
+    .replace(/```[\s\S]*?```/g, '. ')
+    .replace(/`([^`]*)`/g, '$1')
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/[*_~#>`|]/g, '')
+    .replace(/[()\[\]{}«»"]/g, ' ')
+    .replace(/^\s*[-•]\s+/gm, '. ')
+    .replace(/\s+/g, ' ').trim();
 }
 
 function nuovoTurno() {
@@ -220,7 +272,9 @@ ingresso.addEventListener('keydown', (e)=>{ if(e.key==='Enter'&&!e.shiftKey&&!e.
 $('#piu').onclick=()=>$('#file').click();
 $('#file').onchange=async(e)=>{ for(const f of e.target.files) allegati.push(await leggiFile(f)); disegnaAllegati(); e.target.value=''; };
 anteprime.onclick=(e)=>{ const i=e.target.dataset?.i; if(i!=null){ allegati.splice(+i,1); disegnaAllegati(); } };
-$('#voce').onclick=()=>{ vocePub=!vocePub; $('#voce').classList.toggle('muto',!vocePub); $('#voce').setAttribute('aria-pressed', String(vocePub)); if(!vocePub) fermaVoce(); };
+$('#voce').onclick=()=>{ vocePub=!vocePub; $('#voce').classList.toggle('muto',!vocePub); $('#voce').setAttribute('aria-pressed', String(vocePub)); try{ localStorage.setItem('ideax_voce', vocePub?'on':'off'); }catch{} if(!vocePub) fermaVoce(); };
+// All'avvio il tasto riflette la scelta salvata (se la voce è staccata, parte già "muto")
+$('#voce').classList.toggle('muto', !vocePub); $('#voce').setAttribute('aria-pressed', String(vocePub));
 $('#voci').onchange=()=>{ voceId=$('#voci').value||null; };
 
 // audio sbloccato al primo gesto, o il browser blocca la riproduzione automatica
@@ -286,7 +340,7 @@ async function parla(testo){
   };
   try {
     const { segmentiVoce, tonoRichiesto }=await strumentiVoce;
-    const pezzi=segmentiVoce(testo, tonoRichiesto(tonoComando)||tono);
+    const pezzi=segmentiVoce(perVoce(testo), tonoRichiesto(tonoComando)||tono);
     if(!pezzi.length || signal.aborted) return;
     stato.textContent='🔊 preparo la voce…';
     let prossimo=carica(pezzi[0]);
@@ -436,7 +490,7 @@ function conservaChat(id) {
 
 function mostraRisposta(turno, msg, dalVivo) {
   if(msg.content) {
-    const risposta = aggiungi(turno, esc(msg.content), 'risposta');
+    const risposta = aggiungi(turno, md(msg.content), 'risposta');
     risposta.setAttribute('role', 'status');
     if(dalVivo) parla(msg.content);
   }
