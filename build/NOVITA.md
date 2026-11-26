@@ -1,5 +1,8 @@
 ## Come aggiornare
-Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.52.exe**.
+Premi **Aggiorna ora** in IDEAX, oppure scarica **ideax-setup-1.27.53.exe**.
+
+## Ponte: se un'app dice "sono in pausa", ideax la lascia dormire
+- Quando un'app collegata risponde `pausa` (ideax lì non serve, es. IDEAgame col ponte spento), ideax **non la ricontatta** per il tempo richiesto (5 min), **per quel solo host**. Così il suo Autoscale su Replit scende a zero invece di restare sveglio. Gli altri sistemi restano com'erano. Si somma alla sveglia push: insieme, le app online non si tengono più accese a vuoto.
 
 ## Modifiche coordinate ai progetti locali
 - IDEAX individua i file, mostra la proposta motivata e applica le modifiche con una conferma. Esegue il test Node indicato, ripristina gli originali in caso di errore e conserva il metodo verificato per lo stesso progetto.
